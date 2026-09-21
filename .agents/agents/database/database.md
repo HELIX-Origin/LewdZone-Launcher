@@ -22,13 +22,13 @@ folders as the filesystem mirror).
 ```mermaid
 flowchart TD
     S[scraper parsers] --> R[repository facade]
-    R --> DB[(lewdzone.sqlite)]
+    R --> DB["lewdzone.sqlite"]
     Res[resolver] --> H[download history writer]
     H --> DB
     G[gui controllers] --> R
     G --> H
     R --> G
-    DB --> B[backup / migration runner]
+    DB --> B["backup / migration runner"]
 
     style DB fill:#874b4b,color:#fff
     style R fill:#2f6f4f,color:#fff

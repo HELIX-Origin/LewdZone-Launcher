@@ -16,13 +16,13 @@ responses, sample SQLite schemas, and golden CLI output files.
 
 ```mermaid
 flowchart LR
-    F[fixtures dir] --> H[html/ - real site pages]
-    F --> J[json/ - api.php responses]
-    F --> G[golden/ - cli --json output]
-    F --> S[sql/ - schema migrations for tests]
+    F[fixtures dir] --> H["html/ - real site pages"]
+    F --> J["json/ - api.php responses"]
+    F --> G["golden/ - cli --json output"]
+    F --> S["sql/ - schema migrations for tests"]
     H --> P[parser unit tests]
     J --> R[resolver tests]
-    G --> O[formatter/golden tests]
+    G --> O["formatter/golden tests"]
     S --> D[schema migration tests]
 
     style H fill:#2f6f4f,color:#fff

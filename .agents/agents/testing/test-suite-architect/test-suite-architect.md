@@ -31,27 +31,27 @@ tooling, and watch/diagnostics ergonomics.
 
 ```mermaid
 flowchart TD
-    T[tests/] --> C[conftest.py - shared fixtures]
+    T["tests/"] --> C[conftest.py - shared fixtures]
     T --> PY[pytest markers + config in pyproject]
-    T --> U[unit/ - mirror of module tree]
-    T --> I[integration/ - offline, wiring tests]
-    T --> L[live/ - opt-in real-network tests]
-    T --> F[fixtures/ - html, json, golden, sql]
-    T --> S[support/ - fakes, fake fdm.exe, helpers]
+    T --> U["unit/ - mirror of module tree"]
+    T --> I["integration/ - offline, wiring tests"]
+    T --> L["live/ - opt-in real-network tests"]
+    T --> F["fixtures/ - html, json, golden, sql"]
+    T --> S["support/ - fakes, fake fdm.exe, helpers"]
 
-    U --> U1[test_scraping/]
-    U --> U2[test_resolver/]
-    U --> U3[test_db/]
-    U --> U4[test_cli/]
-    U --> U5[test_gui/]
-    U --> U6[test_fdm/]
-    U --> U7[test_shortcuts/]
-    U --> U8[test_core/]
+    U --> U1["test_scraping/"]
+    U --> U2["test_resolver/"]
+    U --> U3["test_db/"]
+    U --> U4["test_cli/"]
+    U --> U5["test_gui/"]
+    U --> U6["test_fdm/"]
+    U --> U7["test_shortcuts/"]
+    U --> U8["test_core/"]
 
     S --> SF[fakes.py, paths.py, server.py]
-    F --> FH[html/ lz_game.html, lz_archive.html]
-    F --> FJ[json/ start.json, reveal.json, retry.json]
-    F --> FG[golden/ search--json.txt, ...]
+    F --> FH["html/ lz_game.html, lz_archive.html"]
+    F --> FJ["json/ start.json, reveal.json, retry.json"]
+    F --> FG["golden/ search--json.txt, ..."]
 
     style T fill:#2f6f4f,color:#fff
     style U fill:#4b6e91,color:#fff
@@ -88,7 +88,7 @@ flowchart LR
     P --> S[pytest-sugar - rich progress]
     P --> C[pytest-cov - html + xml]
     P --> H[pytest-html - browsable report]
-    P --> L[--log-cli-level=DEBUG - see logs]
+    P --> L["--log-cli-level=DEBUG - see logs"]
     P --> V[--lf --ff - rerun last failures first]
 
     style P fill:#4b6e91,color:#fff

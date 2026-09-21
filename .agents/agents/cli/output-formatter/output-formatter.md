@@ -17,10 +17,10 @@ bars, spinners, ANSI color, and the "never mix stdout/stderr" discipline.
 ```mermaid
 flowchart TD
     A[controller result] --> B{--json?}
-    B -- yes --> C[serialize model to json<br/>single document, stdout]
+    B -- yes --> C["serialize model to json<br/>single document, stdout"]
     B -- no --> D{interactive tty?}
-    D -- yes --> E[ansi table / rich output]
-    D -- no --> F[plain text table<br/>no ansi]
+    D -- yes --> E["ansi table / rich output"]
+    D -- no --> F["plain text table<br/>no ansi"]
     C --> G[exit 0]
     E --> G
     F --> G

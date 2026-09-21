@@ -48,7 +48,7 @@ class DownloadEntry:
 ```mermaid
 flowchart LR
     A[game page HTML] --> A1[meta section]
-    A --> A2[action/info boxes]
+    A --> A2["action/info boxes"]
     A --> A3[genre tag links]
     A --> A4[download section]
     A1 --> B[title, developer, version]

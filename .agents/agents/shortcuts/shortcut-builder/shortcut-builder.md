@@ -17,7 +17,7 @@ shortcuts. This is the ONLY agent allowed to manipulate `.lnk` files.
 ```mermaid
 flowchart LR
     A[game exe path] --> B[target verified exists]
-    A --> C[workdir = game folder]
+    A --> C["workdir = game folder"]
     D[ico path] --> E{icon supplied?}
     E -- yes --> F[assign icon]
     E -- no --> G[generic icon]
@@ -26,8 +26,8 @@ flowchart LR
     G --> H
     H --> I[Start Menu lnk]
     H --> J[Desktop lnk]
-    H --> K[optional: user-set custom dir]
-    I --> L[(db.shortcuts)]
+    H --> K["optional: user-set custom dir"]
+    I --> L["db.shortcuts"]
     J --> L
     K --> L
 

@@ -42,14 +42,14 @@ class ArchiveMeta:
 
 ```mermaid
 flowchart TD
-    A[GET /games/?platform=&engine=&sort=&state=] --> B{HTML page}
+    A["GET /games/?platform=&engine=&sort=&state="] --> B{HTML page}
     B --> C[parse game cards]
     B --> D[parse pagination meta]
     B --> E[detect active filters]
-    C --> F[(list of GameCard)]
+    C --> F["list of GameCard"]
     D --> G[ArchiveMeta]
     E --> G
-    F --> H[collector<br/>next page if more]
+    F --> H["collector<br/>next page if more"]
     G --> H
     H --> I[full Catalog for page N]
     I --> J[db sync-orchestrator]

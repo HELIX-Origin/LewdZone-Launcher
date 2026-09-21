@@ -32,12 +32,12 @@ Turn a raw downloaded folder into a polished shortcut:
 flowchart LR
     A[download done + folder organized] --> B[detect game folder]
     B --> C{primary exe found?}
-    C -- yes --> D[resolve display name<br/>e.g. Treasure of Nadia]
+    C -- yes --> D["resolve display name<br/>e.g. Treasure of Nadia"]
     C -- no --> E[mark pending-shortcut]
     D --> F[build native shortcut target+workdir+args]
     F --> G[ask content layer for icon]
-    G --> H[convert/assign .ico + icon in shortcut]
-    H --> I[place in Desktop + Start Menu / Applications]
+    G --> H["convert/assign .ico + icon in shortcut"]
+    H --> I["place in Desktop + Start Menu / Applications"]
     I --> J[record in db.shortcuts]
     J --> K[repair command available]
 

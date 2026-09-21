@@ -15,10 +15,10 @@ and then to the *download job handed to the FDM family*.
 
 ```mermaid
 flowchart LR
-    A[user picks<br/>version + platform + tab] --> B[find DownloadEntry<br/>in scraped version data]
+    A["user picks<br/>version + platform + tab"] --> B["find DownloadEntry<br/>in scraped version data"]
     B --> C[extract go-link href]
-    C --> D[resolver resolves<br/>token -> real URL]
-    D --> E[build DownloadJob<br/>url + label + dest folder]
+    C --> D["resolver resolves<br/>token -> real URL"]
+    D --> E["build DownloadJob<br/>url + label + dest folder"]
     E --> F[fdm family]
     B --> G[validate host in allowlist]
     G --> D

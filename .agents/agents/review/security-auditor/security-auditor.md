@@ -19,8 +19,8 @@ and tamper-resistant behavior.
 flowchart TD
     T[Threats] --> P[path traversal via game titles]
     T --> R[malicious redirect from resolved URL]
-    T --> S[secret leakage: API keys]
-    T --> D[DB tampering / injection]
+    T --> S["secret leakage: API keys"]
+    T --> D["DB tampering / injection"]
     T --> F[FDM spawn injection]
     T --> C[phishing artifact in organized folders]
 ```

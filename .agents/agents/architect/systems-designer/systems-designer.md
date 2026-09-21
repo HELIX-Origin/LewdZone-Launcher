@@ -26,26 +26,26 @@ model: default
 
 ```mermaid
 flowchart TD
-    subgraph UI [frontends - equal citizens]
-        CLI[cli - command parsers]
-        GUI[gui - Tkinter views]
+    subgraph UI["frontends - equal citizens"]
+        CLI["cli - command parsers"]
+        GUI["gui - Tkinter views"]
     end
-    subgraph SVC [controllers layer]
-        S1[controllers: sync/search/download/settings/shortcuts]
+    subgraph SVC["controllers layer"]
+        S1["controllers: sync/search/download/settings/shortcuts"]
     end
-    subgraph DOM [domain - core models and logic]
-        D1[Game / Genre / Version]
-        D2[DownloadEntry / Catalog]
+    subgraph DOM["domain - core models and logic"]
+        D1["Game / Genre / Version"]
+        D2["DownloadEntry / Catalog"]
     end
-    subgraph INFRA [infrastructure modules]
+    subgraph INFRA["infrastructure modules"]
         I1[db - SQLite repository]
         I2[scraping - fetch + parse]
         I3[resolver - go-link token API]
         I4[fdm - Free Download Manager bridge]
         I5[shortcuts - lnk + SteamGridDB art]
     end
-    subgraph EXT [external seams]
-        E1[lewzodone.com site]
+    subgraph EXT["external seams"]
+        E1["lewdzone.com site"]
         E2[FDM executable]
         E3[SQLite file on disk]
         E4[SteamGridDB API]

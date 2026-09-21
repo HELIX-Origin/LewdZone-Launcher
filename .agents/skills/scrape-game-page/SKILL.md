@@ -11,11 +11,11 @@ Fetch + parse one game detail page, offline-testable against the fixture.
 
 ```mermaid
 flowchart LR
-    A[slug or URL] --> B[scraping/fetch.py GET]
+    A[slug or URL] --> B["scraping/fetch.py GET"]
     B --> C[game-page-parser]
     C --> D[Game model]
-    C --> E[versions -> DownloadEntry lists]
-    D --> F[db upsert (optional)]
+    C --> E["versions -> DownloadEntry lists"]
+    D --> F["db upsert (optional)"]
     E --> R[hand go-links to resolver]
 
     style C fill:#2f6f4f,color:#fff

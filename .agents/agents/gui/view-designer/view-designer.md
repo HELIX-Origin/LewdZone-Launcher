@@ -133,7 +133,7 @@ flowchart LR
     SET --> CK["API keys section"]
     CK --> K1[SteamGridDB key]
     CK --> K2[IGDB client id + secret]
-    CK --> K3[VNDB / itch optional]
+    CK --> K3["VNDB / itch optional"]
     SET --> PRI["provider priority list"]
     K1 --> SV["save via settings set --secret"]
     K2 --> SV

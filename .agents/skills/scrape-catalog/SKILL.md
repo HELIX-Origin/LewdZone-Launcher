@@ -12,11 +12,11 @@ Collect game cards from the archive (`/games/`) and genre listings
 
 ```mermaid
 flowchart TD
-    A[options: platform/engine/sort/state] --> B[build archive URL]
-    B --> C[GET /games/ page 1]
-    C --> D[archive-parser -> GameCard[] + meta]
+    A["options: platform/engine/sort/state"] --> B[build archive URL]
+    B --> C["GET /games/ page 1"]
+    C --> D["archive-parser -> GameCard[] + meta"]
     D --> E{more pages?}
-    E -- yes --> F[fetch next page (or /page/N/)] --> C
+    E -- yes --> F["fetch next page (or /page/N/)"] --> C
     E -- no --> G[aggregate cards]
     G --> H[return catalog + meta]
 

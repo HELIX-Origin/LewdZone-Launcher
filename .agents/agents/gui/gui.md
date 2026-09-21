@@ -39,7 +39,7 @@ flowchart TD
     APP["Tauri app - webview UI"] --> SH["Rust core (app-shell)"]
     SH --> SD["sidecar-driver: spawn CLI subprocess"]
     SD --> CLI["lewdzone-launcher sidecar binary"]
-    CLI --> SQL[("sqlite db")]
+    CLI --> SQL[""sqlite db""]
     CLI --> SITE["lewdzone.com"]
     CLI --> DM["download manager"]
     SD -->|"json / jsonl events"| APP
@@ -73,15 +73,15 @@ the frontend. All domain logic stays in the CLI (Rule 03 inward imports).
 ```mermaid
 flowchart TD
     W[MainWindow] --> ST[STORE - search + browse + download]
-    W --> LB[LIBRARY - owned / installed games]
+    W --> LB["LIBRARY - owned / installed games"]
     W --> DL[DOWNLOADS - active jobs + queue]
     W --> SE[SETTINGS - dm, folders, keys, authors]
     ST --> GR[Steam-style grid]
     GR --> SD[LauncherDetailView]
     SD --> T1[Overview - hero art + meta]
-    SD --> T2[Downloads - version picker + Official/Community]
+    SD --> T2["Downloads - version picker + Official/Community"]
     SD --> T3[Screenshots]
-    T2 --> DP[platform select + Official/Community tabs]
+    T2 --> DP["platform select + Official/Community tabs"]
     DP --> B["Download button"] --> QP[QueuePanel]
     LB --> LGC[Library item - icon + cover + desc]
     DL --> QP

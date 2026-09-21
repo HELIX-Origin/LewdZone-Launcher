@@ -19,19 +19,19 @@ default comes from the platform-aware settings key.
 ```mermaid
 flowchart TD
     A[file finished in DM download dir] --> B{game folder exists?}
-    B -- no --> C[create <Root>/Games/<Title>/]
+    B -- no --> C["create <Root>/Games/<Title>/"]
     B -- yes --> D[reuse folder]
     C --> D
     D --> E{multi-part / variant?}
-    E -- yes --> F[Merge into <Title>/_parts/ or suffix label]
+    E -- yes --> F["Merge into <Title>/_parts/ or suffix label"]
     E -- no --> G[keep single file]
     F --> H[rename to canonical pattern]
     G --> H
     H --> I{matching file exists?}
-    I -- yes --> J[rename with (1) suffix - never overwrite]
+    I -- yes --> J["rename with (1) suffix - never overwrite"]
     I -- no --> K[move into place]
     J --> K
-    K --> L[update db.download_jobs status=done + path]
+    K --> L["update db.download_jobs status=done + path"]
 
     style H fill:#4b6e91,color:#fff
     style J fill:#874b4b,color:#fff

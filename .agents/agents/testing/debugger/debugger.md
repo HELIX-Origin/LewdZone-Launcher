@@ -18,11 +18,11 @@ structured postmortem routine. Works hand-in-hand with the
 
 ```mermaid
 flowchart TD
-    A[failure / bug report] --> B[write a test that reproduces it]
+    A["failure / bug report"] --> B[write a test that reproduces it]
     B --> C{reproduced?}
-    C -- no --> D[add diagnostics:<br/>fixture capture, logs, breakpoint]
+    C -- no --> D["add diagnostics:<br/>fixture capture, logs, breakpoint"]
     D --> B
-    C -- yes --> E[isolate: minimize fixture / inputs]
+    C -- yes --> E["isolate: minimize fixture / inputs"]
     E --> F[fix with the test green]
     F --> G[keep regression test + fixture]
     G --> H[run related suite + coverage]

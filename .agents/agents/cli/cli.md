@@ -34,10 +34,10 @@ flowchart TD
     APP -->|"spawn subprocess"| SD[sidecar-driver]
     SD -->|"json/jsonl"| CLI
     CLI --> CTL[controllers - service layer]
-    CTL --> SVC[scraper / resolver / db / dm / shortcuts]
+    CTL --> SVC["scraper / resolver / db / dm / shortcuts"]
     SVC --> SITE[lewdzone.com]
     SVC --> DM["download managers fdm idm torrent"]
-    SVC --> SQL[(sqlite)]
+    SVC --> SQL["sqlite"]
 
     style APP fill:#874b4b,color:#fff
     style CLI fill:#2f6f4f,color:#fff
@@ -63,11 +63,11 @@ flowchart LR
     L --> launch[launch]
     L --> dm[dm]
 
-    sync --> fs1[--full | --filter PLATFORM ...]
+    sync --> fs1["--full | --filter PLATFORM ..."]
     search --> ss1[QUERY --json]
     info --> si1[GAME  --versions]
     download --> sd1[GAME --version V --platform WINDOWS --tab OFFICIAL]
-    download --> sd2[--resume | --queue]
+    download --> sd2["--resume | --queue"]
     shortcuts --> sk1[rebuild --game GAME --skip-artwork]
     launch --> lg1[launch GAME - engine hook for the app]
 

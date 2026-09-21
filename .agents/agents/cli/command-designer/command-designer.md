@@ -30,12 +30,12 @@ discoverable.
 ```mermaid
 flowchart TD
     A[parse argv] --> B{command?}
-    B -- sync --> C[sync controller] --> D[(db)]
+    B -- sync --> C[sync controller] --> D["db"]
     B -- search --> E[search controller]
     E --> F[GameCard list]
     F -- human --> G[table output]
     F -- json --> H[stdout json]
-    B -- download --> I[dispatch-builder --> resolver]
+    B -- download --> I["dispatch-builder --> resolver"]
     I --> J[Join fdm submit]
     J --> K[job_id out]
     B -- unknown --> L[usage error exit 2]

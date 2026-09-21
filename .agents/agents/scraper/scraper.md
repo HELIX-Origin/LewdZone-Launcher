@@ -50,13 +50,13 @@ testable against saved HTML fixtures, and emits one canonical schema.
 
 ```mermaid
 flowchart LR
-    subgraph Site [lewzone.com]
-        A[game page<br/>/game/slug/]
-        B[archive<br/>/games/]
-        C[genre page<br/>/game-genre/slug/]
+    subgraph Site["lewdzone.com"]
+        A["game page<br/>/game/slug/"]
+        B["archive<br/>/games/"]
+        C["genre page<br/>/game-genre/slug/"]
     end
 
-    F[fetch helper<br/>scraping/fetch.py] --> A
+    F["fetch helper<br/>scraping/fetch.py"] --> A
     F --> B
     F --> C
 
@@ -64,12 +64,12 @@ flowchart LR
     B --> P2[archive-parser]
     C --> P3[genre-parser]
 
-    P1 --> M1[(models)]
+    P1 --> M1["models"]
     P2 --> M1
     P3 --> M1
 
-    M1 --> DB[db repository<br/>used by database family]
-    M1 --> R[go-links passed to<br/>resolver family]
+    M1 --> DB["db repository<br/>used by database family"]
+    M1 --> R["go-links passed to<br/>resolver family"]
 
     style Site fill:#3a3a3a,color:#fff
     style fetch fill:#2f6f4f,color:#fff

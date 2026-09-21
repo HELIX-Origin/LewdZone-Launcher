@@ -33,11 +33,11 @@ These live in `C:\Users\Joshu\AppData\Local\Temp\opencode\`. Copy them into
 
 ```mermaid
 flowchart LR
-    A[site change / new page type] --> B[capture real page]
+    A["site change / new page type"] --> B[capture real page]
     B --> C[sanitize + redact]
     C --> D[save .html + .meta.json]
     D --> E[register in manifest]
-    E --> F[pro-TDD: write parser test first]
+    E --> F["pro-TDD: write parser test first"]
     F --> G{parser satisfies fixtures?}
     G -- yes --> H[commit fixtures + parser]
     G -- no --> I[refine parser]

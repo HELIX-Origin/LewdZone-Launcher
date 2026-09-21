@@ -23,7 +23,7 @@ flowchart TD
     A --> C[link rows]
     B --> D[Version{label, is_latest}]
     C --> E[DownloadEntry{label, variant, host, go_link, tab}]
-    D --> F[Version.download_tabs.official/community]
+    D --> F["Version.download_tabs.official/community"]
     E --> F
     F --> G[Game.versions]
 

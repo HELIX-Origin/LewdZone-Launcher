@@ -39,7 +39,7 @@ flowchart LR
     TT --> J["DownloadJob status=dispatched"]
     FA --> J
     J --> O["folder-organizer - organize on completion"]
-    O --> DB[("sqlite download_jobs")]
+    O --> DB[""sqlite download_jobs""]
 ```
 
 ### Shared contract (every adapter implements)
@@ -67,7 +67,7 @@ flowchart TD
     NF["<Title> - <Version> - <Platform>[- <Variant>].<ext>"]
     ROOT --> NF
     NF --> COL["collision? -> (1), (2)"]
-    COL --> DB[("db.download_jobs status + path")]
+    COL --> DB[""db.download_jobs status + path""]
 
     style ROOT fill:#4b6e91,color:#fff
     style NF fill:#2f6f4f,color:#fff

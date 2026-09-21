@@ -21,7 +21,7 @@ flowchart LR
     D --> E[security-auditor]
     E --> F[perf-auditor]
     F --> G{all green?}
-    G -- yes --> H[approved -> done]
+    G -- yes --> H["approved -> done"]
     G -- no --> I[fix report to family]
     I --> A
 

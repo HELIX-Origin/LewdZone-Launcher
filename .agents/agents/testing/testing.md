@@ -21,20 +21,20 @@ that this family owns and maintains.
 
 ```mermaid
 flowchart TD
-    subgraph L1 [unit - fast, offline]
-        P[parser tests<br/>fixture HTML]
-        R[resolver tests<br/>mocked api.php]
-        DB[schema/repo tests<br/>in-memory sqlite]
-        C[controller tests<br/>faked services]
-        F[formatter tests<br/>golden output]
+    subgraph L1["unit - fast, offline"]
+        P["parser tests<br/>fixture HTML"]
+        R["resolver tests<br/>mocked api.php"]
+        DB["schema/repo tests<br/>in-memory sqlite"]
+        C["controller tests<br/>faked services"]
+        F["formatter tests<br/>golden output"]
     end
-    subgraph L2 [integration - offline or opt-in]
+    subgraph L2["integration - offline or opt-in"]
         S[sync round-trip on fixtures]
-        FS[folder-organizer move tests<br/>temp dir]
-        CL[cli command e2e<br/>capsys + tmp db]
-        GP[gui parity test<br/>every GUI action has a CLI twin]
+        FS["folder-organizer move tests<br/>temp dir"]
+        CL["cli command e2e<br/>capsys + tmp db"]
+        GP["gui parity test<br/>every GUI action has a CLI twin"]
     end
-    subgraph L3 [live - opt-in, tagged]
+    subgraph L3["live - opt-in, tagged"]
         L[resolver real api one token]
         SFDM[fdm fake exe argv test]
     end

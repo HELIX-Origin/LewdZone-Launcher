@@ -19,9 +19,9 @@ boundary, and OS-native shortcut creation.
 ```mermaid
 flowchart LR
     T[test] --> FAKE[FakeHttpTransporter]
-    FAKE --> S[site/API - canned sequences by URL]
+    FAKE --> S["site/API - canned sequences by URL"]
     T --> FD[FakeDmExe - per-manager shim]
-    FD --> F[argv recorder fdm / idm / torrent]
+    FD --> F["argv recorder fdm / idm / torrent"]
     T --> FSG[FakeSteamGrid - canned art results]
     T --> FS[FakeFs - tmp dir tracker]
     T --> FSP[FakeSpawn - sidecar process runner]

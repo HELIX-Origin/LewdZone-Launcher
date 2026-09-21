@@ -32,10 +32,10 @@ class ContentProvider(Protocol):
 
 ```mermaid
 flowchart LR
-    A[enrich(game)] --> B[effective priority order]
+    A["enrich(game)"] --> B[effective priority order]
     B --> C{enabled and key ok?}
     C -- no --> D[skip provider]
-    C -- yes --> E[search(title)]
+    C -- yes --> E["search(title)"]
     E --> F{found?}
     F -- yes --> G[fetch_info + fetch_asset]
     G --> H{merge fills a gap?}

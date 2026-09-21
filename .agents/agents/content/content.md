@@ -55,7 +55,7 @@ flowchart LR
     L -- yes --> M[merge info + download art]
     L -- no --> N[next provider]
     M --> O[store external_id + assets]
-    N --> P[none left: record missing]
+    N --> P["none left: record missing"]
     O --> Q[enriched catalog row]
     P --> Q
 

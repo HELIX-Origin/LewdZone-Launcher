@@ -45,7 +45,7 @@ flowchart TD
     D --> E{reveal}
     E -- ok=true --> F[strip trailing \\r]
     F --> G{host allowlisted?}
-    G -- yes --> H[(ResolvedUrl)]
+    G -- yes --> H["ResolvedUrl"]
     G -- no --> Y[raise BlockedHostError]
     E -- retry_in=K --> I{attempts < 4?}
     I -- yes --> J[sleep K] --> D

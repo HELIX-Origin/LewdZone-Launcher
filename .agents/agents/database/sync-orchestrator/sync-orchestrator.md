@@ -25,12 +25,12 @@ flowchart LR
     C -- yes --> D[fetch next page]
     D --> B
     C -- no --> E[collect GameCards]
-    E --> F[group: new vs changed vs missing]
-    F --> G[for each new/changed: fetch game page]
+    E --> F["group: new vs changed vs missing"]
+    F --> G["for each new/changed: fetch game page"]
     G --> H[parse Game + entries]
     H --> I[upsert into DB in one transaction per page]
     I --> J[prune rows not seen on site]
-    J --> K[(synced catalog)]
+    J --> K["synced catalog"]
 
     style F fill:#4b6e91,color:#fff
     style I fill:#2f6f4f,color:#fff

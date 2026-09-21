@@ -142,20 +142,20 @@ flowchart TD
 ```mermaid
 flowchart TD
     subgraph CLI ["lewdzone-launcher (Python sidecar)"]
-        CLIF[frontend: argparse]
+        CLIF["frontend: argparse"]
         CTL[controllers]
-        SVC[services: scraper / resolver / db / dm / shortcuts]
+        SVC["services: scraper / resolver / db / dm / shortcuts"]
     end
     subgraph APP ["Tauri desktop app"]
         SH[app-shell - Rust core]
-        WV[webview: Store / Library / Downloads / Settings]
+        WV["webview: Store / Library / Downloads / Settings"]
         SD[sd-sidecar-driver]
     end
     WV --> SH
     SH --> SD
     SD -->|"spawn + JSON/JSONL"| CLIF
     SVC --> DM["dm adapters: fdm / idm / torrent"]
-    SVC --> SQL[("sqlite")]
+    SVC --> SQL[""sqlite""]
     SVC --> SITE["lewdzone.com"]
 
     style CLI fill:#2f6f4f,color:#fff

@@ -32,9 +32,9 @@ flowchart LR
     C --> E[T2 db schema+repo]
     C --> F[T3 resolver api flow]
     C --> G[T4 fdm bridge]
-    D --> H[Contract lock<br/>Game model shape]
+    D --> H["Contract lock<br/>Game model shape"]
     E --> H
-    F --> I[Contract lock<br/>ResolvedUrl shape]
+    F --> I["Contract lock<br/>ResolvedUrl shape"]
     H --> J[parallel implementation]
     I --> J
     J --> K[review gate]

@@ -33,7 +33,7 @@ flowchart TD
     C --> E{exists + runnable?}
     D --> E
     E -- yes --> F{torrent link or magnet?}
-    F -- yes --> G[require uTorrent/BitTorrent]
+    F -- yes --> G["require uTorrent/BitTorrent"]
     F -- no --> H[use manager]
     E -- no --> I[raise DMNotFoundError - exit 4 or gui settings page]
 
