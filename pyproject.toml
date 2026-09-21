@@ -18,7 +18,7 @@ where = ["src"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "-ra"
+addopts = "-ra -m 'not live'"
 markers = [
     "unit: fast, offline unit tests (default)",
     "integration: offline integration tests using fakes/fixtures",

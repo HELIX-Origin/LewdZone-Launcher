@@ -58,7 +58,9 @@ Currently worked. **No sub-issues have been created on GitHub yet** — the
 roadmap issue is the umbrella; sub-issues come from these items.
 
 ### Phase 1 — Diagnostics & Architecture
-- [ ] Scraping proof: archive pagination scheme (`?page=N` vs `/page/N/`)
+- [x] Scraping proof: archive pagination scheme — **`/games/page/N/`** pretty
+  permalinks, 20 games/page, ~1146 pages; query `?page=N` ignored (normalized
+  to base); filters combine as `?platform=PC&sort=New+to+Old` on the page path
 - [ ] Mermaid compliance cleanup across `.agents/agents/*` (Rule 09)
   - systems-designer subgraph quoting; gui/testing subgraph quoting;
     dm-detector/folder-organizer label quoting

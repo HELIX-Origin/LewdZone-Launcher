@@ -60,6 +60,23 @@ Fakes **fail loud** on unexpected input so bugs aren't masked. Documented in
 - Long-running commands are tested by feeding canned JSONL streams through the
   fake sidecar runner and asserting UI-state transitions.
 
+## Probe/script promotion (reuse, don't remake)
+
+The pytest suite is the **sole home for every script in this repo** —
+scanning, probing, verification, and debugging logic all live as pytest
+modules inside `tests/`, never as scripts in `scratch/`:
+
+- Offline checks → `tests/unit/` or `tests/integration/`.
+- Real-network probes → `tests/live/` with the `live` marker (opt-in, keeps
+  the offline gate hermetic).
+- Benchmarks → `tests/perf/`.
+- The scanner `tests/unit/scanners/test_scratch_promotion.py` fails the gate
+  if **any** `.py` file appears in `scratch/` — the fix is to promote the
+  logic into `tests/` and delete the scratch file.
+- Empirical findings (e.g. archive pagination = `/games/page/N/`, 20
+  games/page) are recorded in the ROADMAP **and** pinned as live tests (see
+  `tests/live/test_archive_pagination.py`) so they never regress silently.
+
 ## Performance budgets
 
 | Operation | Budget |

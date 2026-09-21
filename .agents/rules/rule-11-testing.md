@@ -61,6 +61,25 @@ flowchart TD
 - Benchmarks in `tests/perf/` (micro-bench, see
   [perf-auditor](../agents/review/perf-auditor/perf-auditor.md)).
 
+## Probe/script promotion (reuse, don't remake)
+
+The pytest suite is the **sole home for every script in this repo** —
+scanning, probing, verification, debugging, and one-off exploratory logic all
+live as pytest modules inside `tests/`:
+
+- Offline/offline-fixture logic → `tests/unit/` or `tests/integration/`.
+- Real-network probes (pagination, API shapes, page structure) →
+  `tests/live/` with the `live` marker, so they run opt-in via `-m live` and
+  stay reusable without re-typing them each session.
+- Benchmarks → `tests/perf/`.
+- `scratch/` holds **no scripts at all**. Anything that needs a script is
+  promoted into the suite; any `scratch/*.py` is **flagged by
+  `tests/unit/scanners/test_scratch_promotion.py`** and fails the gate until
+  the logic is moved into `tests/` and the scratch file deleted.
+- Empirical findings (like the `/games/page/N/` pagination proof) are
+  documented in the ROADMAP **and** pinned as live tests so they never
+  silently regress or get re-discovered from scratch.
+
 ## Verification
 
 - `pytest -q` (offline layers + coverage) — the gate.
