@@ -49,16 +49,22 @@ flowchart TD
 3. **Tag format:** `vX.Y.Z` (e.g. `v1.4.2`), annotated, on the merge commit
    of the release branch.
 4. **Release title:** `vX.Y.Z — <Key Feature>`
-   (e.g. `v1.4.2 — catalog sync + FDM queue`).
+   (e.g. `v1.4.2 — catalog sync + DM queue`).
 5. **Release notes structure** (emoji section headers):
 
    | Section | Content |
    | --- | --- |
    | `✨ Highlights` | headline changes for users |
-   | `ðŸš€ Key Improvements & Features` | bulleted new/changed capabilities |
-   | `ðŸ›¡ï¸ Security & Governance` | security fixes, dependency bumps |
-   | `ðŸ“„ Changes & Commits` | link to commit range + notable commits |
-   | `ðŸ“¦ Quick Start & Upgrading` | one-liner install + upgrade snippet |
+   | `🚀 Key Improvements & Features` | bulleted new/changed capabilities |
+   | `🛡️ Security & Governance` | security fixes, dependency bumps |
+   | `📄 Changes & Commits` | link to commit range + notable commits |
+   | `📦 Quick Start & Upgrading` | one-liner install + upgrade snippet |
+   | `📜 Changelog` | link to the matching `CHANGELOG.md` release entry |
+
+   Every release MUST also add a `CHANGELOG.md` entry under a `## [vX.Y.Z](<release-url>)`
+   header (custom format, see the [changelog template](../templates/changelog.md)).
+   Historical record: every change is listed there, newest releases on top. The
+   release notes and the changelog entry are authored from the same commit list.
 
 6. **Publish via GitHub CLI, non-interactive, body from file:**
    ```bash

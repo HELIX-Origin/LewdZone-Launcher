@@ -32,7 +32,7 @@ strict. Style is enforced by tooling, not by taste.
 
 - Modules/files: `snake_case`.
 - Packages: lowercase, no underscores (`lewdzone_launcher`, packages inside are
-  `scraper`, `resolver`, `db`, `fdm`, `cli`, `gui`).
+  `scraper`, `resolver`, `db`, `dm`, `cli`, `gui`).
 - Classes: `PascalCase`. Functions/methods/variables/params: `snake_case`.
 - Constants: `UPPER_SNAKE`.
 - Private module members: leading `_`; never double underscore in names except

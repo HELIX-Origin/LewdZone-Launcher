@@ -16,7 +16,7 @@ an ADR (see [Rule 03](./rule-03-module-architecture.md)).
 1. **One owner per artifact.** A file, table, test, or diagram has exactly one
    owning agent (see `.agents/agents/*/`).
 2. **Delegation, not speculation.** The `architect` grounds architecture;
-   `scraper`/`resolver`/`database`/`fdm`/`cli`/`gui`/`shortcuts` build; the
+   `scraper`/`resolver`/`database`/`dm`/`cli`/`gui`/`shortcuts` build; the
    `testing` family verifies; `review` gates. Agents do not cross these gates
    without delegation.
 3. **CLI is the primary interface.** GUI is a companion twin over the same

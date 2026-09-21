@@ -30,17 +30,17 @@ sprawl.**
 
 | Kind | Title pattern |
 | --- | --- |
-| Roadmap/plan | `ðŸ—ºï¸ <general plan>` |
+| Roadmap/plan | `🗺️ <general plan>` |
 | Feature | `✨ <feature overview>` |
-| Bug | `ðŸ› <problem summary>` |
+| Bug | `🐛 <problem summary>` |
 | Sub-issue | `Sub-Issue N: <feature> (#parent)` |
-| Discovery / side-change | `ðŸ”§ <plain description>` (linked to parent) |
+| Discovery / side-change | `🔧 <plain description>` (linked to parent) |
 
 ## Rebuild lifecycle (4 sub-issues)
 
 ```mermaid
 flowchart TD
-    P["ðŸ—ºï¸ plan roadmap issue"]
+    P["🗺️ plan roadmap issue"]
     P --> S1["Sub-Issue 1: diagnostics + architecture"]
     P --> S2["Sub-Issue 2: core implementation"]
     P --> S3["Sub-Issue 3: test suite + regression"]
@@ -53,7 +53,7 @@ flowchart TD
 
 Each sub-issue:
 - `Sub-Issue 1` — diagnostics, architecture, ADRs, mermaid diagrams.
-- `Sub-Issue 2` — controllers, CLI, GUI, FDM wiring, sqlite migrations.
+- `Sub-Issue 2` — controllers, CLI, GUI, download-manager wiring, sqlite migrations.
 - `Sub-Issue 3` — vitest-style python suite, regression, coverage floors.
 - `Sub-Issue 4` — verification gate, docs sync, release prep (Rule 08).
 
@@ -70,16 +70,16 @@ Resolves #<issue> | Closes #<sub-issue>
 | Emoji | Type | Use |
 | --- | --- | --- |
 | ✨ | feat | new capabilities |
-| ðŸ› | fix | bug fixes |
-| ðŸ“ | docs | documentation |
-| ðŸ§ª | test | tests only |
-| ♻ï¸ | refactor | no behavior change |
+| 🐛 | fix | bug fixes |
+| 📝 | docs | documentation |
+| 🧪 | test | tests only |
+| ♻️ | refactor | no behavior change |
 | ⚡ | perf | performance |
-| ðŸ”§ | chore | tooling/config |
-| ðŸ”’ | security | security hardening |
-| ðŸ—ï¸ | build | builds/packaging |
+| 🔧 | chore | tooling/config |
+| 🔒 | security | security hardening |
+| 🏗️ | build | builds/packaging |
 
-**Scopes** for lewdzone-launcher: `scraper`, `resolver`, `db`, `fdm`, `cli`, `gui`,
+**Scopes** for lewdzone-launcher: `scraper`, `resolver`, `db`, `dm`, `cli`, `gui`,
 `shortcuts`, `tests`, `agents`, `rules`, `docs`, `deps`.
 
 **Best practices**: imperative present tense; specific scopes; tie to issues;
