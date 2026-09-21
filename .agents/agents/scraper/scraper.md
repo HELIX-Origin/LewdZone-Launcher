@@ -40,7 +40,7 @@ testable against saved HTML fixtures, and emits one canonical schema.
    Network fetching lives in a thin fetch helper (`scraping/fetch.py`).
 3. Every parse result uses the canonical models (Game, Genre, Version,
    DownloadEntry, GameCard) defined by `database/schema-designer`.
-4. Structual unknowns (nil fields) must be `Optional` — never crash on missing
+4. Structural unknowns (nil fields) must be `Optional` — never crash on missing
    sections.
 5. Parsers are built against saved fixtures FIRST (see `fixture-engineer`), so
    tests never hit the live site. Live site verification happens only via the

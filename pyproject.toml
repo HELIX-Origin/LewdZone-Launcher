@@ -1,0 +1,50 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "lewdzone-launcher"
+version = "0.1.0"
+description = "Cross-platform LewdZone game launcher: Tauri 2 app + Python CLI engine."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+
+[project.scripts]
+lewdzone-launcher = "lewdzone_launcher.frontends.cli.parser:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
+markers = [
+    "unit: fast, offline unit tests (default)",
+    "integration: offline integration tests using fakes/fixtures",
+    "live: opt-in tests that hit the live site (pytest -m live)",
+    "gui: app/CLI parity and frontend-facing tests",
+    "windows: windows-only behaviors",
+]
+
+[tool.ruff]
+line-length = 88
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]
+
+[tool.importlinter]
+root_package = "lewdzone_launcher"
+include_external_packages = ["lewdzone_launcher"]
+
+[[tool.importlinter.contracts]]
+name = "layers"
+type = "layers"
+layers = [
+    "lewdzone_launcher.frontends",
+    "lewdzone_launcher.controllers",
+    "lewdzone_launcher.services",
+    "lewdzone_launcher.domain",
+]
+independence = false

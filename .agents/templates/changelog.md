@@ -29,8 +29,8 @@ record: every change is listed, newest releases first, living state under
 
 | table row | table row | table row |
 | :--- | :--- | :--- |
-| table item | table descrption | status icon |
-| table item | table descrption | status icon |
+| table item | table description | status icon |
+| table item | table description | status icon |
 
 ## {Additional section for extra information}
 
