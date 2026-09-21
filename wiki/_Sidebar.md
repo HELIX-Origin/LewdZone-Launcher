@@ -9,6 +9,7 @@
 - [Architecture](Architecture)
 - [CLI Reference](CLI-Reference)
 - [Download Managers](Download-Managers)
+- [Content Providers](Content-Providers)
 - [Configuration](Configuration)
 - [Troubleshooting](Troubleshooting)
 

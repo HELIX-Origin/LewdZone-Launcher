@@ -32,6 +32,7 @@ Copilot-style workflows, and others). Everything is documented with
 | **cli** | the engine | command-designer, output-formatter |
 | **gui** | Tauri app | app-shell, view-designer, sidecar-driver |
 | **shortcuts** | artwork + shortcuts | artwork-fetch, shortcut-builder |
+| **content** | external info + art enrichment | provider-registry, steamgriddb-provider, vndb-provider, igdb-provider, itch-provider, steam-provider, indiedb-provider |
 | **testing** | QA suite | fixture-crafter, mock-engineer, test-suite-architect, debugger |
 | **review** | gates | security-auditor, perf-auditor |
 
@@ -43,7 +44,8 @@ Reusable procedures with checkoffs, e.g.:
 - `scrape-catalog` — page the archive into the catalog
 - `resolve-go-token` — the two-step start/reveal resolution
 - `parse-version-prompts` — normalize version strings
-- `launch-fdm` — resolve + dispatch to a manager (DM-agnostic)
+- `launch-download` — dispatch a resolved URL to the active manager (DM-agnostic)
+- `enrich-game-and-art` — fill info + art gaps from the content-provider layer
 
 ## Rules 00-13
 

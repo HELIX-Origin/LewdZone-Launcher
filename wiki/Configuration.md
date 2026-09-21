@@ -16,13 +16,37 @@ LewdZone-Launcher stores a JSON config file in the per-OS config dir:
 
 ```jsonc
 {
-  "download-root": "D:/Games",        // where downloaded games go
-  "dm": "fdm",                        // active download manager
-  "site": "https://lewdzone.com",     // base URL (do not change)
-  "artwork-cache": true,              // cache SteamGridDB artwork
-  "api-throttle-req-per_sec": 1       // rate limit for site requests
+  "download-root": "D:/Games",            // where downloaded games go
+  "dm": "fdm",                            // active download manager
+  "site": "https://lewdzone.com",         // base URL (do not change)
+  "artwork-cache": true,                  // cache provider artwork locally
+  "api-throttle-req-per-sec": 1,          // rate limit for site requests
+  "content-providers-enabled": "steamgriddb, vndb, itch",  // active content providers
+  "content-priority": "steamgriddb, vndb, igdb, itch, steam, indiedb" // dispatch order
 }
 ```
+
+## Content-provider API keys
+
+The content-provider layer (info + art enrichment) uses several external
+sources. Keys are set per-provider from the app's **Settings → API keys** or
+the CLI, and are never displayed back:
+
+| Key | Provider | Needed? |
+| --- | --- | --- |
+| `sgdb-api-key` | SteamGridDB | yes, for icons/grids/heroes/logos |
+| `igdb-client-id` | IGDB | yes, for IGDB info + covers |
+| `igdb-client-secret` | IGDB | yes (Twitch token exchange) |
+| VNDB / itch.io / IndieDB / Steam | — | no keys required (scrape or keyless) |
+
+```sh
+lewdzone-launcher settings set sgdb-api-key <key>
+lewdzone-launcher settings set content-priority "vndb,igdb,steamgriddb"
+```
+
+Keys live in the per-OS config dir (never in the repo; redacted from logs —
+see [Security](Security)). Providers that are disabled or missing a key simply
+don't enrich — downloads are never affected.
 
 ## Changing settings via CLI
 

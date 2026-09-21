@@ -18,6 +18,8 @@ hands them to an installed download manager (FDM, IDM, or a torrent client).
 - Pluggable download-manager adapters: FDM, IDM, uTorrent/BitTorrent
 - Native shortcuts & icons per platform (`.lnk`, `.desktop`, `.app`) with
   SteamGridDB artwork
+- Enriches thin pages from multiple content providers (VNDB, IGDB, Steam,
+  itch.io, IndieDB): descriptions, screenshots, ratings, cover art
 
 ## Documentation
 
@@ -26,6 +28,7 @@ The full documentation suite lives in the [wiki](wiki/Home) folder:
 - [Architecture](wiki/Architecture)
 - [CLI Reference](wiki/CLI-Reference)
 - [Download Managers](wiki/Download-Managers)
+- [Content Providers](wiki/Content-Providers)
 - [Development](wiki/Development)
 - [Installing & Building](wiki/Installing-and-Building)
 - [Agents ecosystem](wiki/Agents)

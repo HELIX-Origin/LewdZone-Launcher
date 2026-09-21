@@ -20,10 +20,10 @@ sidecar executable and parses its stdout as machine output.
 | --- | --- | --- |
 | `desktop/` (Tauri app) | Rust core + Svelte webview | CLI only via subprocess |
 | `lewdzone_launcher/frontends/` | CLI (argparse) | controllers only |
-| `lewdzone_launcher/controllers/` | game, download, sync, shortcut, artwork | services + domain |
+| `lewdzone_launcher/controllers/` | game, download, sync, shortcut, artwork, content | services + domain |
 | `lewdzone_launcher/domain/` | `Game`, `Version`, `DownloadEntry`, `GoToken` | stdlib only |
-| `lewdzone_launcher/services/` | scraping, resolver, db, dm adapters, shortcuts, artwork | domain |
-| external | lewdzone.com, FDM/IDM/torrent, sqlite, SteamGridDB, native shortcuts | — |
+| `lewdzone_launcher/services/` | scraping, resolver, db, dm adapters, shortcuts, artwork, content providers | domain |
+| external | lewdzone.com, FDM/IDM/torrent, sqlite, SteamGridDB/VNDB/IGDB/itch/Steam/IndieDB, native shortcuts | — |
 
 Import rule: **inward only**. Domain never imports IO; services never import
 controllers; frontends never touch services directly. Enforced with
@@ -61,8 +61,35 @@ flowchart TD
 - SQLite catalog stores go-link **tokens**, never resolved URLs (resolved URLs
   are ephemeral).
 - Core tables: `game`, `genre`, `game_genre`, `version`, `download_entry`,
-  `host`, `download_job`.
+  `host`, `download_job`; enrichment `game_external`
+  (`post_id → provider → external_id`) and `artwork_cache` (gains `provider` +
+  `kind` columns).
 - Config + DB live in the per-OS config dir; see [Configuration](Configuration).
+
+## Content enrichment pipeline
+
+Not every LewdZone page carries full metadata (indie/amateur titles are often
+thin). A pluggable **content-provider layer** fills info + art gaps without
+overwriting LewdZone download data:
+
+1. `content` controller asks the provider registry for enabled providers in
+   priority order (`steamgriddb, vndb, igdb, itch, steam, indiedb`).
+2. Each provider searches the title; the first match maps to
+   `game_external(post_id, provider, external_id)` (upsert, idempotent).
+3. `fetch_info` fills only *missing* fields: description, developer, release
+   date, screenshots, rating, tags, store link.
+4. `fetch_asset` pulls art by kind: SteamGridDB icons/grids/heroes/logos;
+   VNDB cover + screenshots; IGDB covers/artworks; itch/IndieDB page art.
+5. Artwork is cached in `artwork_cache` (keyed by `(normalized_title, kind)`,
+   tagged with `provider`) and used again on rebuilds (offline-fast).
+
+APIs: SteamGridDB v2 (Bearer key), VNDB Kana (keyless), IGDB v4
+(Client-ID + Twitch token), itch.io HTML scrape, Steam Storefront (keyless,
+only for already-mapped appids), IndieDB HTML scrape (no public API). API keys
+are pasted by the user in the app's **Settings → API keys** section and
+persisted securely (Rule 10) — never echoed back. Providers degrade
+gracefully: an outage or missing key means "no enrichment", never a broken
+listing or download. See [Agents](Agents) for the `content` family.
 
 ## Download pipeline
 

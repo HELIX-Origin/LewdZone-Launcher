@@ -48,7 +48,8 @@ launch:
 2. **Downloads** page — watch live progress; cancel if needed.
 3. **Library** — launched/installed games with artwork; right-click for
    Launch, Rebuild shortcuts, Uninstall.
-4. **Settings** — download root, active download manager, artwork cache.
+4. **Settings** — download root, active download manager, artwork cache, and
+   content-provider API keys (SteamGridDB / IGDB etc.).
 
 ## Where things live
 

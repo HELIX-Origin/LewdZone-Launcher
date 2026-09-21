@@ -120,9 +120,48 @@ flowchart LR
     style ER fill:#874b4b,color:#fff
 ```
 
+## Settings page
+
+The Settings page (Svelte) lets users configure the launcher. Providers:
+`download-root`, active download manager (`dm`), artwork-cache, API keys for
+the content-provider layer.
+
+```mermaid
+flowchart LR
+    SET[SETTINGS page] --> DR[download root]
+    SET --> DM[active download manager]
+    SET --> CK["API keys section"]
+    CK --> K1[SteamGridDB key]
+    CK --> K2[IGDB client id + secret]
+    CK --> K3[VNDB / itch optional]
+    SET --> PRI["provider priority list"]
+    K1 --> SV["save via settings set --secret"]
+    K2 --> SV
+    PRI --> SV
+
+    style SET fill:#2f6f4f,color:#fff
+    style CK fill:#874b4b,color:#fff
+    style SV fill:#4b6e91,color:#fff
+```
+
+Rules:
+
+1. API keys render as password-style paste fields with an `unset` state;
+   the app requests value entry and sends via
+   `settings set <key> --secret <value>` — **never echoes the stored value**
+   back from the CLI (Rule 10 redaction).
+2. All secret fields ship with a "Clear" action that runs
+   `settings unset <key>`.
+3. Provider enable/priority edit writes `content_providers_enabled` and
+   `content_priority` lists.
+4. Save paths are per-OS config dirs (Rule 03): `%APPDATA%`, `$XDG_CONFIG_HOME`
+   or `~/.config`, `~/Library/Application Support`.
+
 ## Definition of done
 
 - All views load via the CLI bridge, not direct services.
 - A polished LauncherDetailView showing version picker + official/community
-  tabs + live queue progress, and a Steam-style grid in the Store page.
+   tabs + live queue progress, and a Steam-style grid in the Store page.
 - Dark/light theme follows OS; keyboard navigation over the grid works.
+- Settings page includes the API-keys section with set/unset flows for every
+   configured content provider.

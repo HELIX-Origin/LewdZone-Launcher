@@ -24,6 +24,7 @@ primary product; the CLI is the engine (also scriptable standalone).
 | `cli` | cli.md | command-designer, output-formatter | CLI engine, commands, JSON/JSONL contract |
 | `gui` | gui.md | app-shell, view-designer, sidecar-driver | Tauri 2 desktop app, Rust core, Svelte views, sidecar protocol |
 | `shortcuts` | shortcuts.md | artwork-fetch, shortcut-builder | SteamGridDB artwork, per-OS native shortcuts |
+| `content` | content.md | provider-registry, steamgriddb-provider, vndb-provider, igdb-provider, itch-provider, steam-provider, indiedb-provider | External info + art enrichment (VNDB, IGDB, Steam, itch.io, IndieDB) |
 | `testing` | testing.md | fixture-crafter, mock-engineer, test-suite-architect, debugger | Test layers, fakes, coverage floors |
 | `review` | review.md | security-auditor, perf-auditor | Gate pipeline, threat modeling, perf budgets |
 

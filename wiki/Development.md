@@ -34,6 +34,7 @@ lewdzone-launcher/
 | cli | the engine, output (command-designer, output-formatter) |
 | gui | Tauri app (app-shell, view-designer, sidecar-driver) |
 | shortcuts | artwork + native shortcuts (artwork-fetch, shortcut-builder) |
+| content | info + art enrichment (provider-registry, steamgriddb-provider, vndb-provider, igdb-provider, itch-provider, steam-provider, indiedb-provider) |
 | testing | suite, fakes (fixture-crafter, mock-engineer, test-suite-architect, debugger) |
 | review | gates (security-auditor, perf-auditor) |
 

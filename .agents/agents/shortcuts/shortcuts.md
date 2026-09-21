@@ -18,9 +18,11 @@ re-runnable.
 Turn a raw downloaded folder into a polished shortcut:
 
 1. Detect the primary executable in the game folder.
-2. Build a `.lnk` (Desktop + Start Menu) with correct target/workdir.
-3. Fetch SteamGridDB artwork (icon primarily; optionally grid/hero/logo) and
-   assign it to the shortcut.
+2. Build a native shortcut (Desktop + Start Menu / Applications) with correct
+   target/workdir.
+3. Pull artwork/icons from the **content-provider layer**
+   (`.agents/agents/content/`) — SteamGridDB + VNDB + itch + others — and
+   assign them to the shortcut.
 4. Record everything in the DB so shortcuts can be repaired/rebuilt after a
    game update or folder move.
 
@@ -32,10 +34,10 @@ flowchart LR
     B --> C{primary exe found?}
     C -- yes --> D[resolve display name<br/>e.g. Treasure of Nadia]
     C -- no --> E[mark pending-shortcut]
-    D --> F[build .lnk target+workdir+args]
-    F --> G[fetch SteamGridDB<br/>icon for title]
-    G --> H[convert/assign .ico + icon in .lnk]
-    H --> I[place in Desktop + Start Menu]
+    D --> F[build native shortcut target+workdir+args]
+    F --> G[ask content layer for icon]
+    G --> H[convert/assign .ico + icon in shortcut]
+    H --> I[place in Desktop + Start Menu / Applications]
     I --> J[record in db.shortcuts]
     J --> K[repair command available]
 
@@ -48,17 +50,20 @@ flowchart LR
 
 | Tool | What it does | Fit |
 |---|---|---|
-| **SteamGridDB API v2** | Free API; search games + download grids/icons/heroes/logos | Primary programmatic source (auth: Bearer API key) |
+| **SteamGridDB API v2** | Free API; search games + download grids/icons/heroes/logos | Primary icon source via the content layer (auth: Bearer API key) |
 | **SGDBoop** | SteamGridDB official app; "BOOP" buttons apply art directly into Steam library | Good for Steam users; not needed for plain shortcuts |
-| **Steam ROM Manager (SRM)** | Bulk-imports titles + artwork into Steam | Overkill for `.lnk` shortcuts; Steam-only |
+| **Steam ROM Manager (SRM)** | Bulk-imports titles + artwork into Steam | Overkill for native shortcuts; Steam-only |
 | Steam Commander (if it exists in your setup) | Verify behavior empirically before relying | Optional; prefer the API path |
 
-The reliable, tool-agnostic path this family implements is **SteamGridDB API
-v2 directly** (search -> pick -> download icon), then embed the image as the
-`.lnk` icon via a local `.ico`. SGDBoop/SRM are forwarded to when the user
-also wants the game in their *Steam* library.
+Icons come from the **content-provider layer** (SteamGridDB first, then VNDB /
+itch / Steam / IndieDB), not from a single hard-wired client. SGDBoop/SRM are
+forwarded to when the user also wants the game in their *Steam* library.
 
 ## SteamGridDB API reference (verified shape)
+
+(Below is the SteamGridDB-specific surface used by the `content` layer's
+`steamgriddb-provider`; see `.agents/agents/content/` for the full provider
+registry and the other providers.)
 
 - Base: `https://www.steamgriddb.com/api/v2`
 - Auth: `Authorization: Bearer <API_KEY>` (free key at
@@ -73,10 +78,12 @@ also wants the game in their *Steam* library.
 
 ## Delegation
 
-- `artwork-fetch` — SteamGridDB search/download, style/size selection, .ico
-  generation, and the DB-backed cache of `game -> artwork id`.
-- `shortcut-builder` — `.lnk` creation via the Windows script API/Win32,
-  folder->exe resolution, start-menu placement, idempotent rebuilds.
+- `artwork-fetch` — icon/cover resolution for shortcuts **via the content
+  layer**, style/size selection, `.ico` generation, and the DB-backed cache of
+  `game -> artwork id`.
+- `shortcut-builder` — native shortcut creation per OS (`.lnk` via
+  `win32com` on Windows, `.desktop` on Linux, `.app`/aliases on macOS),
+  folder->exe resolution, start-menu/app placement, idempotent rebuilds.
 
 ## Non-negotiables
 
@@ -91,13 +98,16 @@ also wants the game in their *Steam* library.
 
 ## Deliverables
 
-- `shortcuts/` package: `ShortcutBuilder`, `ArtworkClient`, `IcoConverter`.
-- DB tables via `database/schema-designer`: `shortcuts`, `artwork_cache`.
-- Skill: `grab-steamgriddb-artwork` (see `.agents/skills/`).
+- `shortcuts/` package: `ShortcutBuilder`, `IcoConverter`, and a thin
+  `ArtworkClient` that dispatches through `services/content/` providers.
+- DB tables via `database/schema-designer`: `shortcuts`, `artwork_cache`
+  (with `provider` + `kind` columns).
+- Skill: `grab-steamgriddb-artwork` (see `.agents/skills/`) + the
+  content-layer skill `enrich-game-and-art`.
 
 ## Definition of done
 
 - End-to-end: download a game -> shortcut appears on Desktop + Start Menu with
-  a real SteamGridDB icon.
+  a real icon resolved from the content layer (SteamGridDB or fallback).
 - Rebuild is idempotent (running repair twice produces identical shortcuts).
-- No network call in unit tests (all artwork client calls mocked).
+- No network call in unit tests (all artwork/client calls mocked).

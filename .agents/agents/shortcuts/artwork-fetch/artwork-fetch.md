@@ -1,6 +1,6 @@
 ---
 name: artwork-fetch
-role: Sub-agent under shortcuts. Owns SteamGridDB search/download, icon conversion, and artwork cache.
+role: Sub-agent under shortcuts. Owns icon resolution via the content-provider layer, icon conversion, and the artwork cache.
 tools: Read, Write, Edit, Glob, Grep, Bash
 model: default
 ---
@@ -9,62 +9,66 @@ model: default
 
 ## Boundary of responsibility
 
-Everything about getting image assets from SteamGridDB and making them usable
-as Windows shortcut icons.
+Everything about getting image assets **through the content-provider layer**
+(`.agents/agents/content/`) and making them usable as native shortcut icons.
+This agent is a consumer of `services/content/` providers — it never talks to
+a provider API directly.
 
 ## Workflow
 
 ```mermaid
 flowchart TD
-    A[game title + platform] --> B{artwork cached?}
-    B -- yes --> C[reuse cached artwork id]
-    B -- no --> D[search autocomplete by title]
-    D --> E{clean match?}
-    E -- yes --> F[GET icons/game/&#123;id&#125;]
-    E -- no / ambiguous --> G[score candidates; pick best]
-    F --> H[pick icon by style + size pref]
-    G --> F
-    H --> I[download image]
-    I --> J[convert to .ico<br/>256px fallback]
-    J --> K[store in artwork cache dir]
-    K --> L[return .ico path]
-    L --> M[shortcut-builder uses path]
+    A[game title + platform] --> B{icon cached?}
+    B -- yes --> C[reuse cached artwork path]
+    B -- no --> D[dispatch through content registry]
+    D --> E[SteamGridDB provider]
+    E -- miss --> F[VNDB / itch / steam / indiedb]
+    E --> G[ProviderCandidate found?]
+    F --> G
+    G -- yes --> H[pick by kind + size preference]
+    G -- no --> I[fallback: game exe icon / generic]
+    H --> J[download image]
+    J --> K[convert to .ico<br/>256px fallback]
+    K --> L[store in artwork cache dir]
+    L --> M[return .ico path]
+    M --> N[shortcut-builder uses path]
 
     style A fill:#2f6f4f,color:#fff
-    style J fill:#874b4b,color:#fff
-    style L fill:#4b6e91,color:#fff
+    style D fill:#874b4b,color:#fff
+    style K fill:#874b4b,color:#fff
+    style M fill:#4b6e91,color:#fff
 ```
 
-## API details (must implement)
+## Provider details (owned by content layer)
 
-- Auth header `Authorization: Bearer <key>`; key from settings/config.
-- Search: `GET https://www.steamgriddb.com/api/v2/search/autocomplete/{url-quoted title}`
-- Icons: `GET https://www.steamgriddb.com/api/v2/icons/game/{id}`
-  - Pick by `mime` (prefer png), reasonable `width/height`, and style if the
-    response includes style info.
-- NSFW: lewdzone titles may be flagged; set the `nsfw` query param
-  (`?nsfw=yes`) so mature art is still returned, and cache the choice.
-- Handle 404/no-data: produce `None` and let caller fall back to generic icon.
+- Preferred icon source is the SteamGridDB provider (Bearer key from settings).
+- `nsfw=yes` for mature lewdzone titles so art is still returned; cache the
+  choice.
+- Handle 404/no-data: produce `None` and let caller fall back to the game
+  exe's embedded icon or a generic icon.
+- Candidate quality is scored by the content registry
+  (`provider-registry`); ambiguity falls through to the next provider.
 
 ## Icon conversion
 
 - Use Pillow (declare dependency in `pyproject.toml` under a
   `[artwork]` extra) to write a 256x256 `.ico` containing 16/32/48/256 sizes.
-- Prefer SteamGridDB icons with square-ish aspect; for grids/heroes, do NOT
-  use them as `.lnk` icons (wrong aspect) — those are only for Steam-library
-  display, not shortcut icons.
+- For grids/heroes/covers, do NOT use them as shortcut icons (wrong aspect) —
+  those are for Library/app display only.
 
 ## Rules
 
 - Always download fresh art into the project's `artwork_cache/` dir; never
   write into the game's install folder.
 - Cache responses: an artwork lookup keyed by `(normalized_title, platform)`
-  stored in DB table `artwork_cache` so repeated rebuilds are offline-fast.
+  stored in DB table `artwork_cache` (with `provider` + `kind` columns) so
+  repeated rebuilds are offline-fast.
 - Do not log API keys or full Authorization headers.
 
 ## Definition of done
 
 - `fetch_icon(title, platform) -> Path | None` returns a valid `.ico` for
-  "Treasure of Nadia", and `None` (no crash) for an unknown title.
+  "Treasure of Nadia" (via content registry), and `None` (no crash) for an
+  unknown title.
 - All network calls mocked in unit tests; one opt-in integration test against
-  the real API with a user-supplied key.
+  a real provider with a user-supplied key.

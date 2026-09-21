@@ -19,10 +19,10 @@ services; domain knows nothing about IO.
 | --- | --- | --- |
 | `desktop/` (Tauri app) | Rust core + Svelte webview | CLI only via subprocess (never `import lewdzone_launcher`) |
 | `lewdzone_launcher/frontends/` | `cli` (argparse) only | controllers only |
-| `lewdzone_launcher/controllers/` | `game`, `download`, `sync`, `shortcut`, `artwork` controllers | services + domain |
+| `lewdzone_launcher/controllers/` | `game`, `download`, `sync`, `shortcut`, `artwork`, `content` controllers | services + domain |
 | `lewdzone_launcher/domain/` | `Game`, `Version`, `DownloadEntry`, `GoToken`, value objects | stdlib only |
-| `lewdzone_launcher/services/` | `scraping`, `resolver`, `db`, `dm` (DM adapters), `shortcuts`, `artwork` | domain |
-| external | lewdzone.com, download managers (FDM/IDM/torrent), sqlite, SteamGridDB, native shortcuts | — |
+| `lewdzone_launcher/services/` | `scraping`, `resolver`, `db`, `dm` (DM adapters), `shortcuts`, `artwork`, content providers | domain |
+| external | lewdzone.com, download managers (FDM/IDM/torrent), sqlite, SteamGridDB / VNDB / IGDB / itch.io / Steam / IndieDB, native shortcuts | — |
 
 **Import rule:** a module may only import from its own layer or one layer
 inward. Never import outward; never let domain import services/controllers;
@@ -52,12 +52,13 @@ flowchart TD
         S3["db"]
         S4["dm - manager adapters"]
         S5["shortcuts + artwork"]
+        S6["content providers"]
     end
     subgraph EX["external seams"]
         E1["lewdzone.com"]
         E2["sqlite"]
         E3["FDM | IDM | torrent client"]
-        E4["steamgriddb"]
+        E4["steamgriddb + vndb + igdb + itch + steam + indiedb"]
     end
     A1 --> CLI
     A2 --> A1
@@ -99,7 +100,14 @@ lewdzone-launcher/
                           idm,
                           torrent},
               shortcuts,
-              artwork}/
+              artwork,
+              content/
+                providers/{steamgriddb,
+                           vndb,
+                           igdb,
+                           itch,
+                           steam,
+                           indiedb}}/
     _config.py
   desktop/
     src-tauri/             # Rust core, sidecar externalBin

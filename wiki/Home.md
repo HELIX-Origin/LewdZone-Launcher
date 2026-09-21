@@ -29,6 +29,8 @@ CLI command.
   canonical names.
 - **Builds native shortcuts + icons** per OS (`.lnk`, `.desktop`, `.app`) using
   SteamGridDB artwork.
+- **Enriches** thin LewdZone pages from external content providers (VNDB, IGDB,
+  Steam Storefront, itch.io, IndieDB): descriptions, screenshots, ratings, art.
 
 ## Quick links
 
@@ -39,6 +41,7 @@ CLI command.
 | How the pieces fit together | [Architecture](Architecture) |
 | Command-line reference | [CLI Reference](CLI-Reference) |
 | FDM / IDM / torrent handling | [Download Managers](Download-Managers) |
+| Info + art enrichment | [Content Providers](Content-Providers) |
 | Config files & options | [Configuration](Configuration) |
 | Agent ecosystem (governance) | [Agent Ecosystem](Agents) |
 | Coding & diagram conventions | [Design Conventions](Design-Conventions) |

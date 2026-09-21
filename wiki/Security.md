@@ -4,8 +4,10 @@
 
 ## Principles
 
-1. **No secrets in the repo.** SteamGridDB API keys and updater/signing keys
-   live in `~/.config/lewdzone/` or environment variables, never committed.
+1. **No secrets in the repo.** SteamGridDB, IGDB, updater/signing keys live in
+   `~/.config/lewdzone/` or environment variables, never committed. API keys are
+   set via the app's Settings → API keys (`settings set <key> --secret`) and
+   are never echoed back or logged.
 2. **The tool never downloads content itself** — resolved URLs are handed to a
    download manager, and only for **allowlisted hosts** derived from the site's
    own go-link host table (reverified regularly). Unknown host → refuse.

@@ -60,11 +60,13 @@ roadmap issue is the umbrella; sub-issues come from these items.
 ### Phase 1 — Diagnostics & Architecture
 - [ ] Scraping proof: archive pagination scheme (`?page=N` vs `/page/N/`)
 - [ ] Mermaid compliance cleanup across `.agents/agents/*` (Rule 09)
-  - systems-designer subgraph quoting + `lewzodone.com` typo
-  - gui/testing subgraph quoting; dm-detector/folder-organizer label quoting
-- [ ] `src/lewdzone_launcher/` scaffold + import-linter contract (Rule 03)
+  - systems-designer subgraph quoting; gui/testing subgraph quoting;
+    dm-detector/folder-organizer label quoting
+- [x] `src/lewdzone_launcher/` scaffold + import-linter contract (Rule 03)
 - [ ] ADRs for cross-layer contracts
 - [ ] Config + sqlite bootstrap (`_config.py`, WAL schema, migrations)
+- [ ] Content-provider layer design (`.agents/agents/content/` — provider
+  contract, registry, six v1 providers) — design done, implementation pending
 
 ## Later ⏳
 
@@ -83,8 +85,11 @@ roadmap issue is the umbrella; sub-issues come from these items.
 
 ### Phase 4 — Desktop App & Shortcuts
 - [ ] Tauri 2 shell: Rust core, sidecar-driver, window lifecycle
-- [ ] Svelte views: Store / Library / Downloads / Settings
-- [ ] Native shortcuts (.lnk / .desktop / .app) + SteamGridDB artwork
+- [ ] Svelte views: Store / Library / Downloads / Settings (incl. API-keys
+      section pasting content-provider keys)
+- [ ] Native shortcuts (.lnk / .desktop / .app) + artwork from the
+      content-provider layer (SteamGridDB icons, multi-provider covers)
+- [ ] Content providers impl: VNDB, IGDB, itch.io, Steam Storefront, IndieDB
 - [ ] Packaging: MSI+NSIS, .app+DMG, AppImage+deb+rpm, updater
 
 ### Phase 5 — Verification & Release
