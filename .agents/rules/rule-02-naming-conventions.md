@@ -40,8 +40,8 @@ canonical models (see [module-contractor](../agents/architect/module-contractor/
 
 | What | Pattern | Example |
 | --- | --- | --- |
-| source module | `snake_case.py` | `resolve_go_token.py` |
-| fixtures | `snake_case` in `tests/fixtures/` | `treasure_of_nadia.zip` |
+| source module (Rust) | `snake_case.rs` | `resolver.rs` |
+| fixtures | `snake_case` in `src-tauri/tests/fixtures/` | `treasure_of_nadia.zip` |
 | downloaded game folder | `<Title>/` | `Treasure of Nadia/` |
 | game file | `<Title> - <Version> - <Platform>[- <Variant>].<ext>` | `Treasure of Nadia - v1.0117 - Windows (Compressed).zip` |
 | part files | `<base> (Part N <Pack>).<ext>` | `... - Windows (Part 1 Compressed).zip` |
@@ -67,7 +67,7 @@ canonical models (see [module-contractor](../agents/architect/module-contractor/
 flowchart TD
     M["domain model"]
     M --> DB["snake_case tables + columns"]
-    M --> PY["snake_case modules + PascalCase types"]
+    M --> RS["snake_case modules + PascalCase types"]
     M --> DR["download folder + file names"]
     M --> C["canonical slugs"]
     style M fill:#e11,color:#fff

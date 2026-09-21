@@ -55,7 +55,7 @@ sequenceDiagram
 
 ## Rules
 
-- Never hand a `#t=` href to FDM (see `fdm` family).
+- Never hand a `#t=` href to a download manager (see the `dm` family).
 - Request headers are mandatory on both calls.
 - The `u` payload field is obfuscated — never attempt to decode it; rely on
   start-response meta.
@@ -63,5 +63,6 @@ sequenceDiagram
 ## Checkoffs
 
 - [ ] Unit tests: ok path, `retry_in` retry, trailing `\r`, bad token, unknown host
-- [ ] Live smoke (opt-in `-m live`) resolves one real token
+- [ ] Live smoke (opt-in `#[ignore]`, `cargo test -- --ignored`) resolves one
+      real token
 - [ ] Resolver honors a global rate limiter

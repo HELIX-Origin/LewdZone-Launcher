@@ -9,8 +9,8 @@ model: default
 
 ## Boundary of responsibility
 
-Adapter `name="igdb"`, `provides_info=True`, `provides_art=True`,
-`requires_key=True` (Twitch Client-ID + access token exchange).
+Adapter `name="igdb"`, `provides_info=true`, `provides_art=true`,
+`requires_key=true` (Twitch Client-ID + access token exchange).
 
 ## Auth flow
 
@@ -46,7 +46,8 @@ Adapter `name="igdb"`, `provides_info=True`, `provides_art=True`,
 - Adult-title coverage is limited vs VNDB; dispatch order keeps VNDB first for
   VN-genre titles, IGDB for larger catalog matches.
 - Token never logged; refreshed via client_credentials (no user token).
-- Mock all calls; `-m live` opt-in test; fixtures `tests/fixtures/json/igdb_*.json`.
+- Mock all calls; `#[ignore]` opt-in live test; fixtures
+  `src-tauri/tests/fixtures/json/igdb_*.json`.
 
 ## Definition of done
 

@@ -12,36 +12,24 @@ model: default
 Parses a single `https://lewdzone.com/game/<slug>/` page into the full `Game`
 model, including the download section with versions and go-links.
 
-## Canonical Game model (bird's-eye; authority: database/schema-designer)
+## Canonical models (bird's-eye; authority: database/schema-designer)
 
-```python
-@dataclass
-class Game:
-    slug: str
-    post_id: int          # WP post id (-- stable identity)
-    title: str
-    developer: str | None
-    current_version: str | None
-    engine: str | None           # Ren'Py / RPGM / Unity / HTML / Others
-    platforms: list[str]         # windows, android, mac, linux
-    genres: list[str]            # tag slugs e.g. incest, 3dcg, harem
-    size_bytes: int | None       # parsed from e.g. '7.51 GB'
-    censorship: str | None       # 'Uncensored' etc.
-    screenshots: list[str]
-    description: str | None
-    versions: list[Version]      # see below
-```
+The canonical models are Rust structs owned by `database/schema-designer`
+(`src-tauri/src/db/`):
 
-```python
-@dataclass
-class DownloadEntry:
-    label: str            # e.g. 'Windows', 'Android APK', 'Linux'
-    variant: str | None   # '(Compressed)', '(Part 1 Compressed)', '(Incest Patch)'...
-    host: str             # host slug from d-<host> / go payload 'h'
-    go_link: str          # full https://lewdzone.com/go/#t=v1... href
-```
-
-`Version` = `{label, is_latest, download_tabs: {official: [DownloadEntry], community: [DownloadEntry]}}`.
+- `Game { slug, post_id: i64` (the WP post id — stable identity), `title,
+  developer: Option<String>, current_version: Option<String>,
+  engine: Option<String>` (Ren'Py / RPGM / Unity / HTML / Others),
+  `platforms: Vec<String>` (windows, android, mac, linux),
+  `genres: Vec<String>` (tag slugs e.g. incest, 3dcg, harem),
+  `size_bytes: Option<u64>` (parsed from e.g. "7.51 GB"),
+  `censorship: Option<String>, screenshots: Vec<String>,
+  description: Option<String>, versions: Vec<Version> }`
+- `DownloadEntry { label, variant: Option<String>, host, go_link }` — `host`
+  from the `d-<host>` class / go payload `h`; `go_link` the full
+  `https://lewdzone.com/go/#t=v1...` href.
+- `Version { label, is_latest, download_tabs: DownloadTabs }` where
+  `DownloadTabs { official: Vec<DownloadEntry>, community: Vec<DownloadEntry> }`
 
 ## Parse map (game page -> models)
 
@@ -89,4 +77,4 @@ flowchart LR
 - Fixture `lz_game.html` parses to Game with post_id 18212
   (`treasure-of-nadia`), title 'Treasure of Nadia', developer 'NLT Media',
   47 download entries, size 7.51 GB.
-- Field map documented in `docs/parsing/game-page.md`.
+- Field map documented in this doc (`game-page-scraper.md`).

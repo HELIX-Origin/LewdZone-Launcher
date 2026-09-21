@@ -19,24 +19,15 @@ model: default
 
 ## Models (coordinate with database/schema-designer for authoritative shape)
 
-```python
-@dataclass
-class GameCard:
-    slug: str                # from URL path
-    title: str
-    post_id: int | None      # best-effort
-    thumb_url: str | None
-    platforms: list[str]     # normalized (pc, android, linux, mac)
-    engine: str | None
-    short_meta: str | None   # e.g. version/size line if present in card
-    is_ongoing: bool | None
+The canonical models are Rust structs owned by `database/schema-designer`
+(`src-tauri/src/db/`):
 
-@dataclass
-class ArchiveMeta:
-    page: int
-    total_pages: int | None
-    applied: dict[str, str]  # {platform: 'pc', sort: 'popularity', ...}
-```
+- `GameCard { slug, title, post_id: Option<i64>, thumb_url: Option<String>,
+  platforms: Vec<String> (normalized: pc, android, linux, mac),
+  engine: Option<String>, short_meta: Option<String>,
+  is_ongoing: Option<bool> }`
+- `ArchiveMeta { page: u32, total_pages: Option<u32>,
+  applied: HashMap<String, String> }` — e.g. `{platform: "pc", sort: "popularity"}`
 
 ## Archive parse flow
 
@@ -72,4 +63,4 @@ flowchart TD
 - Parser consumed fixture `lz_archive.html` (saved at
   `C:\Users\Joshu\AppData\Local\Temp\opencode\lz_archive.html`) and produced
   the full known game list with zero misses on a spot-check of 10 titles.
-- Pagination discovery documented in `docs/parsing/archive.md`.
+- Pagination discovery documented in this doc (`archive-scraper.md`).

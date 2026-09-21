@@ -9,8 +9,8 @@ model: default
 
 ## Boundary of responsibility
 
-Adapter `name="steam"`, `provides_info=True`, `provides_art=True`,
-`requires_key=False`. Covers titles also on Steam. Because Steam has no fuzzy
+Adapter `name="steam"`, `provides_info=true`, `provides_art=true`,
+`requires_key=false`. Covers titles also on Steam. Because Steam has no fuzzy
 title-search endpoint, enrichment requires an already-known
 `external_id` = Steam appid (mapped from the other providers or user-seeded
 `game_external` rows).
@@ -31,7 +31,7 @@ title-search endpoint, enrichment requires an already-known
 - Only invoked when `game_external(provider='steam')` already exists
   (seeded from VNDB `extlink`/IGDB or user). Never guesses appids.
 - HTML in `detailed_description` is stripped to plain text for the patch.
-- No key in settings; single opt-in live test; fixtures `tests/fixtures/json/steam_*.json`.
+- No key in settings; single opt-in live test; fixtures `src-tauri/tests/fixtures/json/steam_*.json`.
 
 ## Definition of done
 

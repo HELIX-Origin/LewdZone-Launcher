@@ -9,8 +9,8 @@ model: default
 
 ## Boundary of responsibility
 
-Adapter `name="vndb"`, `provides_info=True`, `provides_art=True`,
-`requires_key=False`. Best-in-class coverage for the adult Ren'Py/RPG Maker
+Adapter `name="vndb"`, `provides_info=true`, `provides_art=true`,
+`requires_key=false`. Best-in-class coverage for the adult Ren'Py/RPG Maker
 visual novels that dominate LewdZone.
 
 ## API reference (verified shape)
@@ -46,8 +46,9 @@ prefer the lowest-flagged image as the default cover.
 ## Rules
 
 - VNDB is enrichment only; never overwrite LewdZone download fields (Rule 03/05).
-- Mock all calls in unit tests; single opt-in live test (`-m live`).
-- Offline fixtures saved to `tests/fixtures/json/vndb_*.json`.
+- Mock all calls in unit tests; single opt-in live test (`#[ignore]`,
+  `cargo test -- --ignored`).
+- Offline fixtures saved to `src-tauri/tests/fixtures/json/vndb_*.json`.
 
 ## Definition of done
 

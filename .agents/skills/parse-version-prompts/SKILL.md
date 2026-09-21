@@ -53,5 +53,5 @@ flowchart TD
 ## Checkoffs
 
 - [ ] Fixture test counts 47 download entries for treasure-of-nadia (both tabs)
-- [ ] `(Latest)` marker maps to `is_latest=True` on the right version
+- [ ] `(Latest)` marker maps to `is_latest=true` on the right version
 - [ ] Variant string extracted without the parentheses

@@ -1,0 +1,311 @@
+//! Native Rust CLI — second entry point into the same binary as the Tauri app.
+//!
+//! Running the binary with a subcommand (e.g. `lewdzone-launcher sync --json`)
+//! dispatches here and exits with a stable exit code; running it bare launches
+//! the windowed app (see `main.rs`). All behavior lives in the shared core
+//! (`crate::core`), never in this parser.
+
+use clap::{Parser, Subcommand};
+
+use crate::core;
+
+/// Exit codes (Rule 12). Stable contract for scripts and the GUI.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ExitCode {
+    /// Success.
+    Ok = 0,
+    /// Runtime error.
+    Runtime = 1,
+    /// Usage error (bad flags/args).
+    Usage = 2,
+    /// Network / site error.
+    Network = 3,
+    /// Download manager missing.
+    DmMissing = 4,
+    /// Interrupted (user cancelled).
+    Interrupted = 5,
+}
+
+impl ExitCode {
+    pub fn as_i32(self) -> i32 {
+        self as i32
+    }
+}
+
+/// LewdZone Launcher — cross-platform desktop game launcher.
+///
+/// Bundles a Tauri 2 desktop app and this native CLI behind one Rust core.
+/// `--json` emits one machine-readable document on stdout; progress and
+/// diagnostics go to stderr.
+#[derive(Parser, Debug)]
+#[command(version, about)]
+pub struct Cli {
+    /// Override the SQLite database path.
+    #[arg(long, global = true)]
+    db: Option<String>,
+
+    /// Override the config file path.
+    #[arg(long, global = true)]
+    config: Option<String>,
+
+    /// Emit machine-readable JSON on stdout.
+    #[arg(long, global = true)]
+    json: bool,
+
+    /// Show diagnostic detail on stderr.
+    #[arg(short, long, global = true)]
+    verbose: bool,
+
+    /// Disable colorized output.
+    #[arg(long, global = true)]
+    no_color: bool,
+
+    #[command(subcommand)]
+    command: Command,
+}
+
+#[derive(Subcommand, Debug)]
+enum Command {
+    /// Refresh the catalog from lewdzone.com.
+    Sync(SyncArgs),
+    /// Search the catalog.
+    Search(SearchArgs),
+    /// Show details for one game.
+    Info(InfoArgs),
+    /// Queue or resume a download for a game release.
+    Download(DownloadArgs),
+    /// List catalog or job state.
+    List(ListArgs),
+    /// Read or write settings.
+    Settings(SettingsArgs),
+    /// Manage native shortcuts.
+    Shortcuts(ShortcutsArgs),
+    /// Launch an installed game.
+    Launch(LaunchArgs),
+    /// Configure download managers.
+    Dm(DmArgs),
+}
+
+#[derive(clap::Args, Debug, Default)]
+struct SyncArgs {
+    /// Full resync (all pages) instead of incremental.
+    #[arg(long)]
+    full: bool,
+    /// Filter platforms, e.g. `--platform PC`.
+    #[arg(long)]
+    platform: Option<String>,
+}
+
+#[derive(clap::Args, Debug, Default)]
+struct SearchArgs {
+    /// Search query.
+    query: String,
+}
+
+#[derive(clap::Args, Debug, Default)]
+struct InfoArgs {
+    /// The game: slug or post id.
+    game: String,
+    /// List versions instead of the summary.
+    #[arg(long)]
+    versions: bool,
+}
+
+#[derive(clap::Args, Debug, Default)]
+struct DownloadArgs {
+    /// The game: slug or post id.
+    game: String,
+    /// Version label (e.g. `1.0`), or `latest`.
+    #[arg(long, default_value = "latest")]
+    version: String,
+    /// Platform (PC, macOS, Linux, Android).
+    #[arg(long, default_value = "PC")]
+    platform: String,
+    /// Download tab: official or community.
+    #[arg(long, default_value = "official")]
+    tab: String,
+    /// Resume an existing job instead of starting fresh.
+    #[arg(long)]
+    resume: bool,
+    /// Add to the queue without starting.
+    #[arg(long)]
+    queue: bool,
+}
+
+#[derive(clap::Args, Debug, Default)]
+struct ListArgs {
+    /// List installed/library games instead of the catalog.
+    #[arg(long)]
+    library: bool,
+    /// Show the job queue.
+    #[arg(long)]
+    jobs: bool,
+}
+
+#[derive(clap::Args, Debug, Default)]
+struct SettingsArgs {
+    #[command(subcommand)]
+    command: Option<SettingsCmd>,
+}
+
+#[derive(Subcommand, Debug)]
+enum SettingsCmd {
+    /// Read one or all settings.
+    Get(GetArgs),
+    /// Set a setting value.
+    Set(SetArgs),
+}
+
+#[derive(clap::Args, Debug, Default)]
+struct GetArgs {
+    /// Setting key (omit for all).
+    key: Option<String>,
+}
+
+#[derive(clap::Args, Debug, Default)]
+struct SetArgs {
+    /// Setting key, e.g. `download-root`.
+    key: String,
+    /// Value.
+    value: String,
+}
+
+#[derive(clap::Args, Debug, Default)]
+struct ShortcutsArgs {
+    /// Rebuild shortcuts for one game.
+    #[arg(long)]
+    game: Option<String>,
+    /// Skip fetching artwork from SteamGridDB.
+    #[arg(long)]
+    skip_artwork: bool,
+}
+
+#[derive(clap::Args, Debug, Default)]
+struct LaunchArgs {
+    /// The installed game: slug.
+    game: String,
+}
+
+#[derive(clap::Args, Debug, Default)]
+struct DmArgs {
+    /// The download manager to make active, e.g. `fdm`.
+    active: Option<String>,
+}
+
+/// Dispatch a parsed CLI invocation, printing results, returning the exit code.
+pub fn run(cli: Cli) -> ExitCode {
+    let result = dispatch(cli);
+    match result {
+        Ok(code) => code,
+        Err(err) => {
+            eprintln!("error: {err}");
+            ExitCode::from(&err)
+        }
+    }
+}
+
+fn dispatch(cli: Cli) -> Result<ExitCode, crate::core::Error> {
+    use core::paths;
+    let db = cli
+        .db
+        .map(std::path::PathBuf::from)
+        .or_else(paths::default_db_path);
+    let config = cli
+        .config
+        .map(std::path::PathBuf::from)
+        .or_else(paths::default_config_path);
+    let ctx = core::Context::new(db.unwrap(), config.unwrap());
+
+    match cli.command {
+        Command::Sync(args) => core::sync::run(&ctx, args.full, args.platform.as_deref()),
+        Command::Search(args) => core::search::run(&ctx, &args.query),
+        Command::Info(args) => core::info::run(&ctx, &args.game, args.versions),
+        Command::Download(args) => core::download::run(
+            &ctx,
+            &args.game,
+            &args.version,
+            &args.platform,
+            &args.tab,
+            args.resume,
+            args.queue,
+        ),
+        Command::List(args) => core::list::run(&ctx, args.library, args.jobs),
+        Command::Settings(args) => match args.command {
+            Some(SettingsCmd::Get(g)) => core::settings::get(&ctx, g.key.as_deref()),
+            Some(SettingsCmd::Set(s)) => core::settings::set(&ctx, &s.key, &s.value),
+            None => core::settings::get(&ctx, None),
+        },
+        Command::Shortcuts(args) => {
+            core::shortcuts::run(&ctx, args.game.as_deref(), args.skip_artwork)
+        }
+        Command::Launch(args) => core::launch::run(&ctx, &args.game),
+        Command::Dm(args) => core::dm::run(&ctx, args.active.as_deref()),
+    }
+}
+
+impl From<&crate::core::Error> for ExitCode {
+    fn from(err: &crate::core::Error) -> Self {
+        match err {
+            crate::core::Error::Usage(_) => ExitCode::Usage,
+            crate::core::Error::Network(_) => ExitCode::Network,
+            crate::core::Error::DmMissing(_) => ExitCode::DmMissing,
+            crate::core::Error::Interrupted => ExitCode::Interrupted,
+            crate::core::Error::Runtime(_) => ExitCode::Runtime,
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parses_sync_with_json_flag() {
+        let cli = Cli::try_parse_from(["lewdzone-launcher", "sync", "--json", "--full"]).unwrap();
+        assert!(cli.json);
+        match cli.command {
+            Command::Sync(a) => assert!(a.full),
+            other => panic!("expected sync, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn parses_download_with_flags() {
+        let cli = Cli::try_parse_from([
+            "lewdzone-launcher",
+            "download",
+            "treasure-of-nadia",
+            "--version",
+            "1.0",
+            "--platform",
+            "PC",
+            "--tab",
+            "official",
+        ])
+        .unwrap();
+        match cli.command {
+            Command::Download(a) => {
+                assert_eq!(a.game, "treasure-of-nadia");
+                assert_eq!(a.version, "1.0");
+                assert_eq!(a.platform, "PC");
+                assert_eq!(a.tab, "official");
+            }
+            other => panic!("expected download, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn rejects_unknown_subcommand() {
+        assert!(Cli::try_parse_from(["lewdzone-launcher", "frobnicate"]).is_err());
+    }
+
+    #[test]
+    fn exit_codes_are_stable_contract() {
+        assert_eq!(ExitCode::Ok.as_i32(), 0);
+        assert_eq!(ExitCode::Runtime.as_i32(), 1);
+        assert_eq!(ExitCode::Usage.as_i32(), 2);
+        assert_eq!(ExitCode::Network.as_i32(), 3);
+        assert_eq!(ExitCode::DmMissing.as_i32(), 4);
+        assert_eq!(ExitCode::Interrupted.as_i32(), 5);
+    }
+}

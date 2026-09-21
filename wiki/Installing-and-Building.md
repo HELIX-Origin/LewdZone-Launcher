@@ -4,9 +4,8 @@
 
 ## Prerequisites
 
-- **Python 3.x** + `pip` (or `uv`)
-- **Rust toolchain** (stable) for the Tauri shell
-- **Node.js + npm** (or pnpm) for the Svelte webview
+- **Rust toolchain** (stable) — builds the Rust core + CLI (`src-tauri/`)
+- **Node.js + npm** (or pnpm) — builds the Svelte webview (`src/`)
 - Platform Tauri prerequisites:
   - Windows: WebView2 runtime, MSVC build tools
   - Linux: WebKitGTK/native deps (per Tauri docs)
@@ -15,31 +14,18 @@
 ## Build the CLI
 
 ```sh
-pip install -e .
-lewdzone-launcher --help
+npm install            # from repo root (frontend deps)
+cargo build            # from src-tauri/ — produces src-tauri/target/debug/lewdzone-launcher
+./target/debug/lewdzone-launcher --help
 ```
 
-The CLI is pure-ish Python (stdlib-first; Pillow for icon conversion). It has
-no build step beyond an installable package in `src/`.
-
-## Package the CLI as a sidecar
-
-The desktop app embeds the CLI as a **PyInstaller** executable
-(`externalBin`). Build it first so `tauri build` can bundle it:
-
-```sh
-pyinstaller --onefile --name lewdzone-launcher \
-  src/lewdzone_launcher/__main__.py
-```
-
-The sidecar version must equal the app version (see
-[Release Process](Release-Process)).
+The CLI is a native Rust binary — the same executable the Tauri app ships
+(Rule 13). `cargo run` from `src-tauri/` works for development.
 
 ## Build the desktop app
 
 ```sh
-cd desktop
-npm install
+npm install            # from repo root
 npm run tauri build
 ```
 
@@ -58,10 +44,9 @@ Artifacts per platform (see [Architecture](Architecture) → Packaging):
 ## Development mode
 
 ```sh
-cd desktop
-npm run tauri dev
+npm run tauri dev      # from repo root
 ```
 
-This launches the app pointed at the **source** sidecar (requires the CLI
-installed on `PATH`). Production mode resolves the bundled exe next to the app
-binary and verifies its version before spawning.
+This launches the app in dev mode. The GUI and the CLI (`cargo run` from
+`src-tauri/`) both call the same Rust core, so there is no sidecar to build or
+install separately.

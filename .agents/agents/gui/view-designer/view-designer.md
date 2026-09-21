@@ -9,8 +9,8 @@ model: default
 
 Owns the Svelte + Vite frontend rendered inside the Tauri webview. The app is
 a **game launcher** (Steam-like grid), not a generic toolbar tool. Views are
-pure presentation: they fetch state from the CLI (via the sidecar-driver JSON
-bridge) and emit user intents; no domain logic lives here.
+pure presentation: they call core commands through the Tauri bridge
+(`invoke()`) and emit user intents; no domain logic lives here.
 
 ## Design tokens
 
@@ -27,6 +27,33 @@ the site:
 
 Rules: every color is a token (no hex literals in components); dark-first
 theme; accent follows the site's brand hue; motion is subtle and fast.
+
+## Theme support (first-class, retained Steam feature)
+
+**Custom skins are a core capability — the app deliberately keeps the theme
+system that Steam dropped.** Valve's 2023 client removed user-installed skins;
+many users remain upset about that abandonment, and this launcher explicitly
+retains it.
+
+1. **Token sources, in order:** built-in default (`src/lib/theme/default.css`)
+   < user skin. An installed skin only overrides token values — components read
+   tokens, never raw colors, so any skin works with every view.
+2. **Skin layout** (`<config_root>/skins/<Name>/`, ADR-0005):
+   - `theme.json` — manifest: `{ "name", "version", "author", "tokens" }` where
+     `tokens` is a partial `{ "--lz-bg": "...", ... }` map.
+   - optional `assets/` for extra images (backgrounds, accents) referenced by
+     token names.
+3. **Settings → Appearance** has a Theme picker listing the default plus every
+   installed skin (from `paths::skins_dir()`); changing skins swaps tokens
+   **without an app restart** (CSS custom properties are swapped at runtime on
+   `:root`).
+4. **Security (Rule 10):** skins contain CSS tokens and asset files **only** —
+   no script execution. The Svelte layer renders skin-provided CSS as a
+   sanitized `<style>`/custom-property set; asset URLs are served through the
+   Tauri asset protocol, never raw `file://`.
+5. **Validation:** a malformed skin (bad JSON, non-token keys, path traversal
+   in `assets/` names) fails the picker and falls back to the default; a
+   checker test in the Rust suite validates skin manifests (`core::skins`).
 
 ## View tree
 
@@ -54,8 +81,8 @@ flowchart TD
 ## State rules
 
 1. Every view has exactly three states: `loading`, `ready`, `error` — driven
-   by an async `load()` against the CLI bridge.
-2. No local domain state that survives navigation; refetch from CLI JSON.
+   by an async `load()` against the Tauri command bridge.
+2. No local domain state that survives navigation; refetch from core commands.
 3. Optimistic UI only for ephemeral mutations (toast on failure + reconcile).
 4. Virtualized lists for catalog grids; image loading deferred; thumbnails
    from artwork cache.
@@ -72,7 +99,7 @@ with icon, cover art, descriptions), a **Downloads page** (queue), and a
 
 ```mermaid
 flowchart TD
-    L[Store grid] --> A[load catalog list --json]
+    L[Store grid] --> A[load catalog list]
     A --> R{art cached?}
     R -- yes --> C[render cover tiles]
     R -- no --> F[queue artwork fetch]
@@ -109,7 +136,7 @@ flowchart LR
     T -- community --> C[community DownloadEntry]
     O --> V["confirm dialog: version / size / host"]
     C --> V
-    V --> DQ["enqueue via CLI download --json"]
+    V --> DQ["enqueue via core download command"]
     DQ --> A["QueuePanel - live progress events"]
     A --> E{"done or error?"}
     E -- done --> OK["success toast + DB update"]
@@ -159,7 +186,7 @@ Rules:
 
 ## Definition of done
 
-- All views load via the CLI bridge, not direct services.
+- All views load via core commands, never direct site/DB access.
 - A polished LauncherDetailView showing version picker + official/community
    tabs + live queue progress, and a Steam-style grid in the Store page.
 - Dark/light theme follows OS; keyboard navigation over the grid works.

@@ -67,7 +67,7 @@ stateDiagram-v2
 
 ## Deliverables
 
-- `db/` package: connection factory, migrations runner, repositories.
+- `src-tauri/src/db.rs`: connection factory, migrations runner, repositories.
 - Schema owned with `schema-designer`; sync logic with `sync-orchestrator`.
 - Backups: `PRAGMA` + copy of the `.sqlite` file on major migrations.
 

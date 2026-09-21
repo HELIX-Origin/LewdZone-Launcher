@@ -15,34 +15,37 @@ adversarial on purpose: it exists to catch what the implementing family missed.
 
 ```mermaid
 flowchart LR
-    A[handover] --> B[ruff lint]
-    B --> C[pyright type check]
-    C --> D[pytest unit+integration]
-    D --> E[security-auditor]
-    E --> F[perf-auditor]
-    F --> G{all green?}
-    G -- yes --> H["approved -> done"]
-    G -- no --> I[fix report to family]
-    I --> A
+    A[handover] --> B["cargo fmt --check"]
+    B --> C["cargo clippy -D warnings"]
+    C --> D["cargo test"]
+    D --> E["npm run check + test"]
+    E --> F[security-auditor]
+    F --> G[perf-auditor]
+    G --> H{all green?}
+    H -- yes --> I["approved -> done"]
+    H -- no --> J[fix report to family]
+    J --> A
 
     style A fill:#4b6e91,color:#fff
-    style E fill:#874b4b,color:#fff
     style F fill:#874b4b,color:#fff
-    style H fill:#2f6f4f,color:#fff
-    style I fill:#874b4b,color:#fff
+    style G fill:#874b4b,color:#fff
+    style I fill:#2f6f4f,color:#fff
+    style J fill:#874b4b,color:#fff
 ```
 
 ## Non-negotiables
 
-1. The gate is fully scriptable: `lewdzone-launcher self-check` runs lint + type +
-   tests + (opt-in) security scan in one command.
-2. Linting rules: defined by `code-style-python.md`; must be `ruff check`
-   clean (catching unused imports, undefined names, mutable defaults).
-3. Type checks: `pyright` strict for `core/`, `db/`, `resolver/`, `cli/`;
-   standard for the rest.
-4. No `# type: ignore` without a documented reason string.
-5. Tests run headless; GUI tests and live tests are marked and skipped in the
-   default gate.
+1. The gate is the verification block in `AGENTS.md`: `cargo fmt --check`,
+   `cargo clippy -- -D warnings`, `cargo check`, `cargo test`, `npm run check`
+   (svelte-check), `npm run test` (Vitest). Security scan is opt-in
+   (`cargo audit`, `cargo deny`).
+2. Linting rules: defined by `rule-01` (Rust Code Style) — must be
+   `cargo fmt --check` + `cargo clippy -- -D warnings` clean.
+3. Type checks: `cargo check` on the whole crate; no masked results at
+   boundaries.
+4. No `#[allow(...)]` / `unsafe` without a documented reason string (Rule 10).
+5. Tests run headless; live (network) tests are `#[ignore]`-tagged and skipped
+   in the default gate.
 
 ## Delegation
 
@@ -53,7 +56,8 @@ flowchart LR
 
 ## Deliverables
 
-- `self-check` command + CI wiring.
-- A `docs/review-checklist.md` that every family consults pre-handover.
+- CI wiring running the verification block (cargo + Svelte) with coverage via
+  `cargo llvm-cov`.
+- A `review-checklist.md` (`.agents/agents/review/`) that every family consults pre-handover.
 - Escalation policy: fixing a gate failure is the owning family's job; review
   documents what failed and why.

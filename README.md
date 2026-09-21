@@ -7,11 +7,11 @@
 A cross-platform launcher (Windows, Linux, macOS) for browsing, downloading,
 and organizing games from [LewdZone](https://lewdzone.com).
 
-It pairs a Tauri 2 desktop app (the primary product) with a modular Python CLI
-engine. The app spawns the CLI as a sidecar process and drives it over a
-JSON/JSONL protocol, so every GUI action maps 1:1 to a headless, scriptable
-command. The tool never downloads files itself — it resolves real links and
-hands them to an installed download manager (FDM, IDM, or a torrent client).
+It pairs a Tauri 2 desktop app (the primary product) with a **native Rust CLI**:
+two entry points into the same Rust core (`src-tauri/src/`). Every GUI action
+maps 1:1 to a headless, scriptable CLI subcommand backed by the same functions.
+The tool never downloads files itself — it resolves real links and hands them
+to an installed download manager (FDM, IDM, or a torrent client).
 
 ## Features
 

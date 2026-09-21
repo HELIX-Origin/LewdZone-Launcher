@@ -1,74 +1,59 @@
 ---
 name: module-architecture
 rule_number: "03"
-scope: package layout, import direction, contracts
-enforcement: import-linter `layers` contract + ADR requirement
+scope: repo layout, module boundaries, contracts
+enforcement: struct review by architect + review gate + ADR requirement
 ---
 
 # Rule 03: Module Architecture
 
-lewdzone-launcher is a **modular layered monolith** with two frontends: the
-Python **CLI** (the engine) and the **Tauri 2 desktop app** (the primary
-product). The app never imports the Python package — it drives the CLI as a
-subprocess over JSON/JSONL (Rule 13). Both sit on controllers; controllers own
-services; domain knows nothing about IO.
+lewdzone-launcher is a **single Tauri 2 application** (Rust core + Svelte
+webview) that also ships a **native Rust CLI**. The CLI and the GUI are two
+entry points into the same core: the same functions back both
+(`src-tauri/src/cli.rs` subcommands and `src-tauri/src/lib.rs` commands).
+There is **no Python anywhere**. There is no embedded/scripted CLI engine and
+no `desktop/` folder — the app root IS the repo root (Tauri standard layout).
 
-## Layer contract
+## Real repo layout
 
-| Layer | Contains | May import |
-| --- | --- | --- |
-| `desktop/` (Tauri app) | Rust core + Svelte webview | CLI only via subprocess (never `import lewdzone_launcher`) |
-| `lewdzone_launcher/frontends/` | `cli` (argparse) only | controllers only |
-| `lewdzone_launcher/controllers/` | `game`, `download`, `sync`, `shortcut`, `artwork`, `content` controllers | services + domain |
-| `lewdzone_launcher/domain/` | `Game`, `Version`, `DownloadEntry`, `GoToken`, value objects | stdlib only |
-| `lewdzone_launcher/services/` | `scraping`, `resolver`, `db`, `dm` (DM adapters), `shortcuts`, `artwork`, content providers | domain |
-| external | lewdzone.com, download managers (FDM/IDM/torrent), sqlite, SteamGridDB / VNDB / IGDB / itch.io / Steam / IndieDB, native shortcuts | — |
-
-**Import rule:** a module may only import from its own layer or one layer
-inward. Never import outward; never let domain import services/controllers;
-services never import controllers or frontends. The Tauri app is an **external
-seam**, not an import — its only channel into the system is the CLI subprocess.
-
-```mermaid
-flowchart TD
-    subgraph APP["desktop/ - Tauri app"]
-        A1["Rust core"]
-        A2["Svelte webview"]
-    end
-    subgraph FE["frontends"]
-        CLI["cli - the engine"]
-    end
-    subgraph CT["controllers"]
-        C1["game controller"]
-        C2["download controller"]
-        C3["sync controller"]
-    end
-    subgraph DM["domain"]
-        D1["Game | DownloadEntry | GoToken"]
-    end
-    subgraph SV["services + infra"]
-        S1["scraping"]
-        S2["resolver"]
-        S3["db"]
-        S4["dm - manager adapters"]
-        S5["shortcuts + artwork"]
-        S6["content providers"]
-    end
-    subgraph EX["external seams"]
-        E1["lewdzone.com"]
-        E2["sqlite"]
-        E3["FDM | IDM | torrent client"]
-        E4["steamgriddb + vndb + igdb + itch + steam + indiedb"]
-    end
-    A1 --> CLI
-    A2 --> A1
-    CLI --> CT
-    CT --> DM
-    CT --> SV
-    SV --> DM
-    SV --> EX
-    style DM fill:#e11,color:#fff
 ```
+lewdzone-launcher/
+  .agents/                 # agent ecosystem (rules, agents, skills, templates, adr/)
+  src/                     # Svelte + SvelteKit webview (frontendDist = ../build)
+    routes/
+    app.html
+    +layout.ts
+    +page.svelte
+  src-tauri/               # Rust core + native CLI
+    src/
+      lib.rs               # tauri commands + run()
+      main.rs              # entry: CLI dispatch OR app run
+      cli.rs               # native subcommand handlers (shared with GUI)
+    Cargo.toml
+    tauri.conf.json        # app window, bundle, cli schema (if used)
+    capabilities/
+    icons/                 # tauri icon set (icon.ico/.icns/pngs, from assets/icon.png)
+  assets/                  # app icon source + misc assets
+  static/                  # webview static files
+  wiki/                    # THE documentation home (no docs/ folder)
+  package.json             # root: Svelte build + @tauri-apps/cli
+  .gitignore
+```
+
+## Two entry points, one core
+
+| Entry point | Runs from | Context |
+| --- | --- | --- |
+| Desktop app | `src-tauri/` binary, windowed | Webview → Svelte → Tauri `invoke()` → `lib.rs` commands |
+| CLI | same binary invoked non-windowed | Args parsed → `cli.rs` handlers call the **same core functions** as the GUI |
+
+- `main.rs`: if CLI args present → dispatch to `cli.rs` and exit; otherwise →
+  `lib.rs::run()` starts the windowed app.
+- **GUI/CLI parity (Rule 13):** a workflow implemented only in the GUI and not
+  reachable from the CLI — or only in the CLI and not in the GUI — is a
+  violation. Both must hit the same core functions.
+- The webview never talks to the network, SQLite, download managers, or the
+  site directly. Everything goes through Tauri `invoke()` → Rust commands.
 
 ## Contracts & ADRs
 
@@ -76,59 +61,29 @@ flowchart TD
    tested at its owner.
 2. **Contract change requires an ADR** (see
    [architect](../agents/architect/architect.md) +
-   [ADR template](../templates/adr.md)) before implementation. The
-   [module-contractor](../agents/architect/module-contractor/module-contractor.md)
-   locks contracts in task DAGs.
-3. **App/CLI parity contract:** the app's bridge exposes exactly the CLI's
-   commands; a GUI-only code path that bypasses the CLI/controllers is a
-   Rule 03 + Rule 13 violation.
+   [ADR template](../templates/adr.md)) before implementation. ADRs live in
+   `.agents/adr/`.
+3. **Command parity contract:** every Rust `#[tauri::command]` has a matching
+   CLI subcommand handler in `cli.rs` calling the same core; a GUI-only code
+   path that bypasses the shared core is a Rule 03 + Rule 13 violation.
 
-## Package skeleton
+## Boundaries
 
-```
-lewdzone-launcher/
-  src/lewdzone_launcher/
-    __init__.py            # __version__
-    frontends/cli/
-    controllers/
-    domain/
-    services/{scraping,
-              resolver,
-              db,
-              dm/
-                adapters/{fdm,
-                          idm,
-                          torrent},
-              shortcuts,
-              artwork,
-              content/
-                providers/{steamgriddb,
-                           vndb,
-                           igdb,
-                           itch,
-                           steam,
-                           indiedb}}/
-    _config.py
-  desktop/
-    src-tauri/             # Rust core, sidecar externalBin
-    src/                   # Svelte + Vite webview
-    tauri.conf.json
-  tests/
-  scratch/                 # gitignored temp scripts
-```
+| Layer | Contains | May import |
+| --- | --- | --- |
+| `src-tauri/src/` | `lib.rs` (commands), `cli.rs` (CLI), core modules (db, scrape, resolve, dm, artwork…) | each other + crate deps |
+| `src/` (Svelte) | webview views | Tauri `invoke()` only — never Rust internals directly |
+| external | lewdzone.com, download managers, sqlite, SteamGridDB/VNDB/IGDB | — |
 
-## Dependency guards
-
-- `import-linter` `[tool.linter.contracts]` enforces layer boundaries.
-- No `sys.path` hacks; project uses `src` layout with installable package.
-- Third-party deps: keep small, prefer stdlib (`urllib`, `sqlite3`,
-  `subprocess`, `argparse`); Pillow is the sanctioned external addition for
-  icon work. Shortcuts use the **native mechanism per OS**
-  (`win32com` on Windows `.lnk`, `.desktop` files on Linux, `.app`/aliases on
-  macOS — see [shortcuts](../agents/shortcuts/shortcuts.md)).
+- Keep the Rust core deps small and well-justified; prefer `tokio` (Tauri
+  default) + platform crates over heavy frameworks.
+- No `unsafe` without a comment + review gate sign-off.
+- Shortcuts use native mechanisms per OS (`win32com` .lnk, `.desktop`, `.app`
+  aliases — see [shortcuts](../agents/shortcuts/shortcuts.md)).
 
 ## Verify
 
-- `import-linter lint`
-- `lewdzone-launcher --help` and `lewdzone-launcher <cmd> --json` boot against
-  the same controllers under `pytest -m gui` / app-bridge parity smoke.
+- `cargo build` / `cargo check` green in `src-tauri/`
+- `npm run tauri dev` / `npm run tauri build` green
+- `src-tauri/target/` binary answers `--help` AND launches the app when run
+  bare — CLI path and GUI path both smoke-test.

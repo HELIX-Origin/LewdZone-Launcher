@@ -7,7 +7,7 @@ scope: architecture decision records for cross-layer contract changes
 
 > **When to file:** any cross-layer interface change (per [Rule 03](../rules/rule-03-module-architecture.md)) — a new contract, a modified signature, a new external seam, or a re-layering. Rule 04 Sub-Issue 1 (diagnostics & architecture) is where ADRs land.
 >
-> **Where:** `docs/adr/NNNN-title.md`. **Status flow:** `proposed → accepted → superseded-by-XXXX`.
+> **Where:** `.agents/adr/NNNN-title.md`. **Status flow:** `proposed → accepted → superseded-by-XXXX`.
 
 # ADR-XXXX: <Short Decision Title>
 
@@ -20,12 +20,12 @@ scope: architecture decision records for cross-layer contract changes
 
 What problem prompted this decision? What are the constraints (Rule 03 layers,
 Rule 06 data, Rule 07 DM adapters, Rule 10 security, Rule 12 errors)? Include
-the actors: the CLI engine, the Tauri app sidecar, controllers, services, and
+the actors: the CLI engine, the Tauri app shell, controllers, services, and
 external seams involved.
 
 ## Decision
 
-State the contract precisely. Include signatures, message shapes (JSON/JSONL),
+State the contract precisely. Include signatures, message shapes (JSON,
 table/column changes, or process boundaries. Be specific enough that an
 implementer does not need to re-decide.
 
@@ -43,6 +43,6 @@ implementer does not need to re-decide.
 ## Verification
 
 - [ ] Contract documented at its owner (agent family doc)
-- [ ] Tests assert the shape (fakes in `tests/support/`, parity tests)
+- [ ] Tests assert the shape (fakes in `src-tauri/tests/support/`, parity tests)
 - [ ] Wiki page updated (relative links, no `.md` extension)
 - [ ] ROADMAP/TODO updated if scope changed

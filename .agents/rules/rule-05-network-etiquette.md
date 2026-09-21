@@ -41,7 +41,7 @@ rate, spoof nothing that matters, carry real headers, and never hammer.
 ## Anti-patterns
 
 - Scraping `/games/` without the stored archive page fixture for dev.
-- Calling `api.php` in tests against the live site (live-only, tagged `live`).
+- Calling `api.php` in tests against the live site (live-only, tagged `#[ignore]`).
 - Reusing caller-supplied URLs as targets (allowlist only, see Rule 10).
 - Ignoring `cache-control`/`retry_after` hints when present.
 

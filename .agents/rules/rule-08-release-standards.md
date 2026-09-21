@@ -37,15 +37,15 @@ flowchart TD
 ## Mandatory steps
 
 1. **Version sync.** `MAJOR.MINOR.PATCH` must be identical across every
-   metadata file before the tag: `pyproject.toml`, `lewdzone_launcher/__init__.py`
-   `__version__`, `docs/` copy, requirements lockfiles (if pinned to version).
+   metadata file before the tag: `src-tauri/Cargo.toml`,
+   `src-tauri/tauri.conf.json`, root `package.json`.
 2. **Verification gate before tag/commit/publish.**
-   - `pytest -q` green (offline suite)
-   - ruff clean
-   - pyright strict clean
+   - `cargo test` green (offline suite) + `cargo clippy -- -D warnings`
+   - `cargo fmt --check` clean
+   - `npm run check` (svelte-check) + `npm run test` (Vitest) clean
    - coverage ≥ floors (Rule 11)
-   - bandit + pip-audit clean (Rule 10)
-   - CLI smoke: `lewdzone --version` prints the new version
+   - `cargo audit` + `cargo deny` clean (Rule 10)
+   - CLI smoke: `lewdzone-launcher --version` prints the new version
 3. **Tag format:** `vX.Y.Z` (e.g. `v1.4.2`), annotated, on the merge commit
    of the release branch.
 4. **Release title:** `vX.Y.Z — <Key Feature>`

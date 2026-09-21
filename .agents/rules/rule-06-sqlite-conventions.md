@@ -22,7 +22,7 @@ syncing by [sync-orchestrator](../agents/database/sync-orchestrator/sync-orchest
 3. **Single writer connection** for sync; read connections may be shared.
 4. **No `SELECT *` in code; no string-built SQL** — parameterized statements
    only (also Rule 10).
-5. **Migrations, forward only.** `migrations/NNN_desc.py` ascending; applied
+5. **Migrations, forward only.** `migrations/NNN_desc.sql` ascending; applied
    in a `schema_migrations` table; CI runs migrations on a scratch DB from
    v0 and asserts schema hash.
 6. **Prune only on clean full sync.** Incremental syncs never delete games

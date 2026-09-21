@@ -44,9 +44,9 @@ flowchart TD
 
 ## Cross-platform spawn safety rules
 
-1. Windows: `subprocess.Popen([...], creationflags=CREATE_NO_WINDOW)` so no
-   console flashes. POSIX: no flag needed; use `start_new_session=True`.
-2. Never `shell=True`; build argv as a list — URLs come from the network.
+1. Windows: `std::process::Command` with `CREATE_NO_WINDOW` (`creation_flags`)
+   so no console flashes. POSIX: spawn detached (setsid).
+2. Never spawn via a shell; build the argv array — URLs come from the network.
 3. Silent flags are MANDATORY: FDM `-fs`; IDM `/n` (start download without
    confirmation dialog); torrent CLIs take the magnet/`.torrent` as a bare
    argument. Never fall back to an interactive dialog.
@@ -60,8 +60,8 @@ flowchart TD
 
 ## Verification
 
-- A smoke test launches each manager with a harmless URL only when
-  `tests.config.live == true` (opt-in, marked integration). CI never invokes
+- A smoke test launches each manager with a harmless URL only when marked
+  live (opt-in, tagged `#[ignore]`). CI never invokes
   a real download manager.
 - Unit tests assert argv shape per manager:
   - FDM: `["<path>\\fdm.exe", "-fs", url]`
@@ -74,4 +74,4 @@ flowchart TD
 
 - Detection covers override + defaults on Windows/Linux/macOS and returns a
   clean `DMNotFoundError` otherwise.
-- Spawn tests prove no `shell=True`, no window (Windows), silent flags present.
+- Spawn tests prove no shell, no window (Windows), silent flags present.

@@ -23,7 +23,7 @@ the top; the current development state lives under `Unreleased`.
 | Roadmap tracking | Tracking issue #1, roadmap-first (Rule 04) | ✅ |
 | Core implementation | Scraping, resolver, DM adapters, CLI engine | ⏳ Phase 1–2 |
 | Desktop app | Tauri 2 shell + Store/Library/Downloads/Settings | ⏳ Phase 4 |
-| Tests | vitest-style suite, fakes, coverage floors | ⏳ Phase 3 |
+| Tests | cargo test + Vitest suites, fakes, coverage floors | ⏳ Phase 3 |
 | Release | First tagged release (SemVer, Rule 08) | ⏳ Phase 5 |
 
 ## Additional

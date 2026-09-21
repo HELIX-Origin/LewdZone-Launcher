@@ -1,6 +1,6 @@
 ---
 name: gui
-role: Primary agent. Owns the desktop app: Tauri shell that drives the internal Python CLI as a subprocess, with per-platform installers.
+role: Primary agent. Owns the desktop app: Tauri 2 shell over the shared Rust core, with per-platform installers.
 tools: Read, Write, Edit, Glob, Grep, Bash
 model: default
 ---
@@ -9,9 +9,10 @@ model: default
 
 The desktop app is a **Tauri 2** application (Rust core + OS webview frontend)
 that ships as an **executable with a real installer/uninstaller** for Windows,
-Linux, and macOS. It NEVER imports the Python package. It drives the internal
-Python CLI (`lewdzone-launcher`) as a **subprocess** and parses its `--json` /
-machine output. The CLI is the single source of truth (Rule 03, Rule 13).
+Linux, and macOS. The same binary also exposes the **native Rust CLI**
+(`src-tauri/src/cli.rs`). The GUI and the CLI are two entry points into the
+same Rust core: `#[tauri::command]` handlers and CLI subcommands call the same
+functions — the GUI never spawns a subprocess (Rule 03, Rule 13).
 
 ## Runtime decision: Tauri 2
 
@@ -28,45 +29,43 @@ efficient, cross-platform":
 | Linux bundling | AppImage + deb + rpm | AppImage/deb | AppImage/deb |
 | Auto-update | `@tauri-apps/plugin-updater` | electron-updater | desktop_updater |
 
-Web frontend uses Svelte + Vite inside the webview; the Rust core is thin and
-forwards to the CLI sidecar. No embedding Python in the app — Python ships as
-a **sidecar executable** (`externalBin`) the app spawns.
+Web frontend uses Svelte + Vite inside the webview. The Rust core is the
+shared module both entry points use; the webview calls `#[tauri::command]`
+handlers, never a subprocess.
 
-## Two-process machine
+## One core, in-process commands
 
 ```mermaid
 flowchart TD
     APP["Tauri app - webview UI"] --> SH["Rust core (app-shell)"]
-    SH --> SD["sidecar-driver: spawn CLI subprocess"]
-    SD --> CLI["lewdzone-launcher sidecar binary"]
-    CLI --> SQL[""sqlite db""]
-    CLI --> SITE["lewdzone.com"]
-    CLI --> DM["download manager"]
-    SD -->|"json / jsonl events"| APP
+    SH --> CTL[controllers]
+    CTL --> SQL["sqlite db"]
+    CTL --> SITE["lewdzone.com"]
+    CTL --> DM["download manager"]
+    CLI["native CLI (same binary)"] --> CTL
 
     style APP fill:#4b6e91,color:#fff
+    style CTL fill:#2f6f4f,color:#fff
     style CLI fill:#2f6f4f,color:#fff
-    style SD fill:#874b4b,color:#fff
 ```
 
-Every GUI action maps to exactly one CLI invocation. The Rust core only
-orchestrates lifecycle, spawns/tears down the process, and fans JSON events to
-the frontend. All domain logic stays in the CLI (Rule 03 inward imports).
+Every GUI action maps 1:1 to a CLI subcommand; both call the same Rust core
+functions. The webview never parses the CLI's output stream and never touches
+the site, DB, or download managers directly (Rule 03 inward imports).
 
-## Protocol with the CLI
+## CLI machine contract (for scripting)
 
 - **Query commands** (`catalog list`, `search`, `game info`): single
-  `lewdzone-launcher <cmd> --json` call; parse one JSON document on stdout; exit
-  code on stderr.
-- **Long-running commands** (`sync`, `download`, `rebuild shortcuts`): CLI runs
-  in **machine mode** emitting newline-delimited JSON events
-  (`{event, progress, message, ...}`) on stdout; final result is the last
-  event. App renders progress live and keeps the process cancelable (SIGTERM
-  / graceful `--interrupt` flag).
-- The CLI subprocess runs with a **hidden console** (Windows) or detached
-  session (POSIX); all rendering is the app's job.
-- Versioning: the sidecar CLI binary version must match the app version
-  (Rule 08 sync across metadata files).
+  `lewdzone-launcher <cmd> --json` call; one JSON document on stdout.
+- **Long-running commands** (`sync`, `download`, `rebuild shortcuts`): CLI
+    prints progress on **stderr**; stdout stays machine-clean and yields one
+    `--json` document on completion. Cancel via SIGTERM / graceful
+    `--interrupt` flag.
+- stdout is the machine channel; stderr is diagnostics (never parse stderr as
+  data).
+- The GUI does **not** consume this stream — it calls the same core functions
+  in-process and renders typed results (Rule 13). The machine contract stays
+  for external scriptability and is pinned by parity tests.
 
 ## Main window (Steam-like page navigation)
 
@@ -85,7 +84,7 @@ flowchart TD
     DP --> B["Download button"] --> QP[QueuePanel]
     LB --> LGC[Library item - icon + cover + desc]
     DL --> QP
-    QP --> SP["sidecar-driver submits to CLI"]
+    QP --> SP["core command: submit download job"]
 
     style W fill:#4b6e91,color:#fff
     style ST fill:#2f6f4f,color:#fff
@@ -99,8 +98,8 @@ The app is a **steam-like game launcher**, not a productivity tool:
 
 - **Steam-style grid view** for the library — clean, cover-art-driven tiles,
   eager hover metadata, right-click context menu, smooth scroll. Content comes
-  **directly from the website** (via the CLI scrape pipeline), not a static
-  list — the grid renders from live `catalog list --json` + grid artwork.
+**directly from the website** via the shared Rust core's scrape pipeline —
+    the grid renders live catalog data + grid artwork, never a static list.
 - **Unique custom UI** — no stock webview/widget look. Every component is
   deliberately styled; nothing looks like a default browser form.
 - **Site colors** — the lewdzone.com palette defines the theme (primary/
@@ -115,14 +114,14 @@ The app is a **steam-like game launcher**, not a productivity tool:
 
 | Component | Responsibility | Backed by |
 |---|---|---|
-| Store page | Search + browse all games (Steam-style grid), entry to game detail + download | CLI `catalog list --json`, `search` |
-| Library page | **Installed/downloaded games**: icon + cover art + description, launch/shortcut | CLI `download list`, `shortcuts`, artwork |
-| Downloads page | Active/past jobs + queue + progress | CLI `download list --json` + event stream |
-| Settings page | Download root, active DM, API keys, mover mode, theme | CLI `settings get/set` |
-| GameDetailView | Launcher-style detail: hero art band, meta, versions, download table | CLI `game info <id> --json` |
+| Store page | Search + browse all games (Steam-style grid), entry to game detail + download | core `catalog list`, `search` |
+| Library page | **Installed/downloaded games**: icon + cover art + description, launch/shortcut | core `download list`, `shortcuts`, artwork |
+| Downloads page | Active/past jobs + queue + progress | core `download list` + progress events |
+| Settings page | Download root, active DM, API keys, mover mode, theme | core `settings get/set` |
+| GameDetailView | Launcher-style detail: hero art band, meta, versions, download table | core `game info <id>` |
 | VersionPicker | Dropdown + Official/Community tabs | parsed DownloadEntries |
-| QueuePanel | Active/past jobs + progress | CLI `download list --json` + event stream |
-| ShortcutsView | Rebuild shortcuts per game | CLI `shortcuts rebuild` |
+| QueuePanel | Active/past jobs + progress | core `download list` + progress events |
+| ShortcutsView | Rebuild shortcuts per game | core `shortcuts rebuild` |
 
 ## Packaging & installers
 
@@ -141,43 +140,44 @@ flowchart LR
 - macOS: .app bundle + DMG; notarization for wide distribution.
 - Linux: AppImage (portable) + deb/rpm (system integration + uninstall via
   package manager).
-- Python CLI ships as bundled **sidecar executable** (PyInstaller) so users
-  never install Python; pinned per release.
+- The CLI is the same binary as the app (Rule 13) — no sidecar artifact ships
+  and no runtime language is required.
 
 ## Non-negotiables
 
-1. GUI never imports `lewdzone_launcher` — process boundary only. GUI↔CLI parity is
-   defined at the command/JSON contract level (Rule 03, parity test in Rule 11).
-2. Never block the UI thread: no spawn, no parsing, no filesystem on it.
-   Async via webview channels + `await` on commands.
-3. Every long operation is cancelable and kills the child process cleanly.
+1. GUI and CLI call the same Rust core — there is no process boundary.
+   GUI↔CLI parity is defined at the command level (Rule 03, parity test in
+   Rule 11).
+2. Never block the UI thread: no heavy IO on it; async via webview channels +
+   `await` on commands.
+3. Every long operation is cancelable cleanly.
 4. Keyboard-first where cheap; Esc cancels; arrows move through cards.
 5. Config dirs per platform (`%APPDATA%`, `~/.config`,
    `~/Library/Application Support`) — see
-   [app-shell](app-shell/app-shell.md) + `core/platform`.
+   [app-shell](app-shell/app-shell.md) + `src-tauri/src/platform.rs`.
 
 ## Delegation
 
-- `app-shell` — Tauri Rust core: windows, events, sidecar lifecycle, bundling,
-  signing, updater.
+- `app-shell` — Tauri Rust core: windows, events, shared-core commands,
+  bundling, signing, updater.
 - `view-designer` — web frontend views, layout, states, and the download flow.
-- `sidecar-driver` — CLI spawn/teardown, JSON/JSONL protocol, process
-  boundaries, cancellation, exit-code mapping.
+- `sidecar-driver` — GUI/CLI parity bridge: command-registry coverage,
+  exit-code mapping, progress adapters.
 
 ## Deliverables
 
-- `desktop/` package: `src-tauri/` (Rust), `src/` (Svelte frontend),
+- Repo root: `src-tauri/` (Rust core), `src/` (Svelte frontend),
   `tauri.conf.json`, bundler + updater config.
 - Skills: `gui-build-loop` (iterative frontend work), `package-desktop-app`
   (installer + sign + publish per OS).
 
 ## Definition of done
 
-- App launches CLI sidecar, and the **Steam-style grid** lists/searches/game-info
-  render cover art from real `catalog list --json` content scraped from the site.
+- The **Steam-style grid** lists/searches/game-info and renders cover art from
+  the shared core's catalog data scraped from the site.
 - A `tauri build` produces Windows installer, macOS DMG, Linux AppImage/deb/rpm
   with working uninstall and clean stdout/stderr separation.
-- QueuePanel streams live progress from `lewdzone-launcher download` machine mode;
-  cancel records `status=interrupted` (exit code 5 mapping).
+- QueuePanel streams live progress from the core download command; cancel
+  records `status=interrupted` (exit code 5 mapping).
 - Visual audit passes: colors match site palette via tokens, no default
   webview styling leaks, grid feels like a real game launcher.

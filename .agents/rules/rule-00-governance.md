@@ -19,9 +19,9 @@ an ADR (see [Rule 03](./rule-03-module-architecture.md)).
    `scraper`/`resolver`/`database`/`dm`/`cli`/`gui`/`shortcuts` build; the
    `testing` family verifies; `review` gates. Agents do not cross these gates
    without delegation.
-3. **CLI is the primary interface.** GUI is a companion twin over the same
-   controllers. GUI features that bypass controllers are a governance violation
-   ([Rule 13](./rule-13-gui-conventions.md)).
+3. **One core, two entry points.** The GUI and the CLI are entry points over
+   the same Rust core controllers. GUI features that bypass the core
+   controllers are a governance violation ([Rule 13](./rule-13-gui-conventions.md)).
 4. **Rules before code.** No implementation task starts before the rules that
    bind it are written and reviewed.
 5. **Fail loudly.** Never swallow errors to "keep the build green". Surface
@@ -60,7 +60,7 @@ flowchart TD
 
 ## Anti-patterns
 
-- Two agents editing the same `.py` module in one task.
+- Two agents editing the same module in one task.
 - A build agent "fixing" another family's contract unilaterally.
 - Adding a `subprocess`/network dependency without [Rule 10](./rule-10-security.md).
 - Writing rules after the code they govern already exists (corrective-only).

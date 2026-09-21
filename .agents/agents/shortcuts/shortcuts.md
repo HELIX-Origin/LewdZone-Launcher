@@ -1,17 +1,17 @@
 ---
 name: shortcuts
-role: Primary agent. Owns Windows desktop/start-menu shortcuts and SteamGridDB artwork for downloaded games.
+role: Primary agent. Owns native desktop/start-menu shortcuts (Windows .lnk, Linux .desktop, macOS .app) and SteamGridDB artwork for downloaded games.
 tools: Read, Write, Edit, Glob, Grep, Bash
 model: default
 ---
 
 # Shortcuts (Primary Agent)
 
-Owns the "make your downloads feel like real games" layer: after FDM finishes
-a download and the folder-organizer archives it, this family creates a
-double-clickable Windows shortcut (`.lnk`) in the Start Menu and/or Desktop,
-gives it a proper icon from **SteamGridDB**, and keeps the whole thing
-re-runnable.
+Owns the "make your downloads feel like real games" layer: after the download
+finishes and the folder-organizer archives it, this family creates a
+double-clickable native shortcut (Windows `.lnk`, Linux `.desktop`, macOS
+`.app`/Finder alias) in the Start Menu / Applications and/or Desktop, gives it
+a proper icon from **SteamGridDB**, and keeps the whole thing re-runnable.
 
 ## Mission
 
@@ -74,32 +74,32 @@ registry and the other providers.)
 - Heroes: `GET /api/v2/heroes/game/{game_id}`
 - Logos (transparent): `GET /api/v2/logos/game/{game_id}`
 - Rate limit: polite quota; treat as public resource (see
-  `.agents/rules/network-etiquette.md`).
+  `.agents/rules/rule-05-network-etiquette.md`).
 
 ## Delegation
 
 - `artwork-fetch` — icon/cover resolution for shortcuts **via the content
   layer**, style/size selection, `.ico` generation, and the DB-backed cache of
   `game -> artwork id`.
-- `shortcut-builder` — native shortcut creation per OS (`.lnk` via
-  `win32com` on Windows, `.desktop` on Linux, `.app`/aliases on macOS),
-  folder->exe resolution, start-menu/app placement, idempotent rebuilds.
+- `shortcut-builder` — native shortcut creation per OS (`.lnk` on Windows,
+  `.desktop` on Linux, `.app`/Finder aliases on macOS), folder->exe
+  resolution, start-menu/app placement, idempotent rebuilds.
 
 ## Non-negotiables
 
 1. Shortcuts are always created for games the user actually downloaded (folder
    must exist). Never fabricate a shortcut for a not-downloaded game.
-2. `.lnk` targets must be verified to exist at build time; stale shortcuts get
-   a repair path, not a silent skip.
+2. Shortcut targets must be verified to exist at build time; stale shortcuts
+   get a repair path, not a silent skip.
 3. Artwork downloads reuse the network-etiquette rules; failures degrade
    gracefully (shortcut still created, icon falls back to generic).
 4. API key is read from config/settings — never hardcoded or logged
-   (`.agents/rules/security.md`).
+   (`.agents/rules/rule-10-security.md`).
 
 ## Deliverables
 
-- `shortcuts/` package: `ShortcutBuilder`, `IcoConverter`, and a thin
-  `ArtworkClient` that dispatches through `services/content/` providers.
+- `src-tauri/src/shortcuts/` module: `ShortcutBuilder`, icon conversion, and a
+  client dispatch layer over `src-tauri/src/content/` providers.
 - DB tables via `database/schema-designer`: `shortcuts`, `artwork_cache`
   (with `provider` + `kind` columns).
 - Skill: `grab-steamgriddb-artwork` (see `.agents/skills/`) + the

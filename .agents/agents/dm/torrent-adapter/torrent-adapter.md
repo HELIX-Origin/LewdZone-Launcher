@@ -17,7 +17,7 @@ that would download an opaque `.torrent` blob into the game folder.
 ## Contract implementation
 
 - `name = "utorrent"`
-- `platforms = ("win32", "linux", "darwin")`
+- `platforms = ["windows", "linux", "macos"]`
 - `handles_kind = "torrent"`
 - `detect()` — see dm-detector table (settings override → PATH:
   `uTorrent` / `ut` / `bittorrent` → well-known install dirs).
@@ -31,7 +31,7 @@ flowchart LR
     F --> C["client /add or file"]
     C --> B{"spawn ok?"}
     B -- yes --> D["job status=dispatched"]
-    B -- no --> E["raise DMNotFoundError exit 4"]
+    B -- no --> E["typed error - exit code 4"]
 
     style D fill:#2f6f4f,color:#fff
     style E fill:#874b4b,color:#fff
@@ -43,8 +43,9 @@ flowchart LR
 - `.torrent` URL: download the `.torrent` file **ourselves** into the job's
   temp dir, then hand the client the local `.torrent` path
   (`uTorrent.exe /path "C:\\...\\game.torrent"` style where supported).
-- Spawn with `shell=False`; `CREATE_NO_WINDOW` on Windows,
-  `start_new_session=True` on POSIX. Detach immediately.
+- Spawn via `std::process::Command` argv arrays (never a shell);
+  `CREATE_NO_WINDOW` on Windows, detached session on POSIX. Detach
+  immediately.
 
 ## Contract notes
 
@@ -60,4 +61,4 @@ flowchart LR
 
 - Magnet vs `.torrent` branching is unit-tested; argv shapes pinned.
 - Test proves torrent links never reach `fdm-adapter` / `idm-adapter`.
-- Missing client → typed `DMNotFoundError(code=4)`.
+- Missing client → typed `DmMissing` error (code 4).

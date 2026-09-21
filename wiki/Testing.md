@@ -6,49 +6,51 @@
 
 | Layer | What it covers | How it runs |
 | --- | --- | --- |
-| **Unit** | pure logic: parsers, formats, domain, organizers | default `pytest` — offline, fast |
-| **Integration** | controllers, db with scratch DB, resolver/adapters | default; no live network |
-| **Live** | real `lewdzone.com`, SteamGridDB, real FDM | opt-in `pytest -m live` |
-| **GUI tests** | Tauri-side protocols (parity) | `pytest -m gui` |
-| **Windows-specific** | spawn flags, `.lnk`, path rules | `pytest -m windows` |
+| **Unit** | pure logic: parsers, formats, domain, organizers | `cargo test` in `src-tauri/` — offline, fast |
+| **Integration** | controllers, db with scratch DB, resolver/adapters | `cargo test`; no live network |
+| **Live** | real `lewdzone.com`, SteamGridDB, real FDM | opt-in `cargo test -- --ignored` (tagged `#[ignore]`) |
+| **GUI tests** | Svelte views against the Rust core | Vitest (`npm run test`) in `src/` |
+| **Windows-specific** | spawn flags, `.lnk`, path rules | `cargo test` on a Windows CI runner |
 
 ## Running the suite
 
 ```sh
-pytest -q                # default: offline-only
-pytest -m live           # opt-in live networking
-pytest --cov --cov-fail-under=85
-pytest --lf --ff         # rerun last failures first
+cargo test                 # from src-tauri/: default offline-only
+cargo test -- --ignored    # opt-in live networking
+npm run test               # from repo root: Vitest frontend suite
 ```
 
-Coverage floors: **85% overall**, core modules ~90%, GUI-side ~70%. Gate in CI:
-`ruff check`, `pyright`, `pytest -q`, bandit + pip-audit. See
+Coverage floors: **85% overall**, core modules ~90%, GUI-side ~70% (via
+`cargo llvm-cov` when available). Gate in CI: `cargo fmt --check`,
+`cargo clippy -D warnings`, `cargo test`, `npm run check`, `npm run test`. See
 [Rule 11](../.agents/rules/rule-11-testing).
 
 ## Test layout
 
 ```
-tests/
-  conftest.py            # shared fixtures + markers
-  unit/                  # mirror of src/lewdzone_launcher/
-  integration/
-  live/                  # requires -m live
-  fixtures/              # html/json/golden/sql fixtures
-  support/               # fakes (never shipped)
-  perf/                  # micro-benchmarks
+src-tauri/
+  src/                  # inline #[cfg(test)] unit tests per module
+  tests/
+    integration/        # cross-module tests
+    live/               # requires #[ignore] (opt-in)
+    fixtures/           # html/json/golden/sql fixtures
+    support/            # test helper modules (fakes, never shipped)
+    perf/               # micro-benchmarks (criterion)
+src/
+  lib/                  # Vitest suites per view/component (*.test.ts)
 ```
 
-## Fakes (tests/support)
+## Fakes (test helper modules)
 
 The suite never touches real anything by default. Key fakes:
 
 | Fake | Stands in for |
 | --- | --- |
-| `FakeHttpTransporter` | real site/api, canned by URL |
+| fake HTTP transport (`support/http.rs`) | real site/api, canned by URL |
 | DM exe shims (per manager) | FDM / IDM / torrent, record argv to file |
-| `FakeSteamGrid` | SteamGridDB artwork API |
-| `FakeSpawn / sidecar runner` | the real app→CLI subprocess, emits canned JSONL |
-| shortcut fakes | `.lnk` (win32com), `.desktop`, macOS alias |
+| fake SteamGrid (`support/steamgrid.rs`) | SteamGridDB artwork API |
+| command-test harness | core commands called in-process, assert on results |
+| shortcut fakes | `.lnk`, `.desktop`, macOS alias |
 
 Fakes **fail loud** on unexpected input so bugs aren't masked. Documented in
 [the agent](../.agents/agents/testing/mock-engineer/mock-engineer).
@@ -56,26 +58,27 @@ Fakes **fail loud** on unexpected input so bugs aren't masked. Documented in
 ## Protocol & parity tests
 
 - A **parity test** exercises `lewdzone-launcher <cmd> --json` and asserts the
-  app's bridge contract stays 1:1 with the CLI (app/CLI drift = bug).
-- Long-running commands are tested by feeding canned JSONL streams through the
-  fake sidecar runner and asserting UI-state transitions.
+  CLI's machine output stays 1:1 with the GUI-facing core commands (GUI/CLI
+  drift = bug).
+- Long-running commands are tested by feeding canned data through the
+  in-process command test harness and asserting state transitions — no
+  subprocess involved (Rule 13).
 
 ## Probe/script promotion (reuse, don't remake)
 
-The pytest suite is the **sole home for every script in this repo** —
-scanning, probing, verification, and debugging logic all live as pytest
-modules inside `tests/`, never as scripts in `scratch/`:
+The Rust test suite is the **sole home for every script in this repo** —
+scanning, probing, verification, and debugging logic all live as test modules,
+never as scripts in `scratch/`:
 
-- Offline checks → `tests/unit/` or `tests/integration/`.
-- Real-network probes → `tests/live/` with the `live` marker (opt-in, keeps
-  the offline gate hermetic).
-- Benchmarks → `tests/perf/`.
-- The scanner `tests/unit/scanners/test_scratch_promotion.py` fails the gate
-  if **any** `.py` file appears in `scratch/` — the fix is to promote the
-  logic into `tests/` and delete the scratch file.
+- Offline checks → unit/integration tests in `src-tauri/`.
+- Real-network probes → `live/` tests tagged `#[ignore]` (opt-in, keeps the
+  offline gate hermetic).
+- Benchmarks → `src-tauri/tests/perf/` criterion benches.
+- Scratch scanners are promoted into `src-tauri/` tests; the gate fails if
+  stray logic appears in `scratch/` — the fix is to promote it into tests.
 - Empirical findings (e.g. archive pagination = `/games/page/N/`, 20
-  games/page) are recorded in the ROADMAP **and** pinned as live tests (see
-  `tests/live/test_archive_pagination.py`) so they never regress silently.
+  games/page) are recorded in the ROADMAP **and** pinned as live tests so they
+  never regress silently.
 
 ## Performance budgets
 
@@ -87,6 +90,6 @@ modules inside `tests/`, never as scripts in `scratch/`:
 | page parse | <400ms |
 | site fan-out | ~1 req/s (throttled) |
 
-Tracked in `tests/perf/` with micro-benchmarks; N+1 queries are rejected at
+Tracked in `src-tauri/tests/perf/` with micro-benchmarks; N+1 queries are rejected at
 review. See [Rule 11](../.agents/rules/rule-11-testing) and
 [the perf-auditor](../.agents/agents/review/perf-auditor/perf-auditor).

@@ -9,8 +9,8 @@ model: default
 
 ## Boundary of responsibility
 
-Adapter `name="steamgriddb"`, `provides_info=False`, `provides_art=True`,
-`requires_key=True`. Supplies icons (primary) plus grids/heroes/logos for
+Adapter `name="steamgriddb"`, `provides_info=false`, `provides_art=true`,
+`requires_key=true`. Supplies icons (primary) plus grids/heroes/logos for
 covers and store-style display.
 
 ## API reference (verified shape)
@@ -26,10 +26,10 @@ covers and store-style display.
 
 ## Icon-to-.ico conversion
 
-- Pillow writes 256x256 `.ico` containing 16/32/48/256 sizes (dependency under
-  a `[artwork]` extra in pyproject.toml).
+- The `ico`/`image` crates (declared in `Cargo.toml`) write a 256x256 `.ico`
+  containing 16/32/48/256 sizes.
 - Icons only for shortcut icons; grids/heroes/logos are for app display and
-  Steam-library style presentation, never `.lnk` icons (aspect mismatch).
+  Steam-library style presentation, never shortcut icons (aspect mismatch).
 
 ## Rules
 

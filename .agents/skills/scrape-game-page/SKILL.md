@@ -11,7 +11,7 @@ Fetch + parse one game detail page, offline-testable against the fixture.
 
 ```mermaid
 flowchart LR
-    A[slug or URL] --> B["scraping/fetch.py GET"]
+    A[slug or URL] --> B["src-tauri/src/scraper/fetch.rs GET"]
     B --> C[game-page-parser]
     C --> D[Game model]
     C --> E["versions -> DownloadEntry lists"]
@@ -26,8 +26,8 @@ flowchart LR
 
 1. **Input**: slug (`treasure-of-nadia`) or full URL
    `https://lewdzone.com/game/<slug>/`.
-2. **Fetch** via `scraping/fetch.py` — headers UA `Mozilla/5.0`, polite delay
-   (see `network-etiquette`), return HTML.
+2. **Fetch** via `src-tauri/src/scraper/fetch.rs` — headers UA `Mozilla/5.0`,
+   polite delay (see `network-etiquette`), return HTML.
 3. **Parse** with `game-page-parser.parse(html, base_url) -> Game`:
    - title, developer, current_version, engine, platforms, size, censorship,
      genres (from `/game-genre/<slug>/` tag links), screenshots, description.
@@ -46,6 +46,6 @@ flowchart LR
 
 ## Checkoffs
 
-- [ ] Fixture test green (`tests/unit/scraping/test_game_page.py`)
+- [ ] Fixture test green (`src-tauri/tests/scraper/`)
 - [ ] No network call inside parser
-- [ ] Field map in `docs/parsing/game-page.md` updated if changed
+- [ ] Field map in `game-page-scraper.md` updated if changed

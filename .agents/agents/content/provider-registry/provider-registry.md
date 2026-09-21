@@ -14,19 +14,21 @@ The adapter contract and the dispatcher. This agent is the ONLY owner of the
 
 ## Contract
 
-```python
-class ContentProvider(Protocol):
-    name: str
-    provides_info: bool
-    provides_art: bool
-    requires_key: bool
-    def search(self, title: str) -> list[ProviderCandidate]: ...
-    def fetch_info(self, c: ProviderCandidate) -> GameInfoPatch | None: ...
-    def fetch_asset(self, c: ProviderCandidate, kind: AssetKind) -> Path | None: ...
+```rust
+trait ContentProvider {
+    fn name(&self) -> &str;         // registry key
+    fn provides_info(&self) -> bool; // enriches metadata
+    fn provides_art(&self) -> bool; // supplies image assets
+    fn requires_key(&self) -> bool; // needs configured API key
+    fn search(&self, title: &str) -> Vec<ProviderCandidate>;
+    fn fetch_info(&self, c: &ProviderCandidate) -> Option<GameInfoPatch>;
+    fn fetch_asset(&self, c: &ProviderCandidate, kind: AssetKind)
+                   -> Option<PathBuf>;
+}
 ```
 
 `ProviderCandidate = {provider, external_id, title, score, meta}`
-`AssetKind = Literal["icon","grid","hero","logo","cover","screenshot"]`
+`AssetKind = enum Icon | Grid | Hero | Logo | Cover | Screenshot`
 
 ## Registry + dispatch
 
@@ -69,13 +71,13 @@ Secrets live in `~/.config/lewdzone` or env (Rule 10); the Settings UI shows
 
 ## Rules
 
-1. Adding a provider = new file in `services/content/providers/` + a registry
-   entry + a settings row + a fake in `tests/support/`.
+1. Adding a provider = a new file in `src-tauri/src/content/providers/` + a
+   registry entry + a settings row + a fake in `src-tauri/tests/support/`.
 2. Registry and contract changes require an ADR (Rule 03 contract change).
 3. `provides_info`/`provides_art` accurately describe capabilities — enrichment
    merge logic keys off these flags.
 4. Fakes: one per provider recording calls with canned candidates/assets; prove
-   the dispatch stops on found (unit tests in `pytest -m unit`).
+   the dispatch stops on found (unit tests in `cargo test`).
 
 ## Definition of done
 

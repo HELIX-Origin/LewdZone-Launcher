@@ -54,7 +54,7 @@ flowchart TD
 Each sub-issue:
 - `Sub-Issue 1` — diagnostics, architecture, ADRs, mermaid diagrams.
 - `Sub-Issue 2` — controllers, CLI, GUI, download-manager wiring, sqlite migrations.
-- `Sub-Issue 3` — vitest-style python suite, regression, coverage floors.
+- `Sub-Issue 3` — Rust + Vitest test suite, regression, coverage floors.
 - `Sub-Issue 4` — verification gate, docs sync, release prep (Rule 08).
 
 ## Git commit format

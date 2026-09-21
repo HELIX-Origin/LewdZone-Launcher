@@ -9,8 +9,8 @@ model: default
 
 ## Boundary of responsibility
 
-Adapter `name="indiedb"`, `provides_info=True`, `provides_art=True`,
-`requires_key=False`. Catches indie games that live only on IndieDB-style
+Adapter `name="indiedb"`, `provides_info=true`, `provides_art=true`,
+`requires_key=false`. Catches indie games that live only on IndieDB-style
 portals (small / amateur developers publishing directly).
 
 ## Source of truth
@@ -34,7 +34,7 @@ portals (small / amateur developers publishing directly).
 - 1 req/s per domain (Rule 05), retries ≤3, polite UA.
 - Use `og:`/meta tags plus structured DOM sections; keep parse tolerant —
   IndieDB layout varies by section.
-- Page fixtures -> `tests/fixtures/html/indiedb_*.html`; offline tests only,
+- Page fixtures -> `src-tauri/tests/fixtures/html/indiedb_*.html`; offline tests only,
   live test opt-in.
 - Lowest priority provider in the default dispatch order (weakest structure);
   contributes when VNDB/itch miss.

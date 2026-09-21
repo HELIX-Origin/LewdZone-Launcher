@@ -11,13 +11,13 @@
 2. **The tool never downloads content itself** — resolved URLs are handed to a
    download manager, and only for **allowlisted hosts** derived from the site's
    own go-link host table (reverified regularly). Unknown host → refuse.
-3. **No shell interpolation** — subprocesses always `shell=False` (Windows:
-   `CREATE_NO_WINDOW`; POSIX: detached session). Never build command strings
-   from user input.
-4. **Parameterized SQL only** — no f-string SQL. SQLite opened with
+3. **No shell interpolation** — external processes are spawned with
+   `std::process::Command` using argv arrays (`CREATE_NO_WINDOW` on Windows,
+   detached session on POSIX). Never build a command string from user input.
+4. **Parameterized SQL only** — no string-concatenated SQL. SQLite opened with
    `foreign_keys=ON`; single writer connection.
-5. **Path hardening** — all paths via `pathlib`, reject traversal (`..`),
-   sanitize `\ : * ? " < > |` in generated file names.
+5. **Path hardening** — all paths via `std::path::PathBuf`, reject traversal
+   (`..`), sanitize `\ : * ? " < > |` in generated file names.
 6. **Secret redaction in logs** — never log keys/tokens; add a redaction
    filter at the logging boundary.
 7. **Resolved URLs are ephemeral** — stored tokens in the DB, never URLs.
@@ -32,8 +32,8 @@
 - Unsafe redirect following?
 
 Audited by [security-auditor](../.agents/agents/review/security-auditor/security-auditor).
-Tooling in the gate: **bandit** + **pip-audit**. Full rule:
-[Rule 10](../.agents/rules/rule-10-security).
+Tooling in the gate: **cargo audit** + **cargo deny** for dependency/CRATE
+checking. Full rule: [Rule 10](../.agents/rules/rule-10-security).
 
 ## Allowlist source
 

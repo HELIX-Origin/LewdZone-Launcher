@@ -1,68 +1,39 @@
 ---
 name: gui-conventions
 rule_number: "13"
-scope: tauri desktop app, subprocess protocol, view conventions
-enforcement: app-shell + view-designer + sidecar-driver agents; app/CLI parity tests
+scope: tauri desktop app, cli/gui parity, view conventions
+enforcement: app-shell + view-designer + cli agent; cli/gui parity checks
 ---
 
 # Rule 13: GUI Conventions
 
-The GUI is a **Tauri 2 desktop app** — the primary product. It never imports
-the Python package and never touches the site, download managers, SQLite, or
-SteamGridDB directly. Every workflow goes through the **CLI engine as a
-subprocess** (Rule 03 parity), parsing machine JSON/JSONL output.
+The GUI is a **Tauri 2 desktop app** — the primary product. It is one process
+with a Svelte webview and a Rust core. The same Rust binary also exposes a
+**native CLI** (Rule 03): two entry points, one core. The webview never
+touches the site, download managers, SQLite, or content providers directly —
+every workflow goes through `invoke()` → Rust commands, and every command has
+a CLI twin in `cli.rs`.
 
-## Process model (two processes)
+## Entry-point model (one process, two faces)
 
-- **Webview + Rust core** runs in the app process.
-- **Python CLI ships as a PyInstaller sidecar executable** (`externalBin`); the
-  app spawns it as a subprocess and speaks JSON over stdout.
-- **Query commands:** one `lewdzone-launcher <cmd> --json` invocation → one
-  JSON document parsed, process reaped.
-- **Long-running commands** (sync / download / shortcuts): machine mode streams
-  JSONL events `{event, progress, message, ...}` with a final `result`; the UI
-  renders progress and can cancel.
-- **stdout is the protocol channel, stderr is diagnostics** — never parse
-  stderr as data.
-- **Spawn safety:** hidden console on Windows (`CREATE_NO_WINDOW`), detached
-  session on POSIX; never `shell=True` (see
-  [sidecar-driver](../agents/gui/sidecar-driver/sidecar-driver.md)).
+- **App mode** (`main.rs` → `lib.rs::run()`): windowed app; webview renders
+  Svelte; Svelte calls `invoke('command_name', args)`; Rust executes the core
+  function and returns serialized data.
+- **CLI mode** (`main.rs`, no window): args parsed → the **same core
+  functions** via `cli.rs` handlers → results printed, process exits.
+- **Long-running work** (sync / download / shortcuts): the GUI runs it inside
+  Tauri async commands and streams progress to the webview via channels; the
+  CLI prints progress lines. Same core functions drive both.
+- **No subprocess framing.** There is no Python, no sidecar binary, no
+  JSON/JSONL hand-off between two programs. The Rust core IS the engine.
 
-```mermaid
-flowchart TD
-    subgraph APP["Tauri app process"]
-        WV["Svelte webview"]
-        RN["Rust core"]
-    end
-    subgraph SIDE["sidecar-driver"]
-        SP["spawn python CLI sidecar"]
-        IO["parse stdout JSON / JSONL events"]
-    end
-    subgraph CLI["CLI engine process"]
-        E["lewdzone-launcher - command + flags"]
-    end
-    subgraph EXT["external seams"]
-        X1["lewdzone.com"]
-        X2["download managers"]
-        X3["sqlite"]
-    end
-    WV --> RN
-    RN --> SP
-    SP --> IO
-    IO --> E
-    E --> X1
-    E --> X2
-    E --> X3
-```
+## CLI / GUI parity
 
-## App/CLI parity
-
-1. Every GUI action maps 1:1 to a CLI command (`lewdzone-launcher <cmd>`).
-2. The app's bridge is generated/verified against the CLI's command tree; a
-   drift is a bug, not a feature.
-3. `lewdzone-launcher <cmd> --json` works headless with no app installed.
-4. A GUI path that bypasses the CLI (or a CLI parser that hides domain logic)
-   fails review (Rule 00 + Rule 03).
+1. Every GUI action maps 1:1 to a CLI subcommand (`--help` lists them all).
+2. A GUI-only workflow with no CLI twin (or vice versa) is a design defect —
+   the shared core must serve both.
+3. Version is defined once (Cargo.toml) and synced to `tauri.conf.json` and
+   root `package.json` (Rule 08); CLI `--version` == app version.
 
 ## View conventions
 
@@ -79,8 +50,8 @@ flowchart TD
 
 ## Freeze checklist (per view feature)
 
-- [ ] does the work via a CLI subprocess, never a Python import
+- [ ] GUI path hits a Rust command in `lib.rs` (never an ad-hoc webview path)
+- [ ] the same workflow exists as a `cli.rs` subcommand over the same core fn
 - [ ] UI thread never blocks; long ops stream progress and are cancelable
-- [ ] machine output parsed strictly (JSON/JSONL by command class)
-- [ ] app version == sidecar CLI version (Rule 08)
-- [ ] parity test covers the new command's bridge 1:1
+- [ ] command output shape defined once, used by both GUI and CLI
+- [ ] app version == CLI version (Rule 08)

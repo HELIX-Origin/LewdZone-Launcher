@@ -11,8 +11,8 @@ model: default
 
 Provide deterministic stand-ins for everything a unit test shouldn't really
 touch: the go/api.php server, download-manager executables (FDM / IDM /
-torrent client), SteamGridDB API, the CLI subprocess (sidecar), the filesystem
-boundary, and OS-native shortcut creation.
+torrent client), SteamGridDB API, the CLI/core-command boundary, the
+filesystem boundary, and OS-native shortcut creation.
 
 ## Seam map
 
@@ -24,41 +24,41 @@ flowchart LR
     FD --> F["argv recorder fdm / idm / torrent"]
     T --> FSG[FakeSteamGrid - canned art results]
     T --> FS[FakeFs - tmp dir tracker]
-    T --> FSP[FakeSpawn - sidecar process runner]
-    FSP --> R[streams JSONL canned events]
+    T --> P[Parity runner - core command in-process]
+    P --> R[asserts 1:1 GUI/CLI mapping]
 
     style T fill:#2f6f4f,color:#fff
     style FAKE fill:#4b6e91,color:#fff
     style FD fill:#874b4b,color:#fff
     style FSG fill:#4b6e91,color:#fff
     style FS fill:#4b6e91,color:#fff
-    style FSP fill:#874b4b,color:#fff
+    style P fill:#874b4b,color:#fff
 ```
 
 ## Fake inventory (build + document each)
 
 | Fake | Replaces | Records |
 |---|---|---|
-| `urllib` transport | real HTTP | request url + headers + body, canned response |
-| DM exe shim (per manager) | real FDM / IDM / torrent client | argv + capture_code written to file, exit 0 |
+| HTTP transport fake | real HTTP | request url + headers + body, canned response |
+| DM exe shim (per manager) | real FDM / IDM / torrent client | argv + exit code, exit 0 |
 | SteamGridDB client | real API | token auth header; canned `search`, `icons` |
-| Sidecar spawn runner | real CLI subprocess | argv + canned JSONL event stream → final `result` |
-| Native shortcut fakes | OS shortcuts | `.lnk` (win32com), `.desktop` (Linux), `.app`/alias (macOS) call records |
+| Parity runner | GUI action vs CLI output | asserts identical results per command |
+| Native shortcut fakes | OS shortcuts | per-OS creation call records |
 | FS fixture root | real downloads dir | tmp-path tracker |
 
 ## Rules
 
-1. Fakes live in `tests/support/`, shared via conftest fixtures.
+1. Fakes live in `src-tauri/tests/support/`, shared via test helper modules.
 2. Fakes fail loud on config they don't expect (e.g. an unexpected host slug)
    so real bugs aren't masked.
-3. Prefer interface fake over monkeypatching internals: inject the transport /
-   process launcher / sidecar runner into the code under test (see
-   `.agents/rules/module-architecture.md` seams).
+3. Prefer interface fakes over reaching into internals: inject the transport /
+   DM launcher into the code under test (see
+   `.agents/rules/rule-03-module-architecture.md` seams).
 4. Never fake the code under test itself.
 
 ## Definition of done
 
-- Every network / DM-spawn / sidecar / shortcut / DB path has a fake asserting
+- Every network / DM-spawn / parity / shortcut / DB path has a fake asserting
   a bounded call surface.
 - A "tofu test" proves the fakes record the exact per-manager argv shapes
   (`fdm -fs url` / `idm /d url /n /p dir` / torrent positional magnet).

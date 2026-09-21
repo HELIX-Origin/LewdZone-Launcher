@@ -11,8 +11,8 @@ model: default
 
 Convert the active download manager's raw output downloads into the user's
 organized, browsable library on disk. This is the physical mirror of the
-SQLite catalog. Platform-agnostic: paths always use `pathlib.Path`; the root
-default comes from the platform-aware settings key.
+SQLite catalog. Platform-agnostic: paths always use `std::path::PathBuf`; the
+root default comes from the platform-aware settings key.
 
 ## When a download completes
 
@@ -42,7 +42,7 @@ flowchart TD
 
 `<Title> - <Version> - <Platform>[- <Variant>].<ext>`
 
-- Sanitize per `.agents/rules/naming-conventions.md` (remove
+- Sanitize per `.agents/rules/rule-02-naming-conventions.md` (remove
   `\/:*?"<>|`, collapse spaces, trim dots).
 - Multi-part downloads (`(Part 1 Compressed)` etc.) share one folder; each
   part keeps its part marker in the filename.

@@ -16,7 +16,7 @@ registry.
 ## Contract implementation
 
 - `name = "fdm"`
-- `platforms = ("win32",)`
+- `platforms = ["windows"]`
 - `handles_kind = "http"`
 - `detect()` — see dm-detector table (default
   `C:\Program Files\Free Download Manager\fdm.exe`, x86 variant, LOCALAPPDATA
@@ -28,7 +28,7 @@ flowchart LR
     G["resolved url (never #fragment)"] --> A["fdm.exe -fs url"]
     A --> B{"spawn ok?"}
     B -- yes --> C["job status=dispatched"]
-    B -- no --> D["raise DMNotFoundError exit 4"]
+    B -- no --> D["typed error - exit code 4"]
 
     style C fill:#2f6f4f,color:#fff
     style D fill:#874b4b,color:#fff
@@ -37,7 +37,7 @@ flowchart LR
 ## Invocation rule
 
 `fdm.exe -fs "<url>"` — `-fs` forces a silent add with no dialogs. Spawn via
-`subprocess.Popen(args, creationflags=CREATE_NO_WINDOW, shell=False)` and
+`std::process::Command` with `CREATE_NO_WINDOW` (argv array, never a shell) and
 **detach**: FDM schedules the download async; lewdzone-launcher never waits for
 FDM's full lifetime.
 
@@ -55,5 +55,5 @@ FDM's full lifetime.
 ## Definition of done
 
 - Unit test asserts argv == `["<path>\\fdm.exe", "-fs", url]`.
-- Missing exe → typed `DMNotFoundError(code=4)`.
-- Never `shell=True`; URL is data, not a string template.
+- Missing exe → typed `DmMissing` error (code 4).
+- Never spawn via a shell; URL is data, not a string template.

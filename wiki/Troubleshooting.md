@@ -38,10 +38,11 @@ warnings/text on stdout, that's a bug — file it.
 - `.lnk` / `.desktop` / `.app` generation is per-OS; verify the app's shortcut
   group `lewdzone` in your start-menu / desktop / Applications.
 
-## Sidecar version mismatch
+## App and CLI versions disagree
 
-App and bundled CLI versions must match (release gate). Rebuild the sidecar
-with PyInstaller at the same version and re-run `tauri build`.
+There is no sidecar: the CLI is the same binary as the app (Rule 13). If
+`lewdzone-launcher --version` differs from the app version, the binaries were
+built from different commits — rebuild both from the same source tree.
 
 ## More help
 

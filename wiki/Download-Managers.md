@@ -10,22 +10,23 @@ URL to an installed download manager:
 
 - If no manager is installed, the command fails fast (exit code **4**) and
   lists what's available.
-- adapters live in `lewdzone_launcher/services/dm/adapters/`.
-- A registry (`MANAGERS`) maps names to adapter instances; the active manager
-  is a [Configuration](Configuration) setting (`settings set dm` or `lewdzone-launcher dm set active <name>`).
+- adapters live in `src-tauri/src/dm/` (Rust module).
+- A registry maps adapter names (`fdm` / `idm` / `torrent`) to instances; the
+  active manager is a [Configuration](Configuration) setting
+  (`settings set dm` or `lewdzone-launcher dm set active <name>`).
 
 ## Adapter contract
 
-Every adapter implements:
+Every adapter implements a Rust trait / enum variant (Rule 07):
 
 | Member | Purpose |
 | --- | --- |
-| `name` | `fdm` / `idm` / `torrent` |
-| `platforms` | `win32`, `linux`, `darwin`, … |
+| `name -> &str` | `fdm` / `idm` / `torrent` |
+| `platforms` | `windows`, `linux`, `macos`, … |
 | `handles_kind` | `http` or `torrent` |
-| `detect() -> Path | None` | locate the manager executable |
+| `detect() -> Option<PathBuf>` | locate the manager executable |
 | `launch(url, target_dir, filename)` | spawn detached, silent |
-| `confirm_launch() -> bool` | optional post-check |
+| `confirm_launch() -> Option<bool>` | optional post-check |
 
 ## Per-manager invocation
 

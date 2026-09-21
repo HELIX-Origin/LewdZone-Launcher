@@ -6,12 +6,11 @@
 
 SemVer `MAJOR.MINOR.PATCH`. The version is synced across:
 
-- `desktop/src-tauri/Cargo.toml` + `tauri.conf.json`
-- `desktop/package.json`
-- `src/lewdzone_launcher/__init__.py` (`__version__`)
-- `pyproject.toml`
+- `src-tauri/Cargo.toml` (crate `version` + `tauri.conf.json`)
+- `package.json`
 
-**Sidecar version must equal app version** (verified at app startup).
+There is a single binary; the CLI reports the same version as the app
+(`lewdzone-launcher --version`).
 
 ## Release flow
 
@@ -36,12 +35,11 @@ flowchart TD
 
 Everything must be green first:
 
-- `ruff check .` + `ruff format --check .`
-- `pyright`
-- `pytest -q` (offline suite) + coverage ≥ floors
-- `bandit -r src/` + `pip-audit`
+- `cargo fmt --check` + `cargo clippy -- -D warnings` + `cargo test` (from `src-tauri/`)
+- `npm run check` (svelte-check) + `npm run test` (Vitest)
+- Coverage ≥ floors (`cargo llvm-cov`)
 - `lewdzone-launcher --version` smoke test
-- Desktop: `tauri build` succeeds on all target platforms (CI)
+- `tauri build` succeeds on all target platforms (CI)
 
 ## Release notes structure
 

@@ -24,8 +24,8 @@ an unreadable diagram fails review.
    - `A -->|"Yes"| B` ✅   `A -->|Yes| B` ❌
 4. **Subgraph titles MUST be quoted** — unquoted subgraph titles silently
    break the diagram:
-   - `subgraph UI["UI thread - Tk mainloop"]` ✅
-   - `subgraph UI[UI thread - Tk mainloop]` ❌
+   - `subgraph UI["UI thread - main loop"]` ✅
+   - `subgraph UI[UI thread - main loop]` ❌
    - `subgraph UI["..."]` NEVER `subgraph UI[...]`
 5. **One concern per diagram** — one diagram === one idea. Never cram.
 6. **Node budget:** ≤8–12 nodes per diagram. Larger flows split into two

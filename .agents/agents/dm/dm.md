@@ -9,9 +9,10 @@ model: default
 
 ## Mission
 
-lewdzone-launcher is a desktop CLI (with GUI twin) that runs on **Windows, Linux, and
-macOS**. Download handling is runtime-injected through a **pluggable adapter**
-so the tool supports whatever download manager the user already has installed.
+lewdzone-launcher is a desktop app whose binary also exposes a **native CLI**
+that runs on **Windows, Linux, and macOS**. Download handling is
+runtime-injected through a **pluggable adapter** so the tool supports whatever
+download manager the user already has installed.
 
 The single hard rule: lewdzone-launcher never performs the file download itself.
 It resolves the real URL (see `resolver`), then hands it to an installed
@@ -44,16 +45,16 @@ flowchart LR
 
 ### Shared contract (every adapter implements)
 
-- `name` — canonical adapter id (`fdm`, `idm`, `utorrent`).
-- `platforms` — supported OSes (`win32` and/or `linux`, `darwin`).
-- `handles_kind` — `http` (direct file) and/or `torrent` (magnet/`.torrent`).
-- `detect() -> Path | None` — locate the binary (see dm-detector table).
-- `launch(url: str, target_dir: Path, filename: str) -> None` — spawn silently.
-- `confirm_launch(job) -> bool` — optional per-manager post-spawn check.
+- `name() -> &str` — canonical adapter id (`fdm`, `idm`, `utorrent`).
+- `platforms()` — supported OSes (`windows` and/or `linux`, `macos`).
+- `handles_kind()` — `http` (direct file) and/or `torrent` (magnet/`.torrent`).
+- `detect() -> Option<PathBuf>` — locate the binary (see dm-detector table).
+- `launch(url, target_dir, filename)` — spawn silently.
+- `confirm_launch(job) -> Option<bool>` — optional per-manager post-spawn check.
 
-All adapters live in `lewdzone_launcher/services/dm/adapters/` and register through
-a `MANAGERS: dict[str, DownloadManager]` registry. Dispatch is
-`MANAGERS[settings.active_manager]`; if the active manager is missing on the
+All adapters live in `src-tauri/src/dm/` and register through a
+`registry: HashMap<&str, Box<dyn DownloadManager>>`. Dispatch is
+`registry[settings.active_manager]`; if the active manager is missing on the
 current platform, list the discovered alternatives in the error.
 
 ## Folder organization
@@ -87,12 +88,12 @@ Movers: `move` (default), `copy`, `link` — user setting `mover_mode`.
 
 ## Cross-platform responsibilities
 
-- Paths: always `pathlib.Path`, never string concat.
+- Paths: always `std::path::PathBuf`, never string concat.
 - Config dirs: `%APPDATA%\lewdzone` (Windows) / `~/.config/lewdzone`
   (Linux) / `~/Library/Application Support/lewdzone` (macOS) — resolved by a
-  single `platform` seam (`lewdzone_launcher/core/platform.py`).
-- Process spawn: `CREATE_NO_WINDOW` only on Windows; POSIX uses
-  `start_new_session=True`. Both use `shell=False`.
+  single `platform` seam (`src-tauri/src/core/platform.rs`).
+- Process spawn: `CREATE_NO_WINDOW` only on Windows; POSIX uses a detached
+  session. Both spawn via `std::process::Command` argv arrays, never a shell.
 - No manager installed on the current platform → exit code 4 with the list of
   installable managers.
 

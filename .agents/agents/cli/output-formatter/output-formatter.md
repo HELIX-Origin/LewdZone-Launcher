@@ -34,8 +34,8 @@ flowchart TD
 
 - One document per command on stdout; arrays when the result is a list.
 - Keys are snake_case, stable, documented per command.
-- Nested models serialize via dataclass `to_dict()` (shared with GUI/DB
-  serialization) — one serializer, many consumers.
+- Nested models serialize via serde (shared with the GUI/DB layer) — one
+  serializer, many consumers.
 - Errors in `--json` mode: emit a JSON error object to stdout AND exit with
   the command's error code (so scripts get structured failures).
 
@@ -47,8 +47,8 @@ flowchart TD
 
 ## Rules
 
-1. Never `print()` debug info to stdout from controllers; all diagnostics via
-   `logging` module -> stderr.
+1. Never `println!()` debug info to stdout from controllers; all diagnostics
+   via the log/tracing facade -> stderr.
 2. Tables truncate long cells deterministically; fixed column widths; sorting
    is stable.
 3. Unicode-safe: use a rendering lib and wrap all cells (`str`), never crash

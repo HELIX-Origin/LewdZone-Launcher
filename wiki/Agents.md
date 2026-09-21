@@ -30,7 +30,7 @@ Copilot-style workflows, and others). Everything is documented with
 | **database** | schema + sync | schema-designer, sync-orchestrator |
 | **dm** | download managers | dm-detector, fdm-adapter, idm-adapter, torrent-adapter, folder-organizer |
 | **cli** | the engine | command-designer, output-formatter |
-| **gui** | Tauri app | app-shell, view-designer, sidecar-driver |
+| **gui** | Tauri app | app-shell, view-designer |
 | **shortcuts** | artwork + shortcuts | artwork-fetch, shortcut-builder |
 | **content** | external info + art enrichment | provider-registry, steamgriddb-provider, vndb-provider, igdb-provider, itch-provider, steam-provider, indiedb-provider |
 | **testing** | QA suite | fixture-crafter, mock-engineer, test-suite-architect, debugger |
@@ -52,7 +52,7 @@ Reusable procedures with checkoffs, e.g.:
 | # | Rule | File |
 | --- | --- | --- |
 | 00 | Governance | `rule-00-governance.md` |
-| 01 | Code style (python) | `rule-01-code-style-python.md` |
+| 01 | Code style (Rust) | `rule-01-code-style-python.md` |
 | 02 | Naming conventions | `rule-02-naming-conventions.md` |
 | 03 | Module architecture | `rule-03-module-architecture.md` |
 | 04 | Remote issue protocol | `rule-04-remote-issue-protocol.md` |
@@ -71,14 +71,15 @@ path has `.md`).
 
 ## Templates
 
-Scaffolds for: agents, skills, rules, ADRs, Python modules, tests, migrations,
+Scaffolds for: agents, skills, rules, ADRs, Rust modules, tests, migrations,
 issues, roadmaps, release notes, and commit messages — all under
 `.agents/templates/`.
 
 ## Governance principles
 
 1. **One owner per artifact.** Two agents on one module is an anti-pattern.
-2. **CLI is primary.** App and GUI are built on the same engine.
+2. **One core, two entry points.** The GUI and the CLI share the same Rust
+   core functions.
 3. **Rules before code.** Unwritten rule + code = unreviewable.
 4. **Fail loudly.** Errors surface with codes, not swallowed.
 5. **ADR before contract change.**

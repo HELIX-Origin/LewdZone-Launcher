@@ -11,8 +11,8 @@ model: default
 
 Everything about getting image assets **through the content-provider layer**
 (`.agents/agents/content/`) and making them usable as native shortcut icons.
-This agent is a consumer of `services/content/` providers — it never talks to
-a provider API directly.
+This agent is a consumer of `src-tauri/src/content/` providers — it never
+talks to a provider API directly.
 
 ## Workflow
 
@@ -51,8 +51,8 @@ flowchart TD
 
 ## Icon conversion
 
-- Use Pillow (declare dependency in `pyproject.toml` under a
-  `[artwork]` extra) to write a 256x256 `.ico` containing 16/32/48/256 sizes.
+- Use the `ico`/`image` crates (declared in `Cargo.toml`) to write a 256x256
+  `.ico` containing 16/32/48/256 sizes.
 - For grids/heroes/covers, do NOT use them as shortcut icons (wrong aspect) —
   those are for Library/app display only.
 

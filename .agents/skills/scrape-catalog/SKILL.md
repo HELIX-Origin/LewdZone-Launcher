@@ -34,7 +34,7 @@ flowchart TD
      `state=Ongoing|...`.
 2. Fetch + parse page 1 -> `GameCard[]` + `ArchiveMeta`.
 3. Pagination: **determine empirically** — check whether `/games/?page=2` or
-   `/games/page/2/` works; record the finding in `docs/parsing/archive.md`.
+   `/games/page/2/` works; record the finding in `archive-scraper.md`.
 4. Walk remaining pages with polite delays; normalize platform/engine to
    canonical slugs.
 5. Return the aggregate list; caller decides db upsert (see `sync-catalog-db`).

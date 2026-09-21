@@ -1,8 +1,8 @@
 ---
 name: error-handling
 rule_number: "12"
-scope: exceptions, exit codes, stderr, logging
-enforcement: cli output-formatter + thread-manager + review
+scope: errors, exit codes, stderr, logging
+enforcement: cli output-formatter + gui + review
 ---
 
 # Rule 12: Error Handling & Logging
@@ -21,20 +21,23 @@ error contract so parity holds (Rule 03, Rule 13).
 | `4` | download manager missing / not found |
 | `5` | interrupted (Ctrl+C / user cancel) |
 
-## Typed exceptions
+## Typed errors
 
-Domain exceptions subclass a base `LewdzoneError` with a stable `code`.
+Domain errors are a typed enum `LewdzoneError` carrying a stable exit code:
 
-```python
-class LewdzoneError(Exception): ...      # base, code attr
-class NetworkError(LewdzoneError): ...   # code=3
-class DmMissingError(LewdzoneError): ... # code=4
-class UsageError(LewdzoneError): ...     # code=2
+```rust
+pub enum LewdzoneError {                 // exposes a stable exit code
+    Runtime(String),                     // code 1
+    Usage(String),                       // code 2
+    Network { retry_in: u64 },           // code 3
+    DmMissing { alternatives: Vec<String> }, // code 4
+    Interrupted,                         // code 5
+}
 ```
 
-- Controllers raise domain errors; frontends translate to display + exit code.
-- Resolver wraps api.php failures into `NetworkError` with `retry_in` kept on
-  the exception.
+- Controllers return typed errors; frontends translate to display + exit code.
+- Resolver wraps api.php failures into `Network` variants, keeping `retry_in`
+  on the error.
 
 ## stdout vs stderr
 
@@ -58,7 +61,8 @@ flowchart TD
 
 ## Logging
 
-- `logging` stdlib, logger per module (`lewdzone_launcher.<pkg>`).
+- `tracing`/`log` facade, span or target per module
+  (`lewdzone_launcher_lib::<mod>`).
 - Default level `INFO` for CLI chatter; `--verbose` → `DEBUG`.
 - **Redaction:** never log tokens, SteamGridDB keys, or cookie secrets
   (Rule 10). A redact filter runs on every handler.
@@ -67,6 +71,7 @@ flowchart TD
 
 ## Never
 
-- Bare `except:` / `except Exception:` without locating intent.
-- Swallowing resolve errors to keep a download "queued".
+- Unwrapping/panicking in library code (only top-level entry points may).
+- Swallowing resolve errors (`.ok()` with no handling) to keep a download
+  "queued".
 - Printing tracebacks to stdout in `--json` mode.

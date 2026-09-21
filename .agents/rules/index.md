@@ -8,7 +8,7 @@ description: Index of every rule (00-13) in the lewdzone-launcher ecosystem, map
 | # | Rule | Owning agents | Constrains |
 | --- | --- | --- | --- |
 | `00` | Governance & Delegation | [orchestration in review](../agents/review/review.md) | who does what, when; never duplicate work |
-| `01` | Python Code Style | [cli](../agents/cli/cli.md), [database](../agents/database/database.md), [testing](../agents/testing/testing.md), [review](../agents/review/review.md) | all `.py` source |
+| `01` | Rust Code Style | [cli](../agents/cli/cli.md), [database](../agents/database/database.md), [testing](../agents/testing/testing.md), [review](../agents/review/review.md) | all `.rs` source |
 | `02` | Naming Conventions | [architect](../agents/architect/architect.md), [scraper](../agents/scraper/scraper.md), [database](../agents/database/database.md) | modules, tables, columns, domains, files |
 | `03` | Module Architecture | [architect/](../agents/architect/architect.md), [module-contractor](../agents/architect/module-contractor/module-contractor.md) | package layout, import direction, contracts |
 | `04` | Remote Issue Protocol | [review](../agents/review/review.md) + HELIX-derived | GitHub issues, sub-issues, PRs, roadmap-first |
@@ -19,8 +19,8 @@ description: Index of every rule (00-13) in the lewdzone-launcher ecosystem, map
 | `09` | Mermaid Standards | **every agent with a diagram** + HELIX-derived | every ```` ```mermaid ```` block |
 | `10` | Security & Secrets | [review](../agents/review/security-auditor/security-auditor.md) | secrets, URLs, SQL injection, process spawn |
 | `11` | Testing | [testing](../agents/testing/testing.md), [test-suite-architect](../agents/testing/test-suite-architect/test-suite-architect.md) | tests/ tree, markers, coverage, fixtures |
-| `12` | Error Handling & Logging | [cli](../agents/cli/output-formatter/output-formatter.md), [thread-manager](../agents/gui/thread-manager/thread-manager.md) | exceptions, exit codes, stderr, logging |
-| `13` | GUI Conventions | [gui](../agents/gui/gui.md), [thread-manager](../agents/gui/thread-manager/thread-manager.md), [tab-designer](../agents/gui/tab-designer/tab-designer.md) | Tk threading, widgets, parity with CLI |
+| `12` | Error Handling & Logging | [cli](../agents/cli/output-formatter/output-formatter.md), [gui](../agents/gui/gui.md) | errors, exit codes, stderr, logging |
+| `13` | GUI Conventions | [gui](../agents/gui/gui.md), [app-shell](../agents/gui/app-shell/app-shell.md) | shared-core commands, parity with CLI |
 
 ```mermaid
 flowchart TD
@@ -28,7 +28,7 @@ flowchart TD
         R00["Rule 00 - governance"]
     end
     subgraph C["core contracts"]
-        R01["Rule 01 - python style"]
+        R01["Rule 01 - rust style"]
         R02["Rule 02 - naming"]
         R03["Rule 03 - architecture"]
     end
@@ -58,11 +58,10 @@ flowchart TD
 
 ## Enforcement summary
 
-- **Format**: ruff, black-compatible, `pre-commit` (Rule 01).
-- **Types**: pyright strict (Rule 01).
-- **Architecture**: `import-linter` guards `layers` contract (Rule 03).
+- **Format**: cargo fmt + clippy `-D warnings` (Rule 01).
+- **Architecture**: crate module boundaries guard the layers contract (Rule 03).
 - **DB**: migration check in CI (Rule 06).
-- **Network**: deterministic fixtures, live tests tagged (Rule 05, Rule 11).
-- **Security**: bandit + pip-audit in the review gate (Rule 10).
-- **Tests**: `--cov-fail-under=85` overall (Rule 11).
+- **Network**: deterministic fixtures, live tests tagged `#[ignore]` (Rule 05, Rule 11).
+- **Security**: cargo audit + cargo deny in the review gate (Rule 10).
+- **Tests**: coverage floors ≥85% overall (Rule 11).
 - **GitHub**: issue/PR body checks (Rule 04), tag + notes checks (Rule 08).

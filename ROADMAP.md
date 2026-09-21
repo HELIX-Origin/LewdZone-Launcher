@@ -21,9 +21,10 @@ together; the issue body is updated when this file changes.
 
 A cross-platform desktop **game launcher** for lewdzone.com: browse a
 Steam-like store, queue downloads, organize files, and create native shortcuts.
-Tauri 2 app drives a Python CLI sidecar over JSON/JSONL. The CLI is the engine
-(scriptable headless); the app is the primary product; the app never imports
-the Python package or talks to the site/DB directly.
+It is a **Tauri 2 app** (Rust + OS webview, Svelte frontend) whose binary also
+exposes a **native Rust CLI**. The GUI and the CLI are two entry points into
+the same Rust core: the same functions back both. The app is the primary
+product; the CLI is scriptable standalone.
 
 ## Overview
 
@@ -64,14 +65,14 @@ roadmap issue is the umbrella; sub-issues come from these items.
 - [ ] Mermaid compliance cleanup across `.agents/agents/*` (Rule 09)
   - systems-designer subgraph quoting; gui/testing subgraph quoting;
     dm-detector/folder-organizer label quoting
-- [x] `src/lewdzone_launcher/` scaffold + import-linter contract (Rule 03)
+- [x] `src-tauri/src/` Rust crate scaffold + module boundaries (Rule 03)
 - [x] ADRs for cross-layer contracts
-  - [x] ADR-0001 — two frontends, one engine (Tauri sidecar JSON/JSONL)
+  - [x] ADR-0001 — two entry points, one Rust core (native CLI + Tauri GUI)
   - [x] ADR-0002 — download-manager adapter layer (FDM/IDM/torrent)
   - [x] ADR-0003 — SQLite persistence (tokens, not URLs)
   - [x] ADR-0004 — content-provider enrichment layer
-- [x] Config + sqlite bootstrap (`_config.py`, WAL schema, forward-only
-  migrations + `schema_migrations`, 7 DB tests green)
+- [x] Config + SQLite bootstrap (`src-tauri/src/db.rs`, WAL schema, forward-only
+  migrations + `schema_migrations`, DB tests green)
 - [x] Content-provider layer design (`.agents/agents/content/` — provider
   contract, registry, six v1 providers) — design done, implementation pending
 
@@ -83,15 +84,16 @@ roadmap issue is the umbrella; sub-issues come from these items.
 - [ ] DM adapters: FDM, IDM, uTorrent/BitTorrent + detector + folder-organizer
 - [ ] Job queue + sync pipeline (incremental, rate-limited)
 - [ ] CLI commands: `sync/search/info/download/list/settings/shortcuts/launch/dm`
-  with `--json` / `--jsonl` machine contract
+  with `--json` machine contract (progress on stderr)
 
 ### Phase 3 — Test Suite & Regression
-- [ ] vitest-style suites: unit/integration/live, fakes in `tests/support/`
-- [ ] App/CLI parity tests + sidecar protocol tests
+- [ ] Rust unit/integration suites (cargo test) in `src-tauri/` + Svelte Vitest
+      suites in `src/`, test helper modules in `src-tauri/tests/`
+- [ ] App/CLI parity tests — same core commands drive both entry points
 - [ ] Coverage floors: 85% overall, ~90% core, ~70% gui
 
 ### Phase 4 — Desktop App & Shortcuts
-- [ ] Tauri 2 shell: Rust core, sidecar-driver, window lifecycle
+- [ ] Tauri 2 shell: Rust core, window lifecycle, shared-core commands
 - [ ] Svelte views: Store / Library / Downloads / Settings (incl. API-keys
       section pasting content-provider keys)
 - [ ] Native shortcuts (.lnk / .desktop / .app) + artwork from the
@@ -100,7 +102,7 @@ roadmap issue is the umbrella; sub-issues come from these items.
 - [ ] Packaging: MSI+NSIS, .app+DMG, AppImage+deb+rpm, updater
 
 ### Phase 5 — Verification & Release
-- [ ] Release gate green (pytest, ruff, pyright, security, build smoke)
+- [ ] Release gate green (cargo fmt/clippy/test, svelte-check, vitest, build smoke)
 - [ ] Docs synced back to `wiki/`; release notes; tag `v0.1.0` / `v1.0.0`
 
 ## Abandoned 🗑️

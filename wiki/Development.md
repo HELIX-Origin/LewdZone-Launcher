@@ -11,13 +11,13 @@ human-facing distillation; the `.agents` docs are the authoritative spec.
 ```
 lewdzone-launcher/
   .agents/
-    agents/                # 10 agent families + sub-agents
+    agents/                # 11 agent families + sub-agents
     skills/                # SKILL.md per skill
     rules/                 # rule-00..13 + index
     templates/             # agent/skill/rule/module/adr templates
-  src/lewdzone_launcher/   # Python CLI engine (src layout)
-  desktop/                 # Tauri 2 app (src-tauri/ Rust, src/ Svelte)
-  tests/                   # pytest suite
+  src/                     # Svelte webview (Tauri frontend)
+  src-tauri/src/           # Rust core: cli.rs, db.rs, scraper.rs, resolver.rs, ...
+  src-tauri/tests/         # Rust unit/integration tests + fixtures
   wiki/                    # this wiki (synced with GitHub Wiki)
   scratch/                 # gitignored temp scripts
 ```
@@ -32,7 +32,7 @@ lewdzone-launcher/
 | database | schema, sync (schema-designer, sync-orchestrator) |
 | dm | download managers (dm-detector, fdm-adapter, idm-adapter, torrent-adapter, folder-organizer) |
 | cli | the engine, output (command-designer, output-formatter) |
-| gui | Tauri app (app-shell, view-designer, sidecar-driver) |
+| gui | Tauri app (app-shell, view-designer) |
 | shortcuts | artwork + native shortcuts (artwork-fetch, shortcut-builder) |
 | content | info + art enrichment (provider-registry, steamgriddb-provider, vndb-provider, igdb-provider, itch-provider, steam-provider, indiedb-provider) |
 | testing | suite, fakes (fixture-crafter, mock-engineer, test-suite-architect, debugger) |
@@ -71,11 +71,15 @@ Full protocol: [Rule 04](../.agents/rules/rule-04-remote-issue-protocol).
 ## Verification commands
 
 ```sh
-ruff check . && ruff format --check .
-pyright
-pytest -q                      # offline default
-pytest -m live                 # opt-in live
-pytest --cov --cov-fail-under=85
+# Rust core (from src-tauri/)
+cargo fmt --check && cargo clippy -- -D warnings
+cargo check
+cargo test                      # offline default
+cargo test -- --ignored         # opt-in live (#[ignore] tags)
+
+# Svelte frontend (from repo root)
+npm run check                   # svelte-check
+npm run test                    # Vitest unit tests
 ```
 
 See [Testing & QA](Testing) and [Release Process](Release-Process).

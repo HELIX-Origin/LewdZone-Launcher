@@ -3,12 +3,14 @@
 The LewdZone Launcher is a cross-platform desktop game launcher that scrapes
 [lewdzone.com](https://lewdzone.com), resolves download tokens, and hands
 resolved URLs to an installed download manager (FDM, IDM, or a torrent client).
-It is a **Tauri 2 app** (Rust + OS webview, Svelte frontend) that drives a
-**Python CLI sidecar** over JSON/JSONL subprocess communication. The app is the
-primary product; the CLI is the engine (also scriptable standalone).
+It is a **Tauri 2 app** (Rust + OS webview, Svelte frontend) whose binary also
+exposes a **native Rust CLI** (`src-tauri/src/cli.rs`). The GUI and the CLI are
+two entry points into the same Rust core: the same functions back both (Rule
+03, Rule 13). The app is the primary product; the CLI is scriptable standalone.
 
-> **App-first rule:** every GUI action maps 1:1 to a CLI command. The app never
-> imports the Python package. Logic lives in the CLI, not in the webview.
+> **App-first rule:** every GUI action maps 1:1 to a CLI subcommand because both
+> hit the same Rust core functions. Logic lives in the Rust core, not in the
+> webview.
 
 ---
 
@@ -21,8 +23,8 @@ primary product; the CLI is the engine (also scriptable standalone).
 | `resolver` | resolver.md | token-prober, dispatch-builder | Go-link token resolution via start→reveal API |
 | `database` | database.md | schema-designer, sync-orchestrator | SQLite schema, migrations, sync pipeline |
 | `dm` | dm.md | dm-detector, fdm-adapter, idm-adapter, torrent-adapter, folder-organizer | Download-manager detection, per-manager dispatch, folder folding |
-| `cli` | cli.md | command-designer, output-formatter | CLI engine, commands, JSON/JSONL contract |
-| `gui` | gui.md | app-shell, view-designer, sidecar-driver | Tauri 2 desktop app, Rust core, Svelte views, sidecar protocol |
+| `cli` | cli.md | command-designer, output-formatter | Native Rust CLI, subcommands, GUI/CLI parity |
+| `gui` | gui.md | app-shell, view-designer | Tauri 2 desktop app, Rust core, Svelte views, shared-core commands |
 | `shortcuts` | shortcuts.md | artwork-fetch, shortcut-builder | SteamGridDB artwork, per-OS native shortcuts |
 | `content` | content.md | provider-registry, steamgriddb-provider, vndb-provider, igdb-provider, itch-provider, steam-provider, indiedb-provider | External info + art enrichment (VNDB, IGDB, Steam, itch.io, IndieDB) |
 | `testing` | testing.md | fixture-crafter, mock-engineer, test-suite-architect, debugger | Test layers, fakes, coverage floors |
@@ -37,9 +39,9 @@ See [wiki/Agents](wiki/Agents) for the full agent catalog with sub-agent details
 | # | Name | Scope |
 | --- | --- | --- |
 | 00 | Governance & Delegation | Command chain, one-owner-per-artifact |
-| 01 | Code Style (Python) | Ruff, Pyright strict, 88-char, double quotes |
+| 01 | Code Style (Rust) | cargo fmt, cargo clippy -D warnings, rustfmt defaults |
 | 02 | Naming Conventions | Canonical vocab, file naming, enums |
-| 03 | Module Architecture | src layout, import-linter layers, contracts |
+| 03 | Module Architecture | src-tauri/src crate layout, module boundaries, contracts |
 | 04 | Remote Issue Protocol | Roadmap-first, sub-issue lifecycle, commit format |
 | 05 | Network Etiquette | 1 req/s, retry, offline fixtures, live opt-in |
 | 06 | SQLite Conventions | WAL, FK, migrations, store tokens not URLs |
@@ -47,9 +49,9 @@ See [wiki/Agents](wiki/Agents) for the full agent catalog with sub-agent details
 | 08 | Release Standards | SemVer, version sync, verification gate |
 | 09 | Mermaid Standards | GitHub v10, quoted labels, ≤12 nodes |
 | 10 | Security | Secrets, allowlists, subprocess safety |
-| 11 | Testing | Unit/integration/live layers, 85% coverage |
+| 11 | Testing | Rust unit/integration layers + Svelte Vitest, coverage floor |
 | 12 | Error Handling | Exit codes 0–5, typed errors, stdout vs stderr |
-| 13 | GUI Conventions | Tauri subprocess model, parity guardrails |
+| 13 | GUI Conventions | Shared-core invoke model, GUI/CLI parity guardrails |
 
 Full descriptions: `.agents/rules/index.md` and `wiki/Design-Conventions`.
 
@@ -60,28 +62,22 @@ Full descriptions: `.agents/rules/index.md` and `wiki/Design-Conventions`.
 Before any merge to `main`, all of the following must pass:
 
 ```bash
-# Formatting & types
-ruff format --check src/ tests/
-ruff check src/ tests/
-pyright
+# Rust core: formatting, linting, types, tests (from src-tauri/)
+cargo fmt --check
+cargo clippy -- -D warnings
+cargo check
+cargo test
 
-# Tests
-python -m pytest -q
-python -m pytest --cov --cov-fail-under=85
+# Svelte frontend: types + unit tests (from repo root)
+npm run check          # svelte-check
+npm run test           # Vitest unit tests for frontend views
 
-# Security
-bandit -r src/
-pip-audit
+# GUI build
+npm run tauri build    # all platforms
 
 # CLI smoke
 lewdzone-launcher --version
 lewdzone-launcher --help
-```
-
-For the Tauri desktop app (when scaffolded):
-
-```bash
-npm run tauri build     # all platforms
 ```
 
 ---
@@ -89,11 +85,12 @@ npm run tauri build     # all platforms
 ## Governance Principles
 
 1. **One owner per artifact.** A file or module has exactly one owning agent.
-2. **CLI is the primary interface.** The app is a thin Tauri shell around the CLI.
+2. **One core, two entry points.** The GUI and the CLI call the same Rust core
+   functions. The app is the primary product; the CLI is scriptable standalone.
 3. **Rules before code.** No implementation starts without its governing rule.
 4. **Fail loudly.** Never swallow errors to keep the build green.
 5. **ADR before contract change.** Any cross-layer interface change needs an ADR
-   filed in `docs/adr/` before implementation begins.
+   filed in `.agents/adr/` before implementation begins.
 
 See [Rule 00: Governance & Delegation](.agents/rules/rule-00-governance.md)
 for the full command chain and delegation matrix.

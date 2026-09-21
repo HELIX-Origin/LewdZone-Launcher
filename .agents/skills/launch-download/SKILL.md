@@ -47,9 +47,10 @@ flowchart LR
    route exclusively to the torrent-adapter.
 3. **Record the job** row (`status=dispatched`) before spawning.
 4. **Spawn silently and detach**:
-   - Windows: `CREATE_NO_WINDOW`, `shell=False`.
-   - POSIX: `start_new_session=True`.
-   - Never `shell=True`; never wait for the manager's full lifetime.
+   - Windows: `CREATE_NO_WINDOW`.
+   - POSIX: detached session.
+   - Always an argv array via `std::process::Command` (no shell); never wait
+     for the manager's full lifetime.
 5. **Confirm spawn**; on failure mark the job `failed` and map the error.
 6. **On completion** (manager finishes), run
    [folder-organizer](../agents/dm/folder-organizer/folder-organizer.md):
@@ -63,6 +64,6 @@ flowchart LR
 - [ ] adapter chosen by kind (http vs torrent)
 - [ ] job row `dispatched` before spawn
 - [ ] spawn silent + detached (`CREATE_NO_WINDOW` / `start_new_session`)
-- [ ] `shell=False`, args array (no interpolation)
+- [ ] argv array only, no shell, no interpolation
 - [ ] exit 4 with manager alternatives when nothing installed
 - [ ] completion folded + never overwrite

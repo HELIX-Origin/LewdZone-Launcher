@@ -9,46 +9,42 @@ model: default
 
 ## Boundary of responsibility
 
-Design and maintain the **test suite as a product**: a vitest-style, modular,
-fast, debuggable pytest suite living in a `tests/` subfolder that grows with
-the codebase. Owns suite structure, conftest, markers, coverage, report
-tooling, and watch/diagnostics ergonomics.
+Design and maintain the **test suite as a product**: a modular, fast,
+debuggable Rust test suite living in `src-tauri/tests/` that grows with the
+codebase, plus a Vitest suite for the Svelte views. Owns suite structure,
+shared test helpers, coverage, report tooling, and watch/diagnostics
+ergonomics.
 
-## Vitest-parity goals (what we borrow from the vitest experience)
+## Suite map (Rust core + Svelte views)
 
-| Vitest feature | Our pytest equivalent | Purpose |
+| Layer | Location | Purpose |
 |---|---|---|
-| `*.test.ts` co-located | `tests/unit/<module>/test_<module>.py` | modular, discoverable tests |
-| describe/it blocks | `test_` functions + classes | readable spec output |
-| watch mode | `pytest-watch` (`ptw`) | auto-rerun on save |
-| coverage report | `pytest-cov` + `coverage.xml` | % proof per module |
-| UI / rich reporter | `pytest-html`, `pytest-sugar` | readable local output |
-| per-test isolation | conftest fixtures + in-memory SQLite | hermetic tests |
-| snapshots | golden files (`tests/fixtures/golden/`) | stable CLI/JSON output |
-| mocked timers | injected clocks / `freezegun` | deterministic timing tests |
+| Rust unit tests | `src-tauri/src/**` `#[cfg(test)]` | fast, offline |
+| Rust integration | `src-tauri/tests/` (module-mirror) | wiring, DB, CLI e2e |
+| Live (opt-in) | `#[ignore]` tags | real network, keys |
+| Svelte unit | `src/**/*.test.ts` via Vitest | view states, logic |
+| Golden/parity | `src-tauri/tests/fixtures/golden/` | stable `--json` output |
+| Shared fakes | `src-tauri/tests/support/` | fake DM exe, fake HTTP |
 
 ## Suite layout (canonical)
 
 ```mermaid
 flowchart TD
-    T["tests/"] --> C[conftest.py - shared fixtures]
-    T --> PY[pytest markers + config in pyproject]
-    T --> U["unit/ - mirror of module tree"]
-    T --> I["integration/ - offline, wiring tests"]
-    T --> L["live/ - opt-in real-network tests"]
+    T["src-tauri/tests/"] --> S["support/ - fakes, fake dm exe, helpers"]
+    T --> U["unit + integration - mirror of module tree"]
+    T --> L["live/ - #[ignore] real-network tests"]
     T --> F["fixtures/ - html, json, golden, sql"]
-    T --> S["support/ - fakes, fake fdm.exe, helpers"]
 
-    U --> U1["test_scraping/"]
-    U --> U2["test_resolver/"]
-    U --> U3["test_db/"]
-    U --> U4["test_cli/"]
-    U --> U5["test_gui/"]
-    U --> U6["test_fdm/"]
-    U --> U7["test_shortcuts/"]
-    U --> U8["test_core/"]
+    U --> U1[scraper.rs tests + fixtures]
+    U --> U2[resolver/]
+    U --> U3[db/]
+    U --> U4[cli/]
+    U --> U5[gui parity]
+    U --> U6[dm/]
+    U --> U7[shortcuts/]
+    U --> U8[content/]
 
-    S --> SF[fakes.py, paths.py, server.py]
+    S --> SF[helpers.rs, fakes.rs, fake dm exe]
     F --> FH["html/ lz_game.html, lz_archive.html"]
     F --> FJ["json/ start.json, reveal.json, retry.json"]
     F --> FG["golden/ search--json.txt, ..."]
@@ -58,66 +54,60 @@ flowchart TD
     style S fill:#874b4b,color:#fff
 ```
 
-Unit tests mirror the package tree exactly (`tests/unit/scraping/`,
-`tests/unit/resolver/`, ...) so a failing test's path names the code under
-test. One test file per source module (`test_<module>.py`), except where a
-module is tiny and benefits from grouping.
+Unit/integration tests mirror the module tree under `src-tauri/tests/` so a
+failing test's path names the code under test.
 
 ## Suite invariants
 
-1. **Deterministic**: no fixtures hit the network; no `time.sleep` in unit
-   tests; clocks injected everywhere.
+1. **Deterministic**: no fixtures hit the network; no sleeps; clocks injected
+   everywhere.
 2. **Isolated**: every test gets fresh in-memory SQLite + empty temp dirs via
-   autouse fixtures.
-3. **Layered markers**:
-   `unit` (fast, default), `integration` (offline wiring), `live` (opt-in,
-   needs secrets), `gui` (needs display / xvfb), `windows` (needs Win
-   APIs — skip-guarded on non-Windows).
-4. **Coverage floors** enforced in CI:
-   `--cov lewdzone --cov-fail-under=85` overall, and module-level checks for
-   core logic (parsers, resolver, naming, organizer, exit codes) at >= 90%.
-5. **Watch mode**: `scripts/test-watch.bat` runs `ptw -- -q` so a dev writes
-   code, sees feedback, keeps iterating.
-6. **Focused run guidance**: `pytest tests/unit/scraping -k treasure` etc.
+   shared test helpers.
+3. **Layered execution**: default `cargo test` runs the offline suite; `#[ignore]`
+   tags cover live (needs secrets) and platform-specific (Windows-only API)
+   tests, skip-guarded via `#[cfg(target_os = ...)]`.
+4. **Coverage floors** enforced in CI: `cargo llvm-cov` — core logic
+   (parsers, resolver, naming, organizer, exit codes) at >= 90%; view logic
+   via Vitest coverage at >= 70%.
+5. **Watch mode**: `cargo watch -x test` for Rust; Vitest `--watch` for views.
+6. **Focused run guidance**: `cargo test scraper::` / `cargo test -- clique`
+   style namespaced runs.
 
 ## Debug-grade tooling config
 
 ```mermaid
 flowchart LR
-    P[pytest] --> O[--pdb - drops on failure]
-    P --> S[pytest-sugar - rich progress]
-    P --> C[pytest-cov - html + xml]
-    P --> H[pytest-html - browsable report]
-    P --> L["--log-cli-level=DEBUG - see logs"]
-    P --> V[--lf --ff - rerun last failures first]
+    P[cargo test] --> O["-- --nocapture - see logs"]
+    P --> L["RUST_LOG=debug - see logs"]
+    P --> C[cargo llvm-cov - html + json]
+    P --> N[standard harness - clean report]
+    P --> V[-- --ignored - live suite]
 
     style P fill:#4b6e91,color:#fff
     style O fill:#2f6f4f,color:#fff
-    style S fill:#874b4b,color:#fff
-    style C fill:#2f6f4f,color:#fff
-    style H fill:#2f6f4f,color:#fff
+    style C fill:#874b4b,color:#fff
+    style N fill:#2f6f4f,color:#fff
 ```
 
-Runbook (document in `tests/README.md`):
-- `pytest -q` — suite.
-- `pytest --lf --ff -q` — rerun failures.
-- `pytest --pdb` — drop into debugger at first failure.
-- `pytest --report=html` — visual report for sharing.
-- `pytest --coverage-report` — open HTML coverage.
-- `scripts/test-watch.bat` — watch loop.
+Runbook (document in `src-tauri/tests/README.md`):
+- `cargo test` — default offline suite.
+- `cargo test -- --ignored` — live tests (keys required).
+- `cargo test -- --nocapture` — show stdio/tracing output.
+- `cargo llvm-cov` — HTML + JSON coverage report.
+- `npm run test` — Vitest suite for views.
 
 ## CI wiring
 
-- CI runs `unit + integration` only. `live` and `gui` run in explicit manual
-  jobs.
-- Fast feedback: a `fast` marker subset (< 10 s) runs on every push; full
-  suite nightly.
-- On failure, artifacts: coverage report + `pytest-html` report published.
+- CI runs the offline suite only. Live (`#[ignore]`) tests run in explicit
+  manual jobs.
+- Fast feedback: a fast subset (< 10 s) runs on every push; full suite
+  nightly.
+- On failure, artifacts: coverage report (llvm-cov) published.
 
 ## Definition of done
 
-- `tests/` layout above exists with conftest + markers configured; running
-  `pytest -q` gives a fast, colorized summary.
-- `--cov` report shows per-module coverage; floors enforced.
+- `src-tauri/tests/` layout above exists with support helpers configured;
+  running `cargo test` gives a fast, clean summary.
+- `cargo llvm-cov` shows per-module coverage; floors enforced.
 - A new feature lands with its unit tests + (if external) fixtures, and the
   watch loop reruns them on save.

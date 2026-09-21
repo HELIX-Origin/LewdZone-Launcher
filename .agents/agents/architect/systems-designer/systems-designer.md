@@ -9,8 +9,8 @@ model: default
 
 ## Boundary of responsibility
 
-- Proposes the module/package tree (e.g. `lewdzone/` package with
-  `core`, `scraping`, `resolver`, `db`, `fdm`, `gui`, `cli` subpackages).
+- Proposes the crate/module tree (e.g. the `src-tauri/src/` crate with `core`,
+  `scraping`, `resolver`, `db`, `dm`, `cli` modules).
 - Defines dependency direction (layering) and forbids cycles.
 - Specifies public interfaces / protocols for each module (what a module must
   expose to the rest of the app).
@@ -19,7 +19,7 @@ model: default
 ## Inputs
 
 - Mission + pillars from `../architect.md`.
-- Site facts (from scraper research / `.agents/rules/network-etiquette.md`).
+- Site facts (from scraper research / `.agents/rules/rule-05-network-etiquette.md`).
 - Any ratified ADRs.
 
 ## Module layering (proposed dependency direction)
@@ -28,7 +28,7 @@ model: default
 flowchart TD
     subgraph UI["frontends - equal citizens"]
         CLI["cli - command parsers"]
-        GUI["gui - Tkinter views"]
+        GUI["gui - Tauri webview views"]
     end
     subgraph SVC["controllers layer"]
         S1["controllers: sync/search/download/settings/shortcuts"]
@@ -41,12 +41,12 @@ flowchart TD
         I1[db - SQLite repository]
         I2[scraping - fetch + parse]
         I3[resolver - go-link token API]
-        I4[fdm - Free Download Manager bridge]
+        I4[dm - download-manager adapters]
         I5[shortcuts - lnk + SteamGridDB art]
     end
     subgraph EXT["external seams"]
         E1["lewdzone.com site"]
-        E2[FDM executable]
+        E2[FDM / IDM / torrent executables]
         E3[SQLite file on disk]
         E4[SteamGridDB API]
         E5[desktop .lnk files]
@@ -77,7 +77,7 @@ the same controllers; a GUI action maps to a CLI command and vice versa.
 
 ## Outputs (deliver to architect for ratification)
 
-1. `ARCHITECTURE.md` draft: module tree with one-paragraph responsibility per
+1. `wiki/Architecture.md` draft: module tree with one-paragraph responsibility per
    module.
 2. ASCII dependency diagram showing allowed import directions.
 3. Interface stub list: for each seam, the function/class signatures the other
@@ -92,8 +92,8 @@ the same controllers; a GUI action maps to a CLI command and vice versa.
    the repository facade).
 3. Network calls (site + api.php) only live in `scraping`/`resolver`; FDM calls
    only in `fdm`; GUI only in `gui`.
-4. Prefer protocol classes (typing.Protocol) over inheritance for seams.
-5. No `from module import *`.
+4. Prefer explicit traits / trait objects over inheritance for seams.
+5. No glob imports inside `src`.
 
 ## Definition of done
 

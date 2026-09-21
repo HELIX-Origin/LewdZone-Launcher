@@ -20,9 +20,9 @@ discoverable.
 | name | `download` |
 | args | `GAME` (slug or id, required) |
 | options | `--version V`, `--platform WINDOWS`, `--tab official|community`, `--host HOST`, `--json`, `--resume`, `--queue` |
-| behavior | resolves the selected go-link via resolver, submits DownloadJob to fdm-bridge |
-| exit codes | 0 ok, 1 no game found, 2 bad platform, 3 resolution failed, 4 fdm missing, 5 interrupted |
-| controller | `controllers/demo.download_game(...)` |
+| behavior | resolves the selected go-link via resolver, submits DownloadJob to the active dm adapter |
+| exit codes | 0 ok, 1 no game found, 2 bad platform, 3 resolution failed, 4 dm missing, 5 interrupted |
+| controller | `controllers::download::download_game(...)` |
 | json out | `{"job_id":..., "title":..., "url_host":...}` |
 
 ## Command flow wiring
@@ -36,7 +36,7 @@ flowchart TD
     F -- human --> G[table output]
     F -- json --> H[stdout json]
     B -- download --> I["dispatch-builder --> resolver"]
-    I --> J[Join fdm submit]
+    I --> J[dm dispatch - submit to adapter]
     J --> K[job_id out]
     B -- unknown --> L[usage error exit 2]
 
@@ -54,7 +54,7 @@ flowchart TD
 3. Arguments vs options: positional for the one thing the command acts on
    (`GAME`); everything tunable is an option.
 4. Exit codes are global, stable, documented in one place
-   (`cli/exitcodes.py`) and tested.
+   (`src-tauri/src/cli.rs` exit-code registry) and tested.
 5. A new command MUST define its GUI twin at the same time (parity rule from
    `.agents/agents/cli/cli.md`).
 

@@ -1,6 +1,6 @@
 ---
 name: shortcut-builder
-role: Sub-agent under shortcuts. Owns .lnk creation, start-menu placement, and idempotent rebuilds.
+role: Sub-agent under shortcuts. Owns native shortcut creation (.lnk/.desktop/.app), start-menu/Applications placement, and idempotent rebuilds.
 tools: Read, Write, Edit, Glob, Grep, Bash
 model: default
 ---
@@ -9,8 +9,8 @@ model: default
 
 ## Boundary of responsibility
 
-Take an organized game folder + an optional `.ico` and produce working Windows
-shortcuts. This is the ONLY agent allowed to manipulate `.lnk` files.
+Take an organized game folder + an optional `.ico` and produce working native
+shortcuts. This is the ONLY agent allowed to manipulate shortcut files.
 
 ## Where shortcuts go
 
@@ -37,18 +37,22 @@ flowchart LR
     style L fill:#874b4b,color:#fff
 ```
 
-## Implementation notes (Windows, winwz)
+## Implementation notes (per OS)
 
-- Use the WScript Shell COM interface (`win32com.client.Dispatch("WScript.Shell")`)
-  or the packaged `windows shortcut API`; python env must have `pywin32`.
-- `shell.CreateShortcut(path)` -> set `TargetPath`, `WorkingDirectory`,
+- Windows: use the Shell COM interface (`WScript.Shell`) via the `windows`
+  crate — no Python, no `win32com`.
+  `shell.CreateShortcut(path)` -> set `TargetPath`, `WorkingDirectory`,
   `Arguments`, `IconLocation`, `Description`, then `.Save()`.
 - Start Menu root:
   `%APPDATA%\Microsoft\Windows\Start Menu\Programs\<lewdzone>/<Title>.lnk`
-  (create `lewdzone` subfolder by default).
+  (create a `lewdzone` subfolder by default).
 - Desktop root: `%USERPROFILE%\Desktop`.
+- Linux: write a `.desktop` entry (`Exec=`, `Icon=`, `Path=`,
+  `Terminal=false`) into `~/.local/share/applications/` and optional Desktop.
+- macOS: create a Finder alias to the executable via `NSURL`/`FileManager`;
+  place it in `~/Applications` and/or Desktop.
 - Game names may contain characters invalid in filenames — sanitize per
-  `.agents/rules/naming-conventions.md` (strip `/<>\|:*?"`).
+  `.agents/rules/rule-02-naming-conventions.md` (strip `/<>\|:*?"`).
 
 ## Primary-exe detection
 
@@ -80,4 +84,5 @@ flowchart TD
   Desktop links; second run produces identical results (idempotent).
 - Broken-target path covered by unit test (nonexistent exe still yields a
   `.lnk` + repair row).
-- Windows-only module; guarded import so non-Windows test runs skip it.
+- Per-OS modules behind `#[cfg(target_os = ...)]`; tests guard so
+  non-matching platforms skip.

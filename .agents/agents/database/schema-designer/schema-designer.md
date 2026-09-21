@@ -9,7 +9,7 @@ model: default
 
 ## Boundary of responsibility
 
-Design + maintain the SQLite schema AND the canonical Python dataclasses that
+Design + maintain the SQLite schema AND the canonical Rust structs that
 mirror it. The canonical models are the contracts every other family imports,
 so schema changes here ripple outward — always via ratified ADR.
 
@@ -75,18 +75,20 @@ erDiagram
 (M2M reality: use a `GAME_GENRE(game_id, genre_id)` join table; mermaid shows
 the conceptual edge.)
 
-## Canonical Python models (authoritative here)
+## Canonical Rust models (authoritative here)
 
-```python
-@dataclass
-class Game: ...            # scrape/game-page-scraper extends the same shape
-@dataclass
-class Session: ...
+```rust
+// scrape/game-page-scraper extends the same shape; derives are the contract
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct Game { /* … */ }
+
+#[derive(Debug, Clone)]
+pub struct Session { /* … */ }
 ```
 
-Rule: dataclasses live in `lewdzone/core/models.py`; repositories map rows ->
-models and back. Models must stay JSON-serializable (survive pickle/JSON for
-GUI cross-thread copy).
+Rule: models live in `src-tauri/src/core/models.rs`; repositories map rows ->
+models and back. Models derive `Clone` + `Serialize` so they can cross the
+Tauri webview boundary and be shared across threads.
 
 ## Non-negotiables
 
@@ -98,7 +100,7 @@ GUI cross-thread copy).
 
 ## Definition of done
 
-- Schema matches the erDiagram above; datecast/migrations exist and are 1:1
+- Schema matches the erDiagram above; migration files exist and are 1:1
   with the rendered models.
 - A test creates the schema in-memory, inserts a full game, and reads it back
   item-for-item.

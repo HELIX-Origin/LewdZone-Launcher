@@ -4,27 +4,53 @@
 
 ## Config file
 
-LewdZone-Launcher stores a JSON config file in the per-OS config dir:
+LewdZone-Launcher stores a JSON config file in the per-OS config dir
+(`<config_root>/lewdzone-launcher/config.json`, mirrored on the Steam layout —
+see [Architecture](Architecture) → Folder structure):
 
 | OS | Path |
 | --- | --- |
-| Windows | `%APPDATA%/lewdzone/config.json` |
-| Linux | `$XDG_CONFIG_HOME/lewdzone/config.json` (or `~/.config/lewdzone/config.json`) |
-| macOS | `~/Library/Application Support/lewdzone/config.json` |
+| Windows | `%APPDATA%/lewdzone-launcher/config.json` |
+| Linux | `$XDG_CONFIG_HOME/lewdzone-launcher/config.json` (or `~/.config/lewdzone-launcher/config.json`) |
+| macOS | `~/Library/Application Support/lewdzone-launcher/config.json` |
 
 ## Key settings
 
 ```jsonc
 {
-  "download-root": "D:/Games",            // where downloaded games go
-  "dm": "fdm",                            // active download manager
-  "site": "https://lewdzone.com",         // base URL (do not change)
-  "artwork-cache": true,                  // cache provider artwork locally
-  "api-throttle-req-per-sec": 1,          // rate limit for site requests
-  "content-providers-enabled": "steamgriddb, vndb, itch",  // active content providers
-  "content-priority": "steamgriddb, vndb, igdb, itch, steam, indiedb" // dispatch order
+  "download-root": "D:/Games",          // library root (ADR-0005), default <data_root>/library
+  "dm": "fdm",                          // active download manager
+  "content-priority": "steamgriddb, vndb, igdb, itch, steam, indiedb", // dispatch order
+  "capture-aware": true,                // installer capture heuristics
+  "theme": "Pink Neon"                  // theme skin name (unset = built-in default)
 }
 ```
+
+## Theme skins (ADR-0005)
+
+Themes are first-class: a skin package lives at
+`<config_root>/lewdzone-launcher/skins/<Name>/theme.json` and overrides the
+`--lz-*` design tokens via CSS custom properties (optional `assets/` folder).
+Skins may only carry tokens + assets — never scripts ([Security](Security)).
+A malformed skin falls back to the built-in default theme.
+
+| Token | Default | Meaning |
+| --- | --- | --- |
+| `--lz-accent` | `#CB3D80` | site magenta accent |
+| `--lz-primary` | `#BC2A5E` | hot pink (icon two-tone) |
+| `--lz-cyan` | `#32B6CD` | cyan (icon two-tone) |
+| `--lz-bg` | `#14121A` | near-black purple tint |
+| `--lz-surface` / `--lz-surface-2` | `#1F1B28` / `#2A2434` | panel surfaces |
+| `--lz-text` / `--lz-text-dim` | `#F4F1F6` / `#BDB3C6` | text colors |
+| `--lz-danger` | `#E5484D` | errors/destructive |
+| `--lz-ok` | `#46D88B` | success |
+
+```sh
+lewdzone-launcher settings set theme "Pink Neon"
+lewdzone-launcher settings get theme
+```
+
+Switch skins in **Settings → Appearance** without restarting.
 
 ## Content-provider API keys
 
@@ -55,10 +81,12 @@ lewdzone-launcher settings get <key>
 lewdzone-launcher settings set <key> <value>
 ```
 
-## Download root
+## Library root
 
-The root under which `Games/` is created; downloads fold into:
-`<download-root>/Games/<Title>/<Title> - <Version> - <Platform>[- <Variant>].<ext>`
+ADR-0005 mirrors Steam's multi-root library: the active library root is chosen
+by the `library-root` setting (default `<data_root>/lewdzone-launcher/library`).
+Per-game manifests (`appmanifest_<post_id>.json`) are the source of truth for
+installed games; see [Architecture](Architecture) → Folder structure.
 
 ## Active download manager
 
@@ -72,16 +100,15 @@ lewdzone-launcher dm set active <name>
 
 ## Database
 
-SQLite database lives in the same config dir as the config file:
-`<config-dir>/lewdzone.db`. Configured with WAL journaling, foreign keys ON,
-busy timeout 5000ms. See [Architecture](Architecture) → Data model.
+SQLite database lives at `<data_root>/lewdzone-launcher/lewdzone.db`.
+Configured with WAL journaling, foreign keys ON, busy timeout 5000ms. See
+[Architecture](Architecture) → Data model.
 
 ## Version
 
 The app version is the single source of truth; it is synced across:
-- Tauri manifest (`src-tauri/Cargo.toml` / `tauri.conf.json`)
-- Python `__version__` in `lewdzone_launcher/__init__.py`
-- Package metadata (`pyproject.toml`)
+- `src-tauri/Cargo.toml` (crate version + `tauri.conf.json`)
+- `package.json`
 
-Sidecar version must equal the app version (enforced at startup). See
-[Release Process](Release-Process).
+The CLI reports the same version as the app (`lewdzone-launcher --version`).
+See [Release Process](Release-Process).

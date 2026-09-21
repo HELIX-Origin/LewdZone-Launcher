@@ -5,7 +5,7 @@
 ## Requirements
 
 - **Windows**, **Linux**, or **macOS**
-- **Python 3.x** for the command-line engine
+- **Rust toolchain** (stable) + **Node.js/npm** when building from source
 - A **download manager** for actual transfers:
   - Windows: Free Download Manager (FDM) or Internet Download Manager (IDM)
   - Any platform: uTorrent / BitTorrent for torrent links
@@ -15,8 +15,9 @@
 ## Quick start (CLI)
 
 ```sh
-# install the Python package (from a source checkout)
-pip install -e .
+# build the CLI (from a source checkout) — see Installing & Building
+cargo build --release          # from src-tauri/
+./target/release/lewdzone-launcher --help
 
 # point the tool at your download root
 lewdzone-launcher settings set download-root "D:/Games"

@@ -8,9 +8,9 @@ model: default
 # Scraper (Primary Agent)
 
 Owns *reading* the site: the games archive, genre listings, and individual game
-pages. The scraper family converts raw HTML into clean, typed Python data
-structures. It does NOT resolve download URLs (that is the resolver's job) and
-does NOT persist anything (that is the database's job).
+pages. The scraper family converts raw HTML into clean, typed Rust structs. It
+does NOT resolve download URLs (that is the resolver's job) and does NOT
+persist anything (that is the database's job).
 
 ## Mission
 
@@ -33,15 +33,15 @@ testable against saved HTML fixtures, and emits one canonical schema.
 
 ## Guidelines (non-negotiable)
 
-1. NEVER parse with regex where a real parser works — prefer an HTML parser.
-   Choose a single parser lib and declare it in `.agents/rules/code-style.md`
-   (stdlib `html.parser` is acceptable; a third-party lib must be justified).
-2. Every parser takes `(html: str) -> Model` and is 100% pure (no network).
-   Network fetching lives in a thin fetch helper (`scraping/fetch.py`).
+1. NEVER parse with regex where a real parser works — prefer an HTML parser
+   crate (e.g. `scraper`, declared in `Cargo.toml`). No ad-hoc regex
+   extraction.
+2. Every parser takes `(html: &str) -> Model` and is 100% pure (no network).
+   Network fetching lives in a thin fetch helper (`src-tauri/src/scraper/fetch.rs`).
 3. Every parse result uses the canonical models (Game, Genre, Version,
    DownloadEntry, GameCard) defined by `database/schema-designer`.
-4. Structural unknowns (nil fields) must be `Optional` — never crash on missing
-   sections.
+4. Structural unknowns (nil fields) must be `Option<T>` — never crash on
+   missing sections.
 5. Parsers are built against saved fixtures FIRST (see `fixture-engineer`), so
    tests never hit the live site. Live site verification happens only via the
    `site-alpha-test` exercise defined by `testing/mock-engineer`.
@@ -56,7 +56,7 @@ flowchart LR
         C["genre page<br/>/game-genre/slug/"]
     end
 
-    F["fetch helper<br/>scraping/fetch.py"] --> A
+    F["fetch helper<br/>src-tauri/src/scraper/fetch.rs"] --> A
     F --> B
     F --> C
 
@@ -78,9 +78,9 @@ flowchart LR
 
 ## Deliverables
 
-- `scraping/` package: fetch helper + parsers + canonical models import.
+- `src-tauri/src/scraper/` module: fetch helper, parsers, canonical models.
 - Markdown "parse map" per page type (where each field lives in the HTML),
-  kept in `docs/parsing/`.
+  kept in the owning sub-agent docs (`.agents/agents/scraper/*/`).
 
 ## Definition of done
 

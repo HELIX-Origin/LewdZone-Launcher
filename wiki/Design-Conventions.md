@@ -6,11 +6,11 @@
 
 | Item | Convention |
 | --- | --- |
-| Python files / vars / table names | `snake_case` |
-| Python types / classes / agents | `PascalCase` |
+| Rust files / vars / DB table names | `snake_case` |
+| Rust types / structs / enum variants | `PascalCase` (e.g. `Platform::PC`) |
 | CLI commands / subcommands | `kebab-case` |
-| Domain enum values | UPPER_CASE (`Platform.PC`, `Platform.ANDROID`) |
-| Tauri / JS variables | `camelCase` |
+| Rust consts / serialized enum values | UPPER_CASE (`"PC"`, `"ANDROID"`) |
+| Svelte / JS variables | `camelCase` |
 | Download files | `<Title> - <Version> - <Platform>[- <Variant>].<ext>` |
 | Shortcut group / folder | `lewdzone` |
 
@@ -22,11 +22,11 @@
 
 ## Code style
 
-- **Ruff** format + lint; **Pyright** strict
-- Black-compatible (88-char), double quotes
-- `isort` via ruff; full type annotations; no bare `Any`
-- `NewType` / `TypeAlias` for domain IDs (`PostId`, `GameId`)
-- `Literal` and discriminated unions over flag booleans
+- **rustfmt** (`cargo fmt`) + **clippy** with `-D warnings` as the gate; `cargo check`
+- Module-level `pub` types documented; no `unwrap()` outside tests and top-level
+  entry points — use `?` with typed errors (Rule 12)
+- Newtype wrappers for domain IDs (`PostId(u64)`, `GameId(u64)`, `GoToken`)
+- Explicit `enum` variants over flag booleans
 
 ## Mermaid diagrams
 
@@ -49,5 +49,5 @@ Full rule: [Rule 09](../.agents/rules/rule-09-mermaid-standards).
 ## ADRs
 
 Cross-layer contract changes require an **Architecture Decision Record**
-before implementation, filed in `docs/adr/` using the template
+before implementation, filed in `.agents/adr/` using the template
 [`templates/adr.md`](../.agents/templates/adr.md).

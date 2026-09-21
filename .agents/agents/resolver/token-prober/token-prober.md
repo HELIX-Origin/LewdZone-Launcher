@@ -56,7 +56,7 @@ flowchart TD
 
 - One request at a time per token; the app should serialize resolutions.
 - Always send the required headers; treat the site as a shared, public
-  resource (`.agents/rules/network-etiquette.md`).
+  resource (`.agents/rules/rule-05-network-etiquette.md`).
 - If `captcha` ever becomes `1`, raise a clear, user-visible error — do not
   attempt auto-solving.
 

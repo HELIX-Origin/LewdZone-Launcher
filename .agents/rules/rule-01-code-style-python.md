@@ -1,84 +1,81 @@
 ---
-name: code-style-python
+name: code-style-rust
 rule_number: "01"
-scope: all python source
-enforcement: ruff format + lint, pyright strict, pre-commit
+scope: all rust source
+enforcement: cargo fmt --check, cargo clippy -D warnings, cargo check
 ---
 
-# Rule 01: Python Code Style
+# Rule 01: Rust Code Style
 
-Every `.py` byte in lewdzone-launcher must pass ruff (format + lint) and pyright
-strict. Style is enforced by tooling, not by taste.
+> Historical note: the `-python` filename is kept for path stability; this
+> rule governs **Rust** code style only.
+
+Every `.rs` byte in lewdzone-launcher must pass `cargo fmt` (format) and
+`cargo clippy` with `-D warnings` (lint). Style is enforced by tooling, not by
+taste.
 
 ## Tooling baseline
 
 | Tool | Config anchor | Enforced |
 | --- | --- | --- |
-| `ruff format` | default black-compatible | formatting |
-| `ruff check` | `select = ["E","F","I","UP","B","SIM","C4","S"]`-style curated set | lint |
-| `pyright --strict` | `pyproject.toml [tool.pyright]` | types |
-| `pre-commit` | runs ruff + pyright on staged files | hook |
+| `cargo fmt` | rustfmt defaults | formatting |
+| `cargo clippy -- -D warnings` | curated allowlist on `src-tauri/src/lib.rs` | lint |
+| `cargo check` / `cargo test` | `Cargo.toml` | types + tests |
 
 ## Format rules
 
-1. Black-compatible: 88-char line length, double quotes, trailing commas in
-   multi-line collections and calls.
-2. Import section order: stdlib → third-party → local (`lewdzone_launcher`), one
-   blank line between groups; `isort` via ruff.
-3. No unused imports/variables (`F401`, `F841`).
-4. Wrap lines with parentheses, not backslashes.
+1. rustfmt defaults: 4-space indent, module order (declarations → imports →
+   items), rustfmt-compatible line breaking.
+2. Imports: `use` grouped and sorted; no wildcard `*` imports inside `src/`.
+3. No unused imports/items (`cargo clippy` flags `unused_imports`).
+4. Prefer `std::path::PathBuf` over `String` for filesystem paths.
 
 ## Naming (see also Rule 02)
 
 - Modules/files: `snake_case`.
-- Packages: lowercase, no underscores (`lewdzone_launcher`, packages inside are
-  `scraper`, `resolver`, `db`, `dm`, `cli`, `gui`).
-- Classes: `PascalCase`. Functions/methods/variables/params: `snake_case`.
+- Types/structs/enum variants: `PascalCase`. Functions/methods/variables:
+  `snake_case`.
 - Constants: `UPPER_SNAKE`.
-- Private module members: leading `_`; never double underscore in names except
-  dunders.
-- Type aliases: `PascalCase` with `TypeAlias` annotation.
+- Non-`pub` items are crate-private; keep the public API surface minimal.
 
-## Types (pyright strict)
+## Types
 
-1. Every public function/method has full annotations for params and return.
-2. Module-level and class-level annotated attributes; typed dataclasses for
-   domain models (see Rule 02/03 canonical models).
-3. No bare `Any` in public signatures. No `# type: ignore` without an
-   accompanying `# reason:` comment; keep count near zero.
-4. Use `NewType` or `TypeAlias` for domain primitives where unit confusion is
-   possible (e.g. `GameId = NewType("GameId", int)`, `PostId`).
-5. `Optional` vs `None` default: prefer explicit `= None` default with
-   `| None`.
-6. Discriminated unions (`Literal`/`TypeVar`/dataclass union) preferred over
-   flag booleans for modes (e.g. `SortMode`, `Platform`, `TabId`).
+1. Every `pub` function has explicit parameter and return types.
+2. Domain models are plain structs/enums with explicit derives (see Rule
+   02/03 canonical models).
+3. No `unwrap()`/`expect()` outside tests and top-level entry points — use `?`
+   with typed errors ([Rule 12](./rule-12-error-handling.md)).
+4. Newtype wrappers for domain primitives where unit confusion is possible
+   (e.g. `struct PostId(u64)`, `struct GoToken(String)`).
+5. `Option<T>` for possibly-absent values, never sentinel strings.
+6. `enum` variants over flag booleans for modes (e.g. `SortMode`, `Platform`,
+   `TabId`).
 
-## Anti-patterns (fail lint)
+## Anti-patterns (fail clippy/lint)
 
-```python
-# BAD: global mutable, bare except, magic parse, stringly-typed
-state = {}
-try:
-    ...
-except:
-    ...
-x = url.split("#t=")[1].split(".")          # stringly-typed token handling
-def handle(thing): ...                        # untyped
+```rust
+// BAD: global mutable state, panic in library code, stringly-typed tokens
+static STATE: std::sync::Mutex<HashMap<String, String>> = /* … */;
+let _parts: Vec<&str> = url.split("#t=").collect(); // stringly-typed token handling
+pub fn handle(thing: &str) -> String { thing.to_string() } // stringly-typed
 ```
 
-```python
-# GOOD
-@dataclass(frozen=True)
-class DownloadEntry:
-    platform: Platform
-    tab: DownloadTab
-    label: str
-    token: GoToken                     # typed domain value object
+```rust
+// GOOD
+#[derive(Debug, Clone)]
+pub struct DownloadEntry {
+    pub platform: Platform,
+    pub tab: DownloadTab,
+    pub label: String,
+    pub token: GoToken, // typed domain value object
+}
 ```
 
 ## Verify
 
-- `ruff format --check .`
-- `ruff check .`
-- `pyright --verifytypes lewdzone_launcher`
-- `pre-commit run --all-files`
+From `src-tauri/`:
+
+- `cargo fmt --check`
+- `cargo clippy -- -D warnings`
+- `cargo check`
+- `cargo test`

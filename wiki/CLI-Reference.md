@@ -1,8 +1,8 @@
 # CLI Reference
 
 > Links between wiki pages are relative and omit the `.md` extension. The CLI
-> is the single source of truth: the desktop app dispatches the exact same
-> commands.
+> and the desktop app are entry points into the same Rust core: every GUI
+> action maps 1:1 to a CLI command.
 
 ## Usage
 
@@ -15,7 +15,6 @@ lewdzone-launcher <command> [options]
 | Option | Meaning |
 | --- | --- |
 | `--json` | one JSON document per command on stdout |
-| `--jsonl` | streaming JSONL events for long-running commands |
 | `--verbose` | debug logging to stderr |
 | `--version` | print version |
 
@@ -61,9 +60,8 @@ Torrent links are only accepted by a torrent-capable manager.
 
 - **Query commands:** single JSON doc, e.g.
   `{"games":[...],"count":42}`.
-- **Long-running commands:** newline-delimited events:
-  `{"event":"progress","progress":0.4,"message":"parsing page 3/12"}`
-  ending with `{"event":"result","data":{...}}`.
+- **Long-running commands:** progress lines go to **stderr**; stdout stays
+  machine-clean.
 - Every long command with `--json` emits its final result as one JSON doc on
   completion.
 - Errors go to **stderr**; stdout stays machine-parseable even on failure.
@@ -75,7 +73,7 @@ lewdzone-launcher search --query "nad" --json
 lewdzone-launcher info --game treasure-of-nadia --json
 lewdzone-launcher download --game treasure-of-nadia \
   --version latest --platform windows --tab official --json
-lewdzone-launcher list --status installed --jsonl
+lewdzone-launcher list --status installed --json
 lewdzone-launcher dm list --json
 ```
 

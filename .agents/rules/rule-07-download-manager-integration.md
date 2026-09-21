@@ -34,8 +34,9 @@ flowchart LR
 | uTorrent/BitTorrent | Windows/Linux/macOS | `<client> <magnet or .torrent>` |
 
 Every adapter implements `name`, `platforms`, `handles_kind`,
-`detect() -> Path|None`, `launch(url, target_dir, filename)`. Register in a
-`MANAGERS` dict; dispatch is `MANAGERS[settings.active_manager]`.
+`detect() -> Option<PathBuf>`, `launch(url, target_dir, filename)`. Register
+adapters in a registry in the `dm` core module; dispatch is
+`registry[settings.active_manager]`.
 
 ## Hard rules
 
@@ -43,9 +44,10 @@ Every adapter implements `name`, `platforms`, `handles_kind`,
    via `api.php` (Rule 05) and strip the trailing literal `\r`.
 2. **Silent always.** FDM `-fs`; IDM `/n`; torrent clients take the link as a
    positional argument. No interactive dialogs.
-3. **Never `shell=True`.** Build argv as a list; URLs are data.
-4. **Cross-platform spawn.** Windows `CREATE_NO_WINDOW`; POSIX
-   `start_new_session=True`. `subprocess.Popen(..., shell=False)`.
+3. **Never spawn via a shell.** Build an argv array with
+   `std::process::Command`; URLs are data.
+4. **Cross-platform spawn.** Windows `CREATE_NO_WINDOW`; POSIX detached
+   session (setsid). Never interpolate a command-string from user input.
 5. **Detach.** Schedule async on the manager's side; never wait for the full
    download lifetime. Job row → `status=dispatched` before spawn.
 6. **Tolerate absent managers.** A manager missing on the current platform is
@@ -68,12 +70,13 @@ Every adapter implements `name`, `platforms`, `handles_kind`,
 
 ## Testing
 
-- Mock `fdm.exe` / `IDMan.exe` / torrent-client shims in `tests/support/`
-  record argv; assert invocation shapes per adapter.
+- Mock `fdm.exe` / `IDMan.exe` / torrent-client shims as Rust test helper
+  modules (under `src-tauri/tests/support/`) that record argv; assert
+  invocation shapes per adapter.
 - Detection + spawn suites run on the platform seam (see `architect`) — the
   fake never talks to a real manager.
-- Live smoke (opt-in, tagged `live`) may launch a real manager with a harmless
-  URL; CI never does.
+- Live smoke (opt-in, tagged `#[ignore]`) may launch a real manager with a
+  harmless URL; CI never does.
 
 ## Definition of done
 

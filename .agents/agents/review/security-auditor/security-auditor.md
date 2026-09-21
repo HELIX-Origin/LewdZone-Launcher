@@ -28,7 +28,7 @@ flowchart TD
 ## Checks (each a concrete rule)
 
 1. **Path traversal**: every game title / filename used to build a path MUST go
-   through the sanitizer in `naming-conventions.md`. Forbid `../`, absolute
+   through the sanitizer in `rule-02-naming-conventions.md`. Forbid `../`, absolute
    paths, reserved names (CON, PRN...), trailing dots/spaces. Golden test with
    `..\evil`-style titles.
 2. **URL validation**: resolved URLs must:
@@ -40,24 +40,25 @@ flowchart TD
 3. **Secrets**: SteamGridDB API key, any cookies — stored only in the settings
    table (or environment), never logged, never in fixtures, never in `--json`
    output, never in `--debug` logs.
-4. **DB hardening**: parameterized SQL everywhere (no f-strings); the DB is a
-   local file with host-based ACL; treat downloaded content as hostile — never
-   execute, never auto-open archives.
-5. **FDM spawn**: argv list only, `shell=False`, `-fs` only; URL is a single
-   positional argument (no option injection).
+4. **DB hardening**: parameterized SQL everywhere (no string-built queries);
+   the DB is a local file with host-based ACL; treat downloaded content as
+   hostile — never execute, never auto-open archives.
+5. **DM spawn**: argv array only via `std::process::Command` (no shell),
+   `-fs` only; URL is a single positional argument (no option injection).
 6. **Artifact hygiene**: warn before saving emails/password-style content if
    the game page suggests a "password" field — this is normal for the genre,
    but the tool may offer to store it via keyring, not plaintext.
 
 ## Tooling
 
-- `pip-audit` / `pip` vulnerabilities gate for the dependency set.
-- `bandit` scan (Python) wired into `self-check`.
-- Manual review checklist maintained in `docs/review-checklist.md`.
+- `cargo audit` vulnerabilities gate for the dependency set.
+- `cargo deny` (licenses, duplicate/suspicious deps) wired into the gate.
+- Manual review checklist maintained in `review-checklist.md`
+  (`.agents/agents/review/`).
 
 ## Definition of done
 
 - All five check areas have regression tests (traversal, allowlist, secret
-  redaction, DB injection, FDM argv safety).
-- `bandit` + `pip-audit` clean for the pinned lockfile.
+  redaction, DB injection, DM argv safety).
+- `cargo audit` + `cargo deny` clean for the pinned lockfile.
 - No secrets in fixtures or tests (a grep-guard enforces this).

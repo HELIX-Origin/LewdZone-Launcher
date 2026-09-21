@@ -66,25 +66,26 @@ flowchart LR
 
 ## Adapter contract
 
-```python
-class ContentProvider(Protocol):
-    name: str                       # registry key
-    provides_info: bool             # enriches metadata
-    provides_art: bool              # supplies image assets
-    requires_key: bool              # needs configured API key
-    def search(self, title: str) -> list[ProviderCandidate]: ...
-    def fetch_info(self, c: ProviderCandidate) -> GameInfoPatch | None: ...
-    def fetch_asset(self, c: ProviderCandidate, kind: AssetKind) -> Path | None: ...
+```rust
+trait ContentProvider {
+    fn name(&self) -> &str;         // registry key
+    fn provides_info(&self) -> bool;// enriches metadata
+    fn provides_art(&self) -> bool; // supplies image assets
+    fn requires_key(&self) -> bool; // needs configured API key
+    fn search(&self, title: &str) -> Vec<ProviderCandidate>;
+    fn fetch_info(&self, c: &ProviderCandidate) -> Option<GameInfoPatch>;
+    fn fetch_asset(&self, c: &ProviderCandidate, kind: AssetKind)
+                   -> Option<PathBuf>;
+}
 ```
 
-- `AssetKind`: `icon` | `grid` | `hero` | `logo` | `cover` | `screenshot`.
+- `AssetKind`: `Icon` | `Grid` | `Hero` | `Logo` | `Cover` | `Screenshot`.
 - `ProviderCandidate`: `{provider, external_id, title, score, meta}`.
 - `GameInfoPatch`: optional fields only: `description`, `developer`,
   `release_date`, `screenshots`, `rating`, `tags`, `store_url`.
-- Registry: `PROVIDERS = {"steamgriddb": ..., "vndb": ..., "igdb": ...,
-  "itch": ..., "steam": ..., "indiedb": ...}` under
-  `src/lewdzone_launcher/services/content/providers/`; dispatch order is a
-  priority list policy, overridable via `settings`.
+- Registry: the `src-tauri/src/content/providers/` module registers the six
+  v1 adapters; dispatch order is a priority list policy, overridable via
+  `settings`.
 
 ## Provider roster (v1)
 
@@ -135,8 +136,9 @@ renders paste fields and never returns stored keys to the UI.
 1. LewdZone download data is never overwritten by provider data.
 2. Provider calls obey network etiquette (1 req/s per domain, retry ≤3,
    offline fixtures, live-only tests) — Rule 05.
-3. New providers implement the contract, register in `PROVIDERS`, add fakes in
-   `tests/support/`, and ship a settings row — they are additive.
+3. New providers implement the contract, register in the providers module, add
+   fakes in `src-tauri/tests/support/`, and ship a settings row — they are
+   additive.
 4. Missing keys/provider outages degrade to "no enrichment", never to a
    hard failure of listings or downloads.
 5. NSFW filtering respects each provider's policy (SteamGridDB `nsfw=yes`,
@@ -144,8 +146,8 @@ renders paste fields and never returns stored keys to the UI.
 
 ## Deliverables
 
-- `services/content/` package: `contract.py`, `registry.py`, `providers/`
-  (six v1 adapters), `enrichment.py` merge/patch logic.
+- `src-tauri/src/content/` module: adapter contract, provider registry,
+  `providers/` (six v1 adapters), merge/patch logic.
 - DB tables via `database/schema-designer`: `game_external` (+ `artwork_cache`
   columns `provider`, `kind`).
 - Skill: `enrich-game-and-art` (provider-agnostic dispatch).

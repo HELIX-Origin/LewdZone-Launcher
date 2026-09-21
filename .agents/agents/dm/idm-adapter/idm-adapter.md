@@ -16,7 +16,7 @@ registry.
 ## Contract implementation
 
 - `name = "idm"`
-- `platforms = ("win32",)`
+- `platforms = ["windows"]`
 - `handles_kind = "http"`
 - `detect()` — see dm-detector table (default
   `C:\Program Files (x86)\Internet Download Manager\IDMan.exe`, LOCALAPPDATA
@@ -28,7 +28,7 @@ flowchart LR
     G["resolved url (never #fragment)"] --> A["IDMan.exe /d url /n /p target_dir"]
     A --> B{"spawn ok?"}
     B -- yes --> C["job status=dispatched"]
-    B -- no --> D["raise DMNotFoundError exit 4"]
+    B -- no --> D["typed error - exit code 4"]
 
     style C fill:#2f6f4f,color:#fff
     style D fill:#874b4b,color:#fff
@@ -38,8 +38,8 @@ flowchart LR
 
 `IDMan.exe /d <url> /n /p <target_dir>` — `/d` starts a download, `/n`
 suppresses the confirmation dialog (silent add), `/p` sets the target folder.
-Spawn via `subprocess.Popen(args, creationflags=CREATE_NO_WINDOW, shell=False)`
-and detach immediately.
+Spawn via `std::process::Command` with `CREATE_NO_WINDOW` (argv array, never a
+shell) and detach immediately.
 
 ## Contract notes
 
@@ -53,5 +53,5 @@ and detach immediately.
 ## Definition of done
 
 - Unit test asserts argv == `["<path>\\IDMan.exe", "/d", url, "/n", "/p", dir]`.
-- Missing exe → typed `DMNotFoundError(code=4)`.
-- Never `shell=True`; URL is data, not a string template.
+- Missing exe → typed `DmMissing` error (code 4).
+- Never spawn via a shell; URL is data, not a string template.

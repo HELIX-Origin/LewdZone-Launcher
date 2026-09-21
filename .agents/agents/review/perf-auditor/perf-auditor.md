@@ -39,20 +39,22 @@ flowchart TD
 
 ## Checks
 
-1. Profile GUI render with `python -m cProfile` + `py_spy` if available; the
-   reviewer cadence scripts a warm run of list+search.
+1. Profile hot paths with the perf harness under `src-tauri/tests/perf/`
+   (criterion-style benches) plus the webview's devtools timeline for render;
+   the reviewer cadence scripts a warm run of list+search.
 2. SQL review in PRs: reject N+1 queries; demand indexes on
    `download_entries(game_id)`, `download_jobs(status)`, `artwork_cache(key)`.
-3. Regressions measured: a micro-bench suite (`tests/perf/`) tagged `perf`,
-   opt-in, comparing a couple of hot functions against fixed thresholds.
+3. Regressions measured: a micro-bench suite (`src-tauri/tests/perf/`) tagged
+   `perf`, opt-in, comparing a couple of hot functions against fixed
+   thresholds.
 4. Fan-out guarded at the HTTP transport layer: assert per-test and in
    production code a global rate limiter exists for lewdzone.com + api.php.
 5. Memory: sync must not hold all HTML pages at once; stream/parse page-by-page.
 
 ## Definition of done
 
-- `tests/perf/` has smoke benchmarks; changes that blow a budget get flagged
-  in review.
+- `src-tauri/tests/perf/` has smoke benchmarks; changes that blow a budget get
+  flagged in review.
 - Rate limiter present and unit-tested (a test proves it sleeps/spaces out
   rapid-fire calls).
 - No `SELECT *`-style unbounded queries in repositories without `LIMIT`

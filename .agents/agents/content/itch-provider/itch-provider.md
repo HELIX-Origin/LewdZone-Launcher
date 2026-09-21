@@ -9,8 +9,8 @@ model: default
 
 ## Boundary of responsibility
 
-Adapter `name="itch"`, `provides_info=True`, `provides_art=True`,
-`requires_key=False`. itch.io is where the bulk of indie/adult devs publish —
+Adapter `name="itch"`, `provides_info=true`, `provides_art=true`,
+`requires_key=false`. itch.io is where the bulk of indie/adult devs publish —
 strong overlap with LewdZone titles.
 
 ## Source of truth
@@ -37,11 +37,11 @@ strong overlap with LewdZone titles.
 
 - Respect robots/etiquette (Rule 05): 1 req/s per domain, retries ≤3.
 - Prefer JSON-LD / `og:` tags over raw DOM where available.
-- Page HTML fixtures saved to `tests/fixtures/html/itch_*.html` for offline tests.
+- Page HTML fixtures saved to `src-tauri/tests/fixtures/html/itch_*.html` for offline tests.
 - Optional `ITCH_API_KEY` (setting) enables richer upload/version data for
   owned games; absent key = public scraping only.
 
 ## Definition of done
 
 - Enriches an indie title page-to-cover end-to-end offline via fixtures with a
-  recorded-argv scrapy/paths; live test opt-in.
+  recorded-argv paths; live test opt-in.

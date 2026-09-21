@@ -19,14 +19,14 @@ model: default
 
 ## Inputs
 
-- Ratified `ARCHITECTURE.md`, interface stubs, and ADRs.
+- Ratified `wiki/Architecture.md`, interface stubs, and ADRs.
 - Current milestone description from the architect.
 
 ## Task breakdown flow
 
 ```mermaid
 flowchart LR
-    A[Ratified ARCHITECTURE] --> B[module-contractor]
+    A["Ratified Architecture (wiki/Architecture)"] --> B[module-contractor]
     B --> C[Task DAG]
     C --> D[T1 scraper parsers]
     C --> E[T2 db schema+repo]

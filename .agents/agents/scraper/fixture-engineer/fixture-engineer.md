@@ -12,7 +12,7 @@ model: default
 Curates the saved-HTML fixtures that let the whole scraper family test without
 hitting the live site:
 
-- Capture real pages to `lewdzone-launcher/tests/fixtures/html/`.
+- Capture real pages to `src-tauri/tests/fixtures/html/`.
 - Sanitize fixtures (strip session-specific noise) — do NOT leak personal
   data or tokens.
 - Keep a manifest mapping each fixture to its source URL + capture date.
@@ -27,7 +27,7 @@ hitting the live site:
 | `lz_go.js` / `lz_go.html` | https://lewdzone.com/go/ + assets | resolution page (go links) |
 
 These live in `C:\Users\Joshu\AppData\Local\Temp\opencode\`. Copy them into
-`tests/fixtures/html/` as the initial corpus.
+`src-tauri/tests/fixtures/html/` as the initial corpus.
 
 ## Fixture lifecycle
 
@@ -60,6 +60,6 @@ flowchart LR
 
 ## Definition of done
 
-- `tests/fixtures/html/` populated with the three reference captures + meta.
+- `src-tauri/tests/fixtures/html/` populated with the three reference captures + meta.
 - A README in the fixtures dir explains how to re-capture a fixture from the
-  live site (with the polite-download rules of `.agents/rules/network-etiquette.md`).
+  live site (with the polite-download rules of `.agents/rules/rule-05-network-etiquette.md`).

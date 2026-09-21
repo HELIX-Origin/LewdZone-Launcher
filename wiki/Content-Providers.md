@@ -80,7 +80,7 @@ missing a key simply don't enrich — downloads are never affected. See
 - Missing key / provider outage → "no enrichment", never a hard failure.
 - Enrichment is idempotent; re-running never duplicates rows.
 - All provider calls follow [Network Etiquette](Design-Conventions) (1 req/s,
-  retries, offline fixtures); live tests are opt-in (`pytest -m live`).
+  retries, offline fixtures); live tests are opt-in (`cargo test -- --ignored`).
 
 ## Agent ownership
 

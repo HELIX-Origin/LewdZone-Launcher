@@ -16,7 +16,7 @@ Bug title on GitHub: `🐛 <problem summary>`. Body must include:
 
 - Steps to reproduce (reproduce-first)
 - Expected vs actual behavior
-- Environment (OS, Python version, DM in use)
+- Environment (OS, app/CLI version, DM in use)
 - ≥1 verifiable diagram or log when applicable ([Rule 04](.agents/rules/rule-04-remote-issue-protocol.md))
 
 Entry format once filed:

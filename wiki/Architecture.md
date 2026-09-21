@@ -2,56 +2,56 @@
 
 > Links between wiki pages are relative and omit the `.md` extension.
 
-## Two frontends, one engine
+## Two entry points, one core
 
-LewdZone-Launcher is a **modular layered monolith** with two frontends:
+LewdZone-Launcher is a **modular layered monolith** with two entry points into
+one Rust core:
 
-| Frontend | Role | Talks to |
+| Entry point | Role | Talks to |
 | --- | --- | --- |
-| **Tauri 2 desktop app** | primary product | the CLI as a subprocess (JSON/JSONL) |
-| **Python CLI** | the engine, headless/scriptable | controllers |
+| **Tauri 2 desktop app** | primary product (Svelte webview) | core commands |
+| **Native Rust CLI** | the engine, headless/scriptable | core commands, same functions |
 
-The app **never imports** `lewdzone_launcher`. The Rust core spawns a Python
-sidecar executable and parses its stdout as machine output.
+The Tauri binary re-exposes the Rust core as a CLI (`src-tauri/src/cli.rs`);
+both entry points call the same functions — no duplication, no serialization
+hand-off.
 
 ## Layer contract (inner = pure)
 
-| Layer | Contains | May import |
+| Layer | Contains | May use |
 | --- | --- | --- |
-| `desktop/` (Tauri app) | Rust core + Svelte webview | CLI only via subprocess |
-| `lewdzone_launcher/frontends/` | CLI (argparse) | controllers only |
-| `lewdzone_launcher/controllers/` | game, download, sync, shortcut, artwork, content | services + domain |
-| `lewdzone_launcher/domain/` | `Game`, `Version`, `DownloadEntry`, `GoToken` | stdlib only |
-| `lewdzone_launcher/services/` | scraping, resolver, db, dm adapters, shortcuts, artwork, content providers | domain |
+| `src/` (Tauri webview) | Svelte views (Store / Library / Downloads / Settings) | core commands only; never site or DB |
+| `src-tauri/src/` (Rust core) | `cli.rs`, `db.rs`, `scraper.rs`, `resolver.rs`, `content.rs`, `dm.rs`, domain structs | inner layers only |
+| controllers | game, download, sync, shortcut, artwork, content commands | services + domain |
+| domain | `Game`, `Version`, `DownloadEntry`, `GoToken` (plain structs) | stdlib only |
+| services | scraping, resolver, db, dm adapters, shortcuts, artwork, content providers | domain |
 | external | lewdzone.com, FDM/IDM/torrent, sqlite, SteamGridDB/VNDB/IGDB/itch/Steam/IndieDB, native shortcuts | — |
 
 Import rule: **inward only**. Domain never imports IO; services never import
-controllers; frontends never touch services directly. Enforced with
-`import-linter`. Full rule: [Rule 03](../.agents/rules/rule-03-module-architecture) —
+controllers; the webview never touches services directly. Enforced via the
+crate's module boundaries (Rule 03). Full rule: [Rule 03](../.agents/rules/rule-03-module-architecture) —
 link resolves on the wiki; in the repo it's `.agents/rules/rule-03-module-architecture.md`.
 
-## Two-process protocol
+## CLI machine contract
 
 - **Query commands** (`info`, `search`, `list`, …): one `--json` document.
-- **Long-running commands** (`sync`, `download`, `shortcuts`, …): **machine
-  mode**, JSONL events `{event, progress, message, ...}` with a final
-  `result`.
+- **Long-running commands** (`sync`, `download`, `shortcuts`, …): progress
+  goes to **stderr**; stdout gets exactly one machine-parseable `--json`
+  document on completion.
 - stdout is the protocol channel; stderr is diagnostics. Never parse stderr as
   data.
-- Spawn safety: hidden console on Windows (`CREATE_NO_WINDOW`), detached POSIX
-  session; never `shell=True`.
+- The GUI does **not** parse this stream: GUI actions call the same core
+  functions directly and get typed results in-process (Rule 13).
 
 ```mermaid
 flowchart TD
     WV["Svelte webview"]
     RN["Rust core"]
-    SD["sidecar-driver"]
-    CLI["lewdzone-launcher CLI"]
+    CLI["lewdzone-launcher CLI (--json)"]
     CT["controllers"]
     SV["services"]
     WV --> RN
-    RN --> SD
-    SD --> CLI
+    RN --> CT
     CLI --> CT
     CT --> SV
 ```
@@ -65,6 +65,39 @@ flowchart TD
   (`post_id → provider → external_id`) and `artwork_cache` (gains `provider` +
   `kind` columns).
 - Config + DB live in the per-OS config dir; see [Configuration](Configuration).
+
+## Folder structure (Steam mirror, ADR-0005)
+
+The on-disk layout mirrors the Steam client's, so the launcher *is* a game
+launcher — same shape as Steam, different target site + palette:
+
+```
+<data_root>/lewdzone-launcher/          # %APPDATA% / ~/Library/Application Support / $XDG_DATA_HOME
+  lewdzone.db                           # SQLite catalog (WAL, FK, tokens only)
+  config.json                           # JSON settings (Rule 10 secrets redacted)
+  appcache/                             # cached catalog/site data
+  logs/<component>.log                  # per-subsystem logs (Steam logs/ analog)
+  library/                              # "steamapps" analog
+    libraryfolders.json                 # ordered library roots (Steam libraryfolders.vdf analog)
+    appmanifest_<post_id>.json          # per-game manifest (Steam appmanifest_*.acf analog)
+    common/<Game Title>/                # installed games
+    downloading/<post_id>/              # in-progress downloads
+    artwork/<post_id>_<kind>.png        # hero / logo / p / bare grid art
+  userdata/<local_user_id>/             # per-user config + shortcuts
+<cache_root>/lewdzone-launcher/         # %LOCALAPPDATA% / ~/Library/Caches / $XDG_CACHE_HOME
+  htmlcache/                            # webview/tile cache (Steam htmlcache analog)
+<documents>/My Games/<Game Title>/      # per-game saves (Steam Documents\My Games analog)
+<config_root>/lewdzone-launcher/skins/<Name>/   # theme skins (classic Steam skins/)
+```
+
+- Manifest files (`appmanifest_<post_id>.json`) are the source of truth for
+  "installed"; `libraryfolders.json` holds ordered roots (`library-root`
+  setting picks the active one; see [Configuration](Configuration)).
+- Downloads stage into `downloading/<post_id>/` and publish to
+  `common/<Title>/` on completion.
+- Artwork files under `library/artwork/` are indexed by `artwork_cache` in
+  SQLite (ADR-0004); the Theme picker (skins) is first-class and, unlike Valve,
+  is retained as a core capability ([ADR-0005](../.agents/adr/0005-steam-mirror-folder-structure)).
 
 ## Content enrichment pipeline
 
@@ -114,12 +147,14 @@ See [Download Managers](Download-Managers).
 | macOS | `.app` + DMG |
 | Linux | AppImage + deb + rpm |
 
-The Python CLI ships as a PyInstaller `externalBin` sidecar bundled in the app.
+The CLI ships as part of the app binary itself (Rule 13): the same executable
+provides the `lewdzone-launcher` command, so no sidecar artifact is bundled.
 
 ## Cross-platform rules
 
 - Config dirs: `%APPDATA%` (Windows), `~/.config` or `$XDG_CONFIG_HOME` (Linux),
   `~/Library/Application Support` (macOS).
-- Spawn flags: `CREATE_NO_WINDOW` (Windows) vs detached POSIX session.
-- Shortcuts: `.lnk` (win32com), `.desktop` (xdg), `.app`/aliases (macOS).
-- All paths via `pathlib`; no hardcoded separators.
+- Spawn flags (when invoking download managers or shortcuts): `CREATE_NO_WINDOW`
+  (Windows) vs detached POSIX session; never launch with a shell.
+- Shortcuts: `.lnk`, `.desktop` (xdg), `.app`/aliases (macOS).
+- All paths via `std::path::PathBuf`; no hardcoded separators.
