@@ -1,0 +1,51 @@
+name: Sync Wiki
+
+on:
+  push:
+    branches:
+      - main  # Change to 'master' if your default branch is master
+    paths:
+      - 'wiki/**'  # The subfolder in your repo where your wiki markdown files live
+  workflow_dispatch: {}
+
+jobs:
+  sync-wiki:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Push to Wiki
+        env:
+          # Using your organization-allowed PAT secret instead of the default token
+          GH_TOKEN: ${{ secrets.PAT_TOKEN }}
+        run: |
+          # Configure git identity for the automated commit
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+          # Extract repository owner and name
+          REPO_OWNER="${{ github.repository_owner }}"
+          REPO_NAME="${{ github.event.repository.name }}"
+
+          # Clone the wiki repository using the PAT
+          git clone "https://x-access-token:${GH_TOKEN}@github.com/${REPO_OWNER}/${REPO_NAME}.wiki.git" wiki-repo
+
+          # Clear existing wiki contents to cleanly match your subfolder updates
+          cd wiki-repo
+          git rm -rf . || true
+          cd ..
+
+          # Copy files from your subfolder to the root of the wiki repo
+          # Note: Adjust 'wiki/' to match your actual subfolder path if different
+          cp -r wiki/* wiki-repo/
+
+          # Commit and push changes
+          cd wiki-repo
+          if git status --porcelain | grep -q .; then
+            git add .
+            git commit -m "Automated wiki sync from main repo [skip ci]"
+            git push origin master
+          else
+            echo "No changes to sync."
+          fi
