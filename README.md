@@ -1,5 +1,9 @@
 # LewdZone-Launcher
 
+<p align="center">
+  <img src=".github/assets/lewdzone-banner.png" alt="LewdZone — Launcher banner" width="420">
+</p>
+
 A cross-platform launcher (Windows, Linux, macOS) for browsing, downloading,
 and organizing games from [LewdZone](https://lewdzone.com).
 

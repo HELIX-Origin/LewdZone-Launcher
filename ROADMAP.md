@@ -47,9 +47,9 @@ flowchart TD
 Everything shipped to `main`. (Initial push: `5d65506`.)
 
 ### Phase 0 — Foundation
-- [x] `.agents/` agent ecosystem — 10 families, rules 00–13, skills, wiki
+- [x] `.agents/` agent ecosystem — 11 families, rules 00–13, skills, wiki
 - [x] GitHub repo `HELIX-Origin/LewdZone-Launcher` + initial push
-- [x] Root docs: `AGENTS.md`, `wiki/` (16 pages), `.gitignore`
+- [x] Root docs: `AGENTS.md`, `wiki/` (17 pages), `.gitignore`
 - [x] `ROADMAP.md`, `TODO.md`, `BUGS.md` created (this trio)
 
 ## Now 🚧
@@ -65,9 +65,14 @@ roadmap issue is the umbrella; sub-issues come from these items.
   - systems-designer subgraph quoting; gui/testing subgraph quoting;
     dm-detector/folder-organizer label quoting
 - [x] `src/lewdzone_launcher/` scaffold + import-linter contract (Rule 03)
-- [ ] ADRs for cross-layer contracts
-- [ ] Config + sqlite bootstrap (`_config.py`, WAL schema, migrations)
-- [ ] Content-provider layer design (`.agents/agents/content/` — provider
+- [x] ADRs for cross-layer contracts
+  - [x] ADR-0001 — two frontends, one engine (Tauri sidecar JSON/JSONL)
+  - [x] ADR-0002 — download-manager adapter layer (FDM/IDM/torrent)
+  - [x] ADR-0003 — SQLite persistence (tokens, not URLs)
+  - [x] ADR-0004 — content-provider enrichment layer
+- [x] Config + sqlite bootstrap (`_config.py`, WAL schema, forward-only
+  migrations + `schema_migrations`, 7 DB tests green)
+- [x] Content-provider layer design (`.agents/agents/content/` — provider
   contract, registry, six v1 providers) — design done, implementation pending
 
 ## Later ⏳
