@@ -1,51 +1,99 @@
-# CLI Reference
+# 💻 CLI Reference
 
 > Links between wiki pages are relative and omit the `.md` extension. The CLI
 > and the desktop app are entry points into the same Rust core: every GUI
 > action maps 1:1 to a CLI command.
 
-## Usage
+## 🖥️ Usage
 
 ```
 lewdzone <command> [options]
 ```
 
-## Global options
+## 🎛️ Global options
 
 | Option | Meaning |
 | --- | --- |
 | `--json` | one JSON document per command on stdout |
-| `--verbose` | debug logging to stderr |
-| `--version` | print version |
+| `-v`, `--verbose` | debug logging to stderr |
+| `--no-color` | disable colorized output |
+| `--db <PATH>` | override the SQLite catalog path |
+| `--config <PATH>` | override the config file path |
+| `--version` | print the app version |
+| `--help` | print command help |
 
-## Commands
+## 📟 Commands
 
 | Command | Purpose |
 | --- | --- |
-| `sync` | Refresh catalog from the site (paged, incremental) |
-| `search` | Search games (`--query`, `--genre`, `--platform`, …) |
+| `sync` | Refresh catalog from the site (paged, incremental; `--full` resyncs) |
+| `search` | Browse the archive (Popularity); free-text search not yet wired |
 | `info` | Game detail: versions, download entries, metadata |
-| `download` | Enqueue a download for the active manager |
-| `list` | List catalog / installed games (`--status`) |
+| `download` | Dispatch a resolved URL to the active download manager |
+| `list` | List the catalog, the installed library, or the job queue |
 | `settings` | Read/write config (`get` / `set`) |
 | `shortcuts` | Build/rebuild native shortcuts for installed games |
 | `launch` | Launch an installed game |
-| `dm` | Manage download-manager adapters (list / set active) |
+| `dm` | List download managers or select the active one |
 
-### `download` flags
+### `sync`
 
 ```
---game <slug>
---version <version|latest>
---platform <PC|Android|Linux|Mac>
---tab <official|community>
---manager <fdm|idm|torrent>   # default: active manager
---json                        # returns {job_id, status, ...}
+lewdzone sync                # incremental (resumes from last synced page)
+lewdzone sync --full         # resync every archive page
+lewdzone sync --platform PC  # filter platform (PC | Android | Linux | Mac)
 ```
 
-Torrent links are only accepted by a torrent-capable manager.
+### `info`
 
-## Exit codes
+```
+lewdzone info treasure-of-nadia            # summary
+lewdzone info --game treasure-of-nadia     # flag form (same thing)
+lewdzone info 18212                        # accepts slug, post id, or URL
+lewdzone info treasure-of-nadia --versions # full version + entry JSON
+```
+
+### `download`
+
+The game is given positionally or via `--game` (flag form). The manager is
+**not** chosen here — the **active manager** (set with `dm <name>`) receives
+the download:
+
+```
+lewdzone download treasure-of-nadia
+lewdzone download --game treasure-of-nadia \
+  --version latest --platform PC --tab official --json
+lewdzone download treasure-of-nadia --resume   # resume an existing job
+lewdzone download treasure-of-nadia --queue    # enqueue without starting
+```
+
+Torrent links are only accepted by a torrent-capable manager (exit 4
+otherwise).
+
+### `list`
+
+```
+lewdzone list            # catalog from the SQLite DB
+lewdzone list --library  # installed/library games
+lewdzone list --jobs     # job queue
+```
+
+### `settings`
+
+```
+lewdzone settings get              # all settings
+lewdzone settings get download-root
+lewdzone settings set download-root "D:/Games"
+```
+
+### `dm`
+
+```
+lewdzone dm            # list detected managers + the active one
+lewdzone dm fdm        # select FDM as the active manager
+```
+
+## 🧾 Exit codes
 
 | Code | Meaning |
 | --- | --- |
@@ -56,7 +104,7 @@ Torrent links are only accepted by a torrent-capable manager.
 | 4 | download manager missing / not found |
 | 5 | interrupted |
 
-## Protocol details
+## 🛠️ Protocol details
 
 - **Query commands:** single JSON doc, e.g.
   `{"games":[...],"count":42}`.
@@ -66,15 +114,16 @@ Torrent links are only accepted by a torrent-capable manager.
   completion.
 - Errors go to **stderr**; stdout stays machine-parseable even on failure.
 
-## Examples
+## ✨ Examples
 
 ```sh
-lewdzone search --query "nad" --json
+lewdzone sync --json
 lewdzone info --game treasure-of-nadia --json
-lewdzone download --game treasure-of-nadia \
-  --version latest --platform windows --tab official --json
-lewdzone list --status installed --json
-lewdzone dm list --json
+lewdzone dm
+lewdzone dm fdm
+lewdzone download --game treasure-of-nadia --version latest \
+  --platform PC --tab official --json
+lewdzone list --library --json
 ```
 
 See also [Exit codes & errors](https://github.com/helix-origin/lewdzone-launcher/tree/main/.agents/rules/rule-12-error-handling.md) in the

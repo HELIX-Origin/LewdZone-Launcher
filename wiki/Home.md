@@ -1,6 +1,6 @@
-# Welcome to the lewdzone Wiki
+# 👋 Welcome to the LewdZone Launcher Wiki
 
-lewdzone is a **cross-platform desktop launcher** (Windows, Linux,
+LewdZone Launcher is a **cross-platform desktop launcher** (Windows, Linux,
 macOS) for browsing, downloading, and organizing games from
 [LewdZone](https://lewdzone.com). It is built around a **Tauri 2 app** — Rust
 + OS webview, Svelte frontend — whose binary also exposes a **native Rust CLI**:
@@ -14,7 +14,7 @@ one core, two entry points.
 The GUI and the CLI call the same Rust core functions; every GUI action maps
 1:1 to a CLI command.
 
-## What it does
+## 🛠️ What it does
 
 - **Scrapes** games, tags, versions, download tables, and metadata from
   LewdZone.
@@ -29,7 +29,7 @@ The GUI and the CLI call the same Rust core functions; every GUI action maps
 - **Enriches** thin LewdZone pages from external content providers (VNDB, IGDB,
   Steam Storefront, itch.io, IndieDB): descriptions, screenshots, ratings, art.
 
-## Quick links
+## 🔗 Quick links
 
 | Topic | Where |
 | --- | --- |
@@ -47,7 +47,7 @@ The GUI and the CLI call the same Rust core functions; every GUI action maps
 | Releases & versioning | [Release Process](Release-Process) |
 | Common problems | [Troubleshooting](Troubleshooting) |
 
-## Project status
+## 🗺️ Project status
 
 Design/documentation phase. The living spec is the `.agents` ecosystem in the
 repository root; the wiki is the human-facing distillation of it.

@@ -1,4 +1,4 @@
-# Development
+# 🛠️ Development
 
 > Links between wiki pages are relative and omit the `.md` extension.
 
@@ -6,7 +6,7 @@ This project is governed by a **detailed agent ecosystem** in `.agents/` with
 GitHub-compatible Mermaid diagrams, plus rules 00-13. The wiki is the
 human-facing distillation; the `.agents` docs are the authoritative spec.
 
-## Repo layout
+## 📁 Repo layout
 
 ```
 lewdzone/
@@ -22,7 +22,7 @@ lewdzone/
   scratch/                 # gitignored temp scripts
 ```
 
-## Agent families
+## 🧩 Agent families
 
 | Family | Owns |
 | --- | --- |
@@ -40,14 +40,14 @@ lewdzone/
 
 See [Agent Ecosystem](Agents).
 
-## Rules (00-13)
+## ⚖️ Rules (00-13)
 
 Governance, code style, naming, module architecture, remote issue protocol
 (roadmap-first), network etiquette, SQLite conventions, download-manager
 integration, release standards, Mermaid standards, security, testing, error
 handling, GUI conventions. Index: [`.agents/rules/index.md`](https://github.com/helix-origin/lewdzone-launcher/tree/main/.agents/rules/index.md) (wiki link; repo path has `.md`).
 
-## Contribution workflow
+## 🤝 Contribution workflow
 
 1. Issues are **roadmap-first**: a plan has one living roadmap issue, edited in
    place; work is tracked as sub-issues.
@@ -60,7 +60,7 @@ handling, GUI conventions. Index: [`.agents/rules/index.md`](https://github.com/
 
 Full protocol: [Rule 04](https://github.com/helix-origin/lewdzone-launcher/tree/main/.agents/rules/rule-04-remote-issue-protocol.md).
 
-## Branch & commit hygiene
+## 🪵 Branch & commit hygiene
 
 - Feature branch → PR → merge to `main`. Never push directly.
 - Clean tree before commits; never commit secrets
@@ -68,7 +68,7 @@ Full protocol: [Rule 04](https://github.com/helix-origin/lewdzone-launcher/tree/
 - Changes to cross-layer contracts require an ADR
   ([Design Conventions](Design-Conventions)).
 
-## Verification commands
+## ✅ Verification commands
 
 ```sh
 # Rust core (from src-tauri/)

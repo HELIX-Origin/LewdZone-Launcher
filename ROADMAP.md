@@ -10,7 +10,7 @@ edited in place as work progresses — a tracked twin of the roadmap tracking
 > cancelled corpse. When done, it moves to **Done**. History lives in the git
 > log, not here.
 
-## North Star
+## 🧭 North Star
 
 Cross-platform desktop game launcher for lewdzone.com: Steam-like Store
 (browse/search/download), Library (icons, covers, descriptions), Downloads
@@ -20,7 +20,7 @@ Cross-platform desktop game launcher for lewdzone.com: Steam-like Store
 Steam client layout
 ([ADR-0005](.agents/adr/0005-steam-mirror-folder-structure.md)).
 
-## Plan
+## 🗓️ Plan
 
 ```mermaid
 flowchart TD
@@ -46,15 +46,19 @@ flowchart TD
 - [x] Tauri commands bridge: settings_get/settings_set/themes_list/themes_tokens/themes_apply
 - [x] App shell: topbar nav (Store/Library/Downloads/Settings) + 4 placeholder views; frontend vitest suites green, svelte-check green
 - [x] Toolchain (Rust 1.98 / MSVC via VS2026 Build Tools), cargo test + clippy + fmt green
+- [x] Scraper family: archive card parser with `?page=N` pagination, game-page parser (versions, tabs, genres, screenshots), polite fetch with bounded retries
+- [x] Resolver family: go-link token → start/reveal API → real URL, retries, host allowlist (Rule 10)
+- [x] DM layer: FDM / IDM / torrent adapters, detection registry, folder organizer (ADR-0002)
+- [x] `download` command: version/platform/tab selection + dispatch to the active manager
+- [x] SQLite catalog: forward-only migrations, repo layer, resumable sync pipeline + prune (Rule 06, ADR-0003)
+- [x] `list` + `info` CLI commands backed by the synced catalog
+- [x] Docs/CLI drift cleanup: README, wiki, and `.agents` docs now match the real CLI (`dm <name>`, `list --library`/`--jobs`, no `--manager`/`--status`)
 
 ## Now 🚧 (Phase 2 — Storefront + Core)
 
 - [ ] Fix any remaining verification gaps (final svelte-check pass, clippy/fmt clean)
 - [ ] Storefront catalog view: real tiles + game-page lookup (search/content-provider layer)
-- [ ] Scraper: catalog pagination (`?page=N`), game pages, version/download links, genres
-- [ ] Resolver: go/redirect → reveal link, retry, download token handling
-- [ ] DM adapters (FDM, IDM, uTorrent/BitTorrent) + detector + folder-organizer
-- [ ] Download queue + incremental sync pipeline (core `sync`/`download`/`dm`)
+- [ ] Download queue: persist `download_job` rows and wire resume/queue flow (the table exists; `download.rs` doesn't write jobs yet)
 - [ ] Router recreation of store pages (ripped UI mirrored into local HTML)
 
 ## Later ⏳
@@ -74,21 +78,16 @@ flowchart TD
 - Release gate (cargo test/clippy/fmt, vitest, svelte-check, security, build smoke)
 - Docs sync → wiki, release notes, tag `v0.1.0` / `v1.0.0`
 
-## Abandoned 🗑️
-
-- Python CLI sidecar (lewdzone_launcher package, pytest suites) — replaced by
-  native Rust core + vitest; removed from repo.
-
-## Acceptance Criteria
+## ✅ Acceptance Criteria
 
 - [ ] `lewdzone --help` clean on PowerShell and bash
-- [ ] `download --game treasure-of-nadia --manager fdm --json` resolves and dispatches
+- [ ] `download --game treasure-of-nadia --json` resolves and dispatches to the active manager (`lewdzone dm fdm` selects it)
 - [ ] Store/Library/Downloads/Settings all map 1:1 to an invoke command or CLI command
 - [ ] Torrent links only accepted by a torrent-capable manager
 - [ ] Files land in `<Library>/common/<Title>/` per ADR-0005 mirror layout
 - [ ] Rust + frontend suites green on CI
 
-## Related
+## 🔗 Related
 
 In-repo: `TODO.md`, `BUGS.md`, `AGENTS.md`, wiki pages (Architecture,
 CLI-Reference, Download-Managers, Development). Living spec: `.agents/rules/index.md`.

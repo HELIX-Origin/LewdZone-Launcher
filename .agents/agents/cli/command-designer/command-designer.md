@@ -19,7 +19,7 @@ discoverable.
 |---|---|
 | name | `download` |
 | args | `GAME` (slug or id, required) |
-| options | `--version V`, `--platform WINDOWS`, `--tab official|community`, `--host HOST`, `--json`, `--resume`, `--queue` |
+| options | `--version V`, `--platform PC`, `--tab official|community`, `--json`, `--resume`, `--queue` |
 | behavior | resolves the selected go-link via resolver, submits DownloadJob to the active dm adapter |
 | exit codes | 0 ok, 1 no game found, 2 bad platform, 3 resolution failed, 4 dm missing, 5 interrupted |
 | controller | `controllers::download::download_game(...)` |

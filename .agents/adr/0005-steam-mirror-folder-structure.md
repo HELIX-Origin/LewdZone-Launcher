@@ -105,7 +105,7 @@ Our launcher mirrors that shape 1:1, renaming only the product-specific leaf:
 - [ ] install writes `appmanifest_<id>.json` atomically; sqlite unchanged
 - [ ] artwork fetch writes `<root>/library/artwork/<id>_<kind>.png` and indexes
       the path in `artwork_cache`
-- [ ] `download list --installed` reads manifests (offline); UI Library page
+- [ ] `list --library` reads manifests (offline); UI Library page
       renders grid from manifests + artwork
 - [ ] Theme picker applies a user-installed skin from `skins/` and resets to
       default without app restart when tokens change

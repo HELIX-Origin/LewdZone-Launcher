@@ -104,8 +104,11 @@ struct SearchArgs {
 
 #[derive(clap::Args, Debug, Default)]
 struct InfoArgs {
-    /// The game: slug or post id.
-    game: String,
+    /// The game: slug, post id, or URL.
+    game: Option<String>,
+    /// The game (alternative to the positional form).
+    #[arg(long = "game", conflicts_with = "game")]
+    game_flag: Option<String>,
     /// List versions instead of the summary.
     #[arg(long)]
     versions: bool,
@@ -113,8 +116,11 @@ struct InfoArgs {
 
 #[derive(clap::Args, Debug, Default)]
 struct DownloadArgs {
-    /// The game: slug or post id.
-    game: String,
+    /// The game: slug, post id, or URL.
+    game: Option<String>,
+    /// The game (alternative to the positional form).
+    #[arg(long = "game", conflicts_with = "game")]
+    game_flag: Option<String>,
     /// Version label (e.g. `1.0`), or `latest`.
     #[arg(long, default_value = "latest")]
     version: String,
@@ -219,16 +225,26 @@ fn dispatch(cli: Cli) -> Result<ExitCode, crate::core::Error> {
     match cli.command {
         Command::Sync(args) => core::sync::run(&ctx, args.full, args.platform.as_deref()),
         Command::Search(args) => core::search::run(&ctx, &args.query),
-        Command::Info(args) => core::info::run(&ctx, &args.game, args.versions),
-        Command::Download(args) => core::download::run(
-            &ctx,
-            &args.game,
-            &args.version,
-            &args.platform,
-            &args.tab,
-            args.resume,
-            args.queue,
-        ),
+        Command::Info(args) => {
+            let game = args.game.or(args.game_flag).ok_or_else(|| {
+                core::Error::Usage("a game (slug, post id, or URL) is required".into())
+            })?;
+            core::info::run(&ctx, &game, args.versions)
+        }
+        Command::Download(args) => {
+            let game = args.game.or(args.game_flag).ok_or_else(|| {
+                core::Error::Usage("a game (slug, post id, or URL) is required".into())
+            })?;
+            core::download::run(
+                &ctx,
+                &game,
+                &args.version,
+                &args.platform,
+                &args.tab,
+                args.resume,
+                args.queue,
+            )
+        }
         Command::List(args) => core::list::run(&ctx, args.library, args.jobs),
         Command::Settings(args) => match args.command {
             Some(SettingsCmd::Get(g)) => core::settings::get(&ctx, g.key.as_deref()),
@@ -285,13 +301,33 @@ mod tests {
         .unwrap();
         match cli.command {
             Command::Download(a) => {
-                assert_eq!(a.game, "treasure-of-nadia");
+                assert_eq!(a.game.as_deref(), Some("treasure-of-nadia"));
                 assert_eq!(a.version, "1.0");
                 assert_eq!(a.platform, "PC");
                 assert_eq!(a.tab, "official");
             }
             other => panic!("expected download, got {other:?}"),
         }
+    }
+
+    #[test]
+    fn parses_game_via_flag_form() {
+        let cli =
+            Cli::try_parse_from(["lewdzone", "info", "--game", "treasure-of-nadia", "--json"])
+                .unwrap();
+        match cli.command {
+            Command::Info(a) => {
+                assert_eq!(a.game_flag.as_deref(), Some("treasure-of-nadia"));
+                assert!(a.game.is_none());
+            }
+            other => panic!("expected info, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn rejects_game_in_both_forms() {
+        let cli = Cli::try_parse_from(["lewdzone", "info", "treasure-of-nadia", "--game", "other"]);
+        assert!(cli.is_err());
     }
 
     #[test]

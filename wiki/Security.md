@@ -1,8 +1,8 @@
-# Security
+# 🔐 Security
 
 > Links between wiki pages are relative and omit the `.md` extension.
 
-## Principles
+## 🧾 Principles
 
 1. **No secrets in the repo.** SteamGridDB, IGDB, updater/signing keys live in
    `~/.config/lewdzone/` or environment variables, never committed. API keys are
@@ -22,7 +22,7 @@
    filter at the logging boundary.
 7. **Resolved URLs are ephemeral** — stored tokens in the DB, never URLs.
 
-## Threat checklist (review gate)
+## 🛡️ Threat checklist (review gate)
 
 - SQLite injection?
 - Path traversal / unsafe filenames?
@@ -35,7 +35,7 @@ Audited by [security-auditor](../.agents/agents/review/security-auditor/security
 Tooling in the gate: **cargo audit** + **cargo deny** for dependency/CRATE
 checking. Full rule: [Rule 10](../.agents/rules/rule-10-security).
 
-## Allowlist source
+## ✅ Allowlist source
 
 Host slugs come from the site's go.js ICONS list (e.g. `mediafire`, `mega`,
 `gofile`, `drive`, …). The resolved-URL allowlist is derived from that list and

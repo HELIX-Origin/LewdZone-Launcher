@@ -1,8 +1,8 @@
-# Release Process
+# 🚀 Release Process
 
 > Links between wiki pages are relative and omit the `.md` extension.
 
-## Versioning
+## 🔖 Versioning
 
 SemVer `MAJOR.MINOR.PATCH`. The version is synced across:
 
@@ -12,7 +12,7 @@ SemVer `MAJOR.MINOR.PATCH`. The version is synced across:
 There is a single binary; the CLI reports the same version as the app
 (`lewdzone --version`).
 
-## Release flow
+## 🔄 Release flow
 
 ```mermaid
 flowchart TD
@@ -31,7 +31,7 @@ flowchart TD
     NOT --> REL
 ```
 
-## Verification gate (before tag)
+## ✅ Verification gate (before tag)
 
 Everything must be green first:
 
@@ -41,7 +41,7 @@ Everything must be green first:
 - `lewdzone --version` smoke test
 - `tauri build` succeeds on all target platforms (CI)
 
-## Release notes structure
+## 📝 Release notes structure
 
 `gh release create vX.Y.Z --title "vX.Y.Z — <Key Feature>" --notes-file <file>`
 

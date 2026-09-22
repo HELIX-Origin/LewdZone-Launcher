@@ -25,8 +25,8 @@ all platforms. Spawn modes and silent flags differ.
   launch(url: str, target_dir: Path, filename: str) -> None
   ```
 
-- Registry `MANAGERS: dict[str, DownloadManager]`; active manager chosen from
-  settings (`dm` key / `lewdzone-launcher dm set active <name>`).
+- Registry `MANAGERS: dict[str, DownloadManager]`; active manager chosen with
+  `lewdzone dm <name>` (persisted to the `dm` setting).
 - **Torrent** links route only to torrent-capable managers (`handles_kind`);
   HTTP adapters never receive magnets and torrent adapters never get HTTP URLs.
 - **Resolution rule:** only the resolved real URL is handed over, never a

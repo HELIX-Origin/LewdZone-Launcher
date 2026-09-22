@@ -1,4 +1,4 @@
-# Agent Ecosystem
+# 🤖 Agent Ecosystem
 
 > Links between wiki pages are relative and omit the `.md` extension.
 
@@ -8,7 +8,7 @@ consumable by any agent that reads Markdown (works with opencode, GitHub
 Copilot-style workflows, and others). Everything is documented with
 **GitHub-compatible Mermaid diagrams**.
 
-## Layout
+## 📁 Layout
 
 ```
 .agents/
@@ -20,7 +20,7 @@ Copilot-style workflows, and others). Everything is documented with
   README.md                            # the ecosystem index
 ```
 
-## Families at a glance
+## 🧩 Families at a glance
 
 | Family | Primary | Sub-agents |
 | --- | --- | --- |
@@ -36,7 +36,7 @@ Copilot-style workflows, and others). Everything is documented with
 | **testing** | QA suite | fixture-crafter, mock-engineer, test-suite-architect, debugger |
 | **review** | gates | security-auditor, perf-auditor |
 
-## Skills
+## 🧠 Skills
 
 Reusable procedures with checkoffs, e.g.:
 
@@ -47,7 +47,7 @@ Reusable procedures with checkoffs, e.g.:
 - `launch-download` — dispatch a resolved URL to the active manager (DM-agnostic)
 - `enrich-game-and-art` — fill info + art gaps from the content-provider layer
 
-## Rules 00-13
+## ⚖️ Rules 00-13
 
 | # | Rule | File |
 | --- | --- | --- |
@@ -68,13 +68,13 @@ Reusable procedures with checkoffs, e.g.:
 
 Index: [`.agents/rules/index.md`](https://github.com/helix-origin/lewdzone-launcher/tree/main/.agents/rules/index.md)
 
-## Templates
+## 📄 Templates
 
 Scaffolds for: agents, skills, rules, ADRs, Rust modules, tests, migrations,
 issues, roadmaps, release notes, and commit messages — all under
 `.agents/templates/`.
 
-## Governance principles
+## 🏛️ Governance principles
 
 1. **One owner per artifact.** Two agents on one module is an anti-pattern.
 2. **One core, two entry points.** The GUI and the CLI share the same Rust

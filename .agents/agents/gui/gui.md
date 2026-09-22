@@ -115,13 +115,13 @@ The app is a **steam-like game launcher**, not a productivity tool:
 | Component | Responsibility | Backed by |
 |---|---|---|
 | Store page | Search + browse all games (Steam-style grid), entry to game detail + download | core `catalog list`, `search` |
-| Library page | **Installed/downloaded games**: icon + cover art + description, launch/shortcut | core `download list`, `shortcuts`, artwork |
-| Downloads page | Active/past jobs + queue + progress | core `download list` + progress events |
+| Library page | **Installed/downloaded games**: icon + cover art + description, launch/shortcut | core `list --library`, `shortcuts`, artwork |
+| Downloads page | Active/past jobs + queue + progress | core `list --jobs` + progress events |
 | Settings page | Download root, active DM, API keys, mover mode, theme | core `settings get/set` |
 | GameDetailView | Launcher-style detail: hero art band, meta, versions, download table | core `game info <id>` |
 | VersionPicker | Dropdown + Official/Community tabs | parsed DownloadEntries |
-| QueuePanel | Active/past jobs + progress | core `download list` + progress events |
-| ShortcutsView | Rebuild shortcuts per game | core `shortcuts rebuild` |
+| QueuePanel | Active/past jobs + progress | core `list --jobs` + progress events |
+| ShortcutsView | Rebuild shortcuts per game | core `shortcuts` |
 
 ## Packaging & installers
 

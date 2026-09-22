@@ -1,8 +1,9 @@
 <p align="center">
-  <img src="./.github/assets/lewdzone-launcher-banner.jpg" alt="LewdZone Launcher" width="100%">
-</p>
 
 # 🎮 LewdZone Launcher
+
+  <img src="./.github/assets/lewdzone-launcher-banner.jpg" alt="LewdZone Launcher" width="100%">
+</p>
 
 > 🚀 **Cross-platform game launcher** for [LewdZone](https://lewdzone.com) — browse, download, and organize
 > without ever downloading files yourself.
@@ -45,8 +46,8 @@ lewdzone sync          # refresh the catalog (incremental)
 lewdzone sync --full   # full resync of every page
 lewdzone list --json   # catalog from the SQLite DB
 lewdzone info --game treasure-of-nadia
-lewdzone download --game treasure-of-nadia --manager fdm
-lewdzone dm list       # detect download managers
+lewdzone dm fdm        # select the active download manager
+lewdzone download --game treasure-of-nadia --json
 ```
 
 > 💡 Every GUI action maps to a CLI subcommand — learn one, you know the other (Rule 13).

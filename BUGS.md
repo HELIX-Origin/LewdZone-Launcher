@@ -1,16 +1,16 @@
-# BUGS (open issues)
+# 🐛 BUGS (open issues)
 
 Only open bugs belong here. Each entry links to its GitHub issue (once filed)
 and is closed by editing this file, not by deleting history. When a bug is fixed,
 move it to the commit that resolved it (`git log`).
 
-## None yet
+## 🎉 None yet
 
 No open bugs tracked. The project is in design/documentation phase (Phase 0–1 of
 ROADMAP.md); known *deficiencies and TODO items* live in [TODO.md](TODO.md) until
 they can be reproduced and confirmed as bugs.
 
-## Filing a bug
+## 📝 Filing a bug
 
 Bug title on GitHub: `🐛 <problem summary>`. Body must include:
 

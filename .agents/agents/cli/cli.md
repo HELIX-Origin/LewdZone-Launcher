@@ -61,12 +61,12 @@ flowchart LR
     L --> launch[launch]
     L --> dm[dm]
 
-    sync --> fs1["--full | --filter PLATFORM ..."]
+    sync --> fs1["--full | --platform PLATFORM"]
     search --> ss1[QUERY --json]
     info --> si1[GAME --versions]
-    download --> sd1[GAME --version V --platform WINDOWS --tab OFFICIAL]
+    download --> sd1[GAME --version V --platform PC --tab official]
     download --> sd2["--resume | --queue"]
-    shortcuts --> sk1[rebuild --game GAME --skip-artwork]
+    shortcuts --> sk1["--game GAME --skip-artwork"]
     launch --> lg1[launch GAME - engine hook for the app]
 
     style L fill:#4b6e91,color:#fff

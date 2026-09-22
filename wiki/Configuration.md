@@ -1,10 +1,10 @@
-# Configuration
+# ⚙️ Configuration
 
 > Links between wiki pages are relative and omit the `.md` extension.
 
-## Config file
+## 📄 Config file
 
-lewdzone stores a JSON config file in the per-OS config dir
+LewdZone Launcher stores a JSON config file in the per-OS config dir
 (`<config_root>/lewdzone/config.json`, mirrored on the Steam layout —
 see [Architecture](Architecture) → Folder structure):
 
@@ -14,7 +14,7 @@ see [Architecture](Architecture) → Folder structure):
 | Linux | `$XDG_CONFIG_HOME/lewdzone/config.json` (or `~/.config/lewdzone/config.json`) |
 | macOS | `~/Library/Application Support/lewdzone/config.json` |
 
-## Key settings
+## 🔑 Key settings
 
 ```jsonc
 {
@@ -26,7 +26,7 @@ see [Architecture](Architecture) → Folder structure):
 }
 ```
 
-## Theme skins (ADR-0005)
+## 🎨 Theme skins (ADR-0005)
 
 Themes are first-class: a skin package lives at
 `<config_root>/lewdzone/skins/<Name>/theme.json` and overrides the
@@ -52,7 +52,7 @@ lewdzone settings get theme
 
 Switch skins in **Settings → Appearance** without restarting.
 
-## Content-provider API keys
+## 🗝️ Content-provider API keys
 
 The content-provider layer (info + art enrichment) uses several external
 sources. Keys are set per-provider from the app's **Settings → API keys** or
@@ -74,37 +74,39 @@ Keys live in the per-OS config dir (never in the repo; redacted from logs —
 see [Security](Security)). Providers that are disabled or missing a key simply
 don't enrich — downloads are never affected.
 
-## Changing settings via CLI
+## 🛠️ Changing settings via CLI
 
 ```sh
 lewdzone settings get <key>
 lewdzone settings set <key> <value>
 ```
 
-## Library root
+## 🗂️ Library root
 
 ADR-0005 mirrors Steam's multi-root library: the active library root is chosen
-by the `library-root` setting (default `<data_root>/lewdzone/library`).
+by the `library-root` setting (default `<data_root>/library`, i.e.
+`%APPDATA%\lewdzone\library` on Windows).
 Per-game manifests (`appmanifest_<post_id>.json`) are the source of truth for
 installed games; see [Architecture](Architecture) → Folder structure.
 
-## Active download manager
+## 🚚 Active download manager
 
 ```sh
-lewdzone dm list          # show installed managers
-lewdzone dm set active <name>
+lewdzone dm          # list detected managers + the active one
+lewdzone dm <name>   # select the active manager
 ```
 
 `<name>` is one of `fdm`, `idm`, `torrent`. See
 [Download Managers](Download-Managers).
 
-## Database
+## 🗄️ Database
 
-SQLite database lives at `<data_root>/lewdzone/lewdzone.db`.
+SQLite database lives at `<data_root>/lewdzone.db` (e.g.
+`%APPDATA%\lewdzone\lewdzone.db` on Windows).
 Configured with WAL journaling, foreign keys ON, busy timeout 5000ms. See
 [Architecture](Architecture) → Data model.
 
-## Version
+## 🔖 Version
 
 The app version is the single source of truth; it is synced across:
 - `src-tauri/Cargo.toml` (crate version + `tauri.conf.json`)

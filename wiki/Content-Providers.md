@@ -1,4 +1,4 @@
-# Content Providers
+# 🪄 Content Providers
 
 > Links between wiki pages are relative and omit the `.md` extension.
 
@@ -8,13 +8,13 @@ often lack descriptions, screenshots, release dates, and artwork. A pluggable
 while keeping LewdZone as the source of truth for downloadability (versions,
 platforms, hosts).
 
-## Principle
+## 🧭 Principle
 
 - LewdZone data is authoritative for **downloads**.
 - Provider data is authoritative for **presentation** (info + art).
 - Providers only fill *missing* fields — they never overwrite a scraped value.
 
-## Providers
+## 🗂️ Providers
 
 | Provider | name | Info | Art | API key | Notes |
 | --- | --- | --- | --- | --- | --- |
@@ -25,7 +25,7 @@ platforms, hosts).
 | Steam Storefront | `steam` | description, screenshots | capsule/header | none | only for known Steam appids |
 | IndieDB | `indiedb` | description, images | images | none | no public API, HTML scrape |
 
-## How it works
+## 🔀 How it works
 
 ```mermaid
 flowchart LR
@@ -59,7 +59,7 @@ flowchart LR
   `provider` + `kind`, so a game can hold a SteamGridDB icon and a VNDB cover
   simultaneously, and rebuilds are offline-fast.
 
-## API keys & settings
+## 🔑 API keys & settings
 
 Keys are set from the app's **Settings → API keys** section or CLI:
 
@@ -75,14 +75,14 @@ Keys live in the per-OS config dir (Rule 10). Providers that are disabled or
 missing a key simply don't enrich — downloads are never affected. See
 [Configuration](Configuration) for the full settings list.
 
-## Robustness
+## 🛡️ Robustness
 
 - Missing key / provider outage → "no enrichment", never a hard failure.
 - Enrichment is idempotent; re-running never duplicates rows.
 - All provider calls follow [Network Etiquette](Design-Conventions) (1 req/s,
   retries, offline fixtures); live tests are opt-in (`cargo test -- --ignored`).
 
-## Agent ownership
+## 🧑‍🔬 Agent ownership
 
 The `content` agent family owns this layer —
 [Agent Ecosystem](Agents): provider-registry, steamgriddb-provider,

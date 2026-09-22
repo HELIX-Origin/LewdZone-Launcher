@@ -1,8 +1,8 @@
-# Design Conventions
+# 🎨 Design Conventions
 
 > Links between wiki pages are relative and omit the `.md` extension.
 
-## Naming
+## 🏷️ Naming
 
 | Item | Convention |
 | --- | --- |
@@ -14,13 +14,13 @@
 | Download files | `<Title> - <Version> - <Platform>[- <Variant>].<ext>` |
 | Shortcut group / folder | `lewdzone` |
 
-## Canonical vocabulary
+## 💬 Canonical vocabulary
 
 `Game` / `PostId`, `Version`, `DownloadEntry`, `Host` (slug from the site),
 `GoToken` (`v1.<payload>.<sig>`), `DownloadJob`, `ArtworkCache`, `Shortcut`,
 `Genre`.
 
-## Code style
+## 📐 Code style
 
 - **rustfmt** (`cargo fmt`) + **clippy** with `-D warnings` as the gate; `cargo check`
 - Module-level `pub` types documented; no `unwrap()` outside tests and top-level
@@ -28,7 +28,7 @@
 - Newtype wrappers for domain IDs (`PostId(u64)`, `GameId(u64)`, `GoToken`)
 - Explicit `enum` variants over flag booleans
 
-## Mermaid diagrams
+## 🧩 Mermaid diagrams
 
 All Mermaid in the repo must comply with GitHub's Mermaid v10.x renderer.
 Rules:
@@ -46,7 +46,7 @@ Rules:
 
 Full rule: [Rule 09](https://github.com/helix-origin/lewdzone-launcher/tree/main/.agents/rules/rule-09-mermaid-standards.md).
 
-## ADRs
+## 📜 ADRs
 
 Cross-layer contract changes require an **Architecture Decision Record**
 before implementation, filed in `.agents/adr/` using the template

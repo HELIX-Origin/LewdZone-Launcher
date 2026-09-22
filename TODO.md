@@ -1,10 +1,10 @@
-# TODO (work queue)
+# 📋 TODO (work queue)
 
 Living work queue. Items move to ROADMAP.md phases once they get sub-issues;
 checked items go to `git log`. Add new items here first, then pull into the
 roadmap when they're scoped.
 
-## Immediate
+## 🚧 Immediate
 
 - [x] Rename `PLAN.md` → `ROADMAP.md`
 - [x] Fix mermaid compliance defects in `.agents/agents/*` (Rule 09) — still to verify in cleanup pass
@@ -33,7 +33,7 @@ roadmap when they're scoped.
 - [ ] Implement `enrich-game-and-art` skill + `content-provider` template
 - [ ] `rule-03`/`rule-10` — fold content-provider keys/secrets wording (verify coverage)
 
-## Backlog (unscoped)
+## 🗄️ Backlog (unscoped)
 
 - [ ] SteamGridDB artwork pipeline end-to-end via content layer (search → pick → ico → cache)
 - [ ] Enrichment e2e for a thin title (VNDB description + SteamGridDB icon + VNDB cover, cached + offline replay)

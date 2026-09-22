@@ -1,8 +1,8 @@
-# Testing & QA
+# 🧪 Testing & QA
 
 > Links between wiki pages are relative and omit the `.md` extension.
 
-## Layers
+## 🧬 Layers
 
 | Layer | What it covers | How it runs |
 | --- | --- | --- |
@@ -12,7 +12,7 @@
 | **GUI tests** | Svelte views against the Rust core | Vitest (`npm run test`) in `src/` |
 | **Windows-specific** | spawn flags, `.lnk`, path rules | `cargo test` on a Windows CI runner |
 
-## Running the suite
+## ▶️ Running the suite
 
 ```sh
 cargo test                 # from src-tauri/: default offline-only
@@ -25,7 +25,7 @@ Coverage floors: **85% overall**, core modules ~90%, GUI-side ~70% (via
 `cargo clippy -D warnings`, `cargo test`, `npm run check`, `npm run test`. See
 [Rule 11](../.agents/rules/rule-11-testing).
 
-## Test layout
+## 📂 Test layout
 
 ```
 src-tauri/
@@ -40,7 +40,7 @@ src/
   lib/                  # Vitest suites per view/component (*.test.ts)
 ```
 
-## Fakes (test helper modules)
+## 🎭 Fakes (test helper modules)
 
 The suite never touches real anything by default. Key fakes:
 
@@ -55,7 +55,7 @@ The suite never touches real anything by default. Key fakes:
 Fakes **fail loud** on unexpected input so bugs aren't masked. Documented in
 [the agent](../.agents/agents/testing/mock-engineer/mock-engineer).
 
-## Protocol & parity tests
+## 🔁 Protocol & parity tests
 
 - A **parity test** exercises `lewdzone <cmd> --json` and asserts the
   CLI's machine output stays 1:1 with the GUI-facing core commands (GUI/CLI
@@ -64,7 +64,7 @@ Fakes **fail loud** on unexpected input so bugs aren't masked. Documented in
   in-process command test harness and asserting state transitions — no
   subprocess involved (Rule 13).
 
-## Probe/script promotion (reuse, don't remake)
+## ♻️ Probe/script promotion (reuse, don't remake)
 
 The Rust test suite is the **sole home for every script in this repo** —
 scanning, probing, verification, and debugging logic all live as test modules,
@@ -80,7 +80,7 @@ never as scripts in `scratch/`:
   games/page) are recorded in the ROADMAP **and** pinned as live tests so they
   never regress silently.
 
-## Performance budgets
+## ⏱️ Performance budgets
 
 | Operation | Budget |
 | --- | --- |

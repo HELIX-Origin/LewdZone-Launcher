@@ -99,3 +99,21 @@ pub fn not_yet(cmd: &str) -> Error {
         "'{cmd}' is not yet implemented in this build — see ROADMAP Phase 2"
     ))
 }
+
+/// Normalize a game argument (slug, `/game/slug/`, or a full game URL) to the
+/// bare slug. Shared by `info` and `download`.
+pub fn game_arg_slug(arg: &str) -> String {
+    let tail = arg
+        .trim_end_matches('/')
+        .rsplit('/')
+        .next()
+        .unwrap_or(arg)
+        .trim();
+    if tail.is_empty() {
+        String::new()
+    } else if tail.contains('.') {
+        arg.trim().to_string()
+    } else {
+        tail.to_string()
+    }
+}

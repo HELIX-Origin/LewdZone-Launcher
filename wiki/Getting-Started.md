@@ -1,8 +1,8 @@
-# Getting Started
+# 🚀 Getting Started
 
 > Links between wiki pages are relative and omit the `.md` extension.
 
-## Requirements
+## ✅ Requirements
 
 - **Windows**, **Linux**, or **macOS**
 - **Rust toolchain** (stable) + **Node.js/npm** when building from source
@@ -12,7 +12,7 @@
   - If none is installed, download commands fail fast (exit code 4) and list
     what's available.
 
-## Quick start (CLI)
+## ⚡ Quick start (CLI)
 
 ```sh
 # build the CLI (from a source checkout) — see Installing & Building
@@ -25,21 +25,23 @@ lewdzone settings set download-root "D:/Games"
 # refresh the catalog from LewdZone
 lewdzone sync --json
 
-# find a game
-lewdzone search --query "treasure of nadia" --json
+# browse the archive (or list the synced catalog)
+lewdzone search --json
+lewdzone list
 
 # show a game's versions and download entries
 lewdzone info --game treasure-of-nadia --json
 
-# enqueue a download to your manager of choice
+# choose the download manager and enqueue a download
+lewdzone dm fdm
 lewdzone download --game treasure-of-nadia --version latest \
-  --platform windows --tab official --manager fdm --json
+  --platform PC --tab official --json
 
-# list installed games
-lewdzone list --status installed --json
+# list installed/library games
+lewdzone list --library --json
 ```
 
-## Quick start (desktop app)
+## 🖥️ Quick start (desktop app)
 
 Build steps are in [Installing & Building](Installing-and-Building). On first
 launch:
@@ -52,15 +54,17 @@ launch:
 4. **Settings** — download root, active download manager, artwork cache, and
    content-provider API keys (SteamGridDB / IGDB etc.).
 
-## Where things live
+## 📁 Where things live
 
-- Catalog + download jobs: SQLite database (config dir per OS, see
-  [Configuration](Configuration)).
+- Catalog + download jobs: SQLite database in the data dir per OS
+  (e.g. `%APPDATA%\lewdzone\lewdzone.db`; see [Configuration](Configuration)).
 - Download files: `<DownloadRoot>/Games/<Title>/`.
-- Artwork cache: `artwork_cache/` next to the database.
+- Installed library: `<data_root>/library/` with
+  `common/<Title>/`, `downloads`, and `artwork/` (see
+  [Download Managers](Download-Managers)).
 - Start-menu / desktop shortcuts: `lewdzone` group (per OS).
 
-## First sync
+## 🔄 First sync
 
 `sync` fetches catalog data by paging the site's archive. It's rate-limited to
 be polite (see [Design Conventions](Design-Conventions) and

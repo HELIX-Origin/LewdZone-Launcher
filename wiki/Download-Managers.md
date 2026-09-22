@@ -1,10 +1,10 @@
-# Download Managers
+# 📥 Download Managers
 
 > Links between wiki pages are relative and omit the `.md` extension.
 
-## Model
+## 🧠 Model
 
-lewdzone **never downloads files itself**. The resolver converts a
+LewdZone Launcher **never downloads files itself**. The resolver converts a
 go-link token into a **real URL**, then a per-manager **adapter** hands that
 URL to an installed download manager:
 
@@ -12,10 +12,10 @@ URL to an installed download manager:
   lists what's available.
 - adapters live in `src-tauri/src/dm/` (Rust module).
 - A registry maps adapter names (`fdm` / `idm` / `torrent`) to instances; the
-  active manager is a [Configuration](Configuration) setting
-  (`settings set dm` or `lewdzone dm set active <name>`).
+  active manager is selected with `lewdzone dm <name>` and persisted in the
+  `dm` [Configuration](Configuration) setting.
 
-## Adapter contract
+## 📋 Adapter contract
 
 Every adapter implements a Rust trait / enum variant (Rule 07):
 
@@ -28,7 +28,7 @@ Every adapter implements a Rust trait / enum variant (Rule 07):
 | `launch(url, target_dir, filename)` | spawn detached, silent |
 | `confirm_launch() -> Option<bool>` | optional post-check |
 
-## Per-manager invocation
+## 🚀 Per-manager invocation
 
 | Manager | Platforms | Kind | Invocation shape |
 | --- | --- | --- | --- |
@@ -40,14 +40,14 @@ Torrents (magnet / `.torrent`) are **never** routed to HTTP managers. For a
 `.torrent` URL the tool downloads the small torrent file itself into a job temp
 dir, then hands the local path to the client.
 
-## Resolution rule
+## 🔒 Resolution rule
 
 Only a **resolved real URL** may be handed to a manager. The go-link
 `#fragment` is never passed on — naive follow-through would download a redirect
 page (see [Security](Security) for the allowlist). Resolved URLs may carry a
 trailing literal `\r` that is stripped.
 
-## Folder folding
+## 📂 Folder folding
 
 Completed downloads are folded into:
 `<DownloadRoot>/Games/<Title>/<Title> - <Version> - <Platform>[- <Variant>].<ext>`
@@ -56,7 +56,7 @@ Completed downloads are folded into:
 - Multipart parts merge into a `_parts/` folder inside the game folder.
 - Path sanitization strips `\ : * ? " < > |` (and `/` where needed).
 
-## Full rule
+## 📖 Full rule
 
 [Rule 07](https://github.com/helix-origin/lewdzone-launcher/tree/main/.agents/rules/rule-07-download-manager-integration.md) in the repo
 (`.agents/rules/rule-07-download-manager-integration.md`).

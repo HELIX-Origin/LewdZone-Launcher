@@ -335,6 +335,18 @@ pub fn game_count(tx: &Connection) -> Result<i64, Error> {
         .map_err(Into::into)
 }
 
+/// Resolve a stable post id to its current permalink slug (inverse of the
+/// slug UNIQUE index). Used by `info`/`download` when the user passes an id.
+pub fn slug_by_post_id(tx: &Connection, post_id: i64) -> Result<Option<String>, Error> {
+    tx.query_row(
+        "SELECT slug FROM game WHERE post_id = ?1",
+        [post_id],
+        |row| row.get::<_, String>(0),
+    )
+    .optional()
+    .map_err(Into::into)
+}
+
 /// Compact catalog rows for `list` / Storefront tiles: each game with its
 /// current version label and genre slugs, ordered by title.
 #[derive(Debug, Clone, serde::Serialize, PartialEq, Eq)]
@@ -528,6 +540,19 @@ mod tests {
         upsert_game(&tx, &b, None, None).unwrap();
         tx.commit().unwrap();
         assert_eq!(game_count(&conn).unwrap(), 2);
+    }
+
+    #[test]
+    fn slug_by_post_id_lookup() {
+        let conn = mem();
+        let tx = conn.unchecked_transaction().unwrap();
+        upsert_game(&tx, &sample_game(), Some("2024-10-01"), None).unwrap();
+        tx.commit().unwrap();
+        assert_eq!(
+            slug_by_post_id(&conn, 18212).unwrap().as_deref(),
+            Some("treasure-of-nadia")
+        );
+        assert_eq!(slug_by_post_id(&conn, 999).unwrap(), None);
     }
 
     #[test]

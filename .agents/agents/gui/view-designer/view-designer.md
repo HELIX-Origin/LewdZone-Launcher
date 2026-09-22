@@ -123,7 +123,7 @@ Grid rules:
    grid is the default launcher view.
 4. State chips echo site badges: Ongoing / Completed / Update available.
 5. The **Library page** renders only games present on disk (from
-   `download list --status installed`) and surfaces their icon + cover art +
+   `list --library`) and surfaces their icon + cover art +
    description + Launch / Rebuild shortcuts / Uninstall actions.
 
 ## Download flow UX

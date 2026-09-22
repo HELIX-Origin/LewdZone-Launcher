@@ -14,7 +14,7 @@ two entry points into the same Rust core: the same functions back both (Rule
 
 ---
 
-## Agent Catalog
+## 🧑‍💼 Agent Catalog
 
 | Family | Primary | Sub-agents | Scope |
 | --- | --- | --- | --- |
@@ -34,7 +34,7 @@ See [wiki/Agents](wiki/Agents) for the full agent catalog with sub-agent details
 
 ---
 
-## Rules
+## 📏 Rules
 
 | # | Name | Scope |
 | --- | --- | --- |
@@ -57,7 +57,7 @@ Full descriptions: `.agents/rules/index.md` and `wiki/Design-Conventions`.
 
 ---
 
-## Verification
+## ✅ Verification
 
 Before any merge to `main`, all of the following must pass:
 
@@ -82,7 +82,7 @@ lewdzone --help
 
 ---
 
-## Governance Principles
+## 🏛️ Governance Principles
 
 1. **One owner per artifact.** A file or module has exactly one owning agent.
 2. **One core, two entry points.** The GUI and the CLI call the same Rust core

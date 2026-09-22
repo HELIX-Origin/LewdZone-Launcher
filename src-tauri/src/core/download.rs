@@ -219,7 +219,7 @@ pub fn run_with(
         return Err(Error::Usage("game slug required".to_string()));
     }
     // Canonical game URL (slug may itself be a full URL; normalize).
-    let slug = game_url_slug(sel.game);
+    let slug = crate::core::game_arg_slug(sel.game);
     let url = format!("https://lewdzone.com/game/{slug}/");
     let html = fetch(&url)?;
     let parsed = scraper::game::parse_game(&html);
@@ -245,23 +245,6 @@ pub fn run_with(
 
     print!("{}", serde_json::to_string_pretty(&jobs).unwrap());
     Ok(crate::cli::ExitCode::Ok)
-}
-
-/// Normalize a game arg (slug, `/game/slug/` URL, or full URL) to its slug.
-fn game_url_slug(arg: &str) -> String {
-    let tail = arg
-        .trim_end_matches('/')
-        .rsplit('/')
-        .next()
-        .unwrap_or(arg)
-        .trim();
-    if tail.is_empty() {
-        "".to_string()
-    } else if tail.contains('.') {
-        arg.trim().to_string()
-    } else {
-        tail.to_string()
-    }
 }
 
 #[cfg(test)]

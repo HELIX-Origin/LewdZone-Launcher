@@ -1,10 +1,10 @@
-**lewdzone**
+**🏠 lewdzone**
 
 - [Home](Home)
 - [Getting Started](Getting-Started)
 - [Installing & Building](Installing-and-Building)
 
-**Reference**
+**📖 Reference**
 
 - [Architecture](Architecture)
 - [CLI Reference](CLI-Reference)
@@ -13,7 +13,7 @@
 - [Configuration](Configuration)
 - [Troubleshooting](Troubleshooting)
 
-**Development**
+**🛠️ Development**
 
 - [Agent Ecosystem](Agents)
 - [Design Conventions](Design-Conventions)

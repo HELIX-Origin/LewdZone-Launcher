@@ -1,4 +1,4 @@
-# LewdZone Launcher Changelog
+# 📜 LewdZone Launcher Changelog
 
 Historical record of every change to the repository. Each release anchors to a
 tag URL; commit entries link to their full commit. Newer releases are added at
@@ -6,9 +6,9 @@ the top; the current development state lives under `Unreleased`.
 
 ---
 
-## Unreleased
+## ⏳ Unreleased
 
-### Added
+### ✨ Added
 
 - **docs(repo): add AGENTS operating manual, ROADMAP, TODO, and BUGS trackers** [9673193](https://github.com/HELIX-Origin/LewdZone-Launcher/commit/967319311bae99e61a5965f0723169e7672e5e33)
 - **docs(repo): scaffold lewdzone-launcher with .agents ecosystem, wiki, and gitignore** [5d65506](https://github.com/HELIX-Origin/LewdZone-Launcher/commit/5d655068a11c0b84b3de6e0c70c3589eb7050093)

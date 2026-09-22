@@ -1,10 +1,10 @@
-# Architecture
+# 🏗️ Architecture
 
 > Links between wiki pages are relative and omit the `.md` extension.
 
-## Two entry points, one core
+## 🎯 Two entry points, one core
 
-lewdzone is a **modular layered monolith** with two entry points into
+LewdZone Launcher is a **modular layered monolith** with two entry points into
 one Rust core:
 
 | Entry point | Role | Talks to |
@@ -16,7 +16,7 @@ The Tauri binary re-exposes the Rust core as a CLI (`src-tauri/src/cli.rs`);
 both entry points call the same functions — no duplication, no serialization
 hand-off.
 
-## Layer contract (inner = pure)
+## 🧱 Layer contract (inner = pure)
 
 | Layer | Contains | May use |
 | --- | --- | --- |
@@ -32,7 +32,7 @@ controllers; the webview never touches services directly. Enforced via the
 crate's module boundaries (Rule 03). Full rule: [Rule 03](https://github.com/helix-origin/lewdzone-launcher/tree/main/.agents/rules/rule-03-module-architecture.md) —
 link resolves on the wiki; in the repo it's `.agents/rules/rule-03-module-architecture.md`.
 
-## CLI machine contract
+## 🖥️ CLI machine contract
 
 - **Query commands** (`info`, `search`, `list`, …): one `--json` document.
 - **Long-running commands** (`sync`, `download`, `shortcuts`, …): progress
@@ -56,7 +56,7 @@ flowchart TD
     CT --> SV
 ```
 
-## Data model
+## 🗄️ Data model
 
 - SQLite catalog stores go-link **tokens**, never resolved URLs (resolved URLs
   are ephemeral).
@@ -66,7 +66,7 @@ flowchart TD
   `kind` columns).
 - Config + DB live in the per-OS config dir; see [Configuration](Configuration).
 
-## Folder structure (Steam mirror, ADR-0005)
+## 📂 Folder structure (Steam mirror, ADR-0005)
 
 The on-disk layout mirrors the Steam client's, so the launcher *is* a game
 launcher — same shape as Steam, different target site + palette:
@@ -99,7 +99,7 @@ launcher — same shape as Steam, different target site + palette:
   SQLite (ADR-0004); the Theme picker (skins) is first-class and, unlike Valve,
   is retained as a core capability ([ADR-0005](../.agents/adr/0005-steam-mirror-folder-structure)).
 
-## Content enrichment pipeline
+## 🪄 Content enrichment pipeline
 
 Not every LewdZone page carries full metadata (indie/amateur titles are often
 thin). A pluggable **content-provider layer** fills info + art gaps without
@@ -124,7 +124,7 @@ persisted securely (Rule 10) — never echoed back. Providers degrade
 gracefully: an outage or missing key means "no enrichment", never a broken
 listing or download. See [Agents](Agents) for the `content` family.
 
-## Download pipeline
+## ⬇️ Download pipeline
 
 1. Scraper collects `game`/`version`/`download_entry` rows from the site
    (tokens, not URLs).
@@ -137,7 +137,7 @@ listing or download. See [Agents](Agents) for the `content` family.
 
 See [Download Managers](Download-Managers).
 
-## Packaging
+## 📦 Packaging
 
 `tauri build` produces:
 
@@ -150,7 +150,7 @@ See [Download Managers](Download-Managers).
 The CLI ships as part of the app binary itself (Rule 13): the same executable
 provides the `lewdzone` command, so no sidecar artifact is bundled.
 
-## Cross-platform rules
+## 🖇️ Cross-platform rules
 
 - Config dirs: `%APPDATA%` (Windows), `~/.config` or `$XDG_CONFIG_HOME` (Linux),
   `~/Library/Application Support` (macOS).
