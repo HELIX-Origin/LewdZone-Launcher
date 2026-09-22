@@ -1,8 +1,5 @@
 # Welcome to the LewdZone-Launcher Wiki
 
-> See the [_Sidebar](_Sidebar) for navigation. This wiki is synced with the
-> GitHub Wiki — all internal links are relative and omit the `.md` extension.
-
 LewdZone-Launcher is a **cross-platform desktop launcher** (Windows, Linux,
 macOS) for browsing, downloading, and organizing games from
 [LewdZone](https://lewdzone.com). It is built around a **Tauri 2 app** — Rust

@@ -1,0 +1,195 @@
+<svelte:options runes={true} />
+
+<script lang="ts">
+  import { onMount } from "svelte";
+  import { invoke } from "@tauri-apps/api/core";
+  import { applyTokens } from "$lib/theme/apply";
+
+  type LoadState = "loading" | "ready" | "error";
+
+  let status: LoadState = $state("loading");
+  let error = $state("");
+
+  let snapshot = $state<Record<string, unknown>>({});
+  let themes: string[] = $state([]);
+  let activeTheme = $state("(default)");
+  let busy = $state(false);
+  let toast = $state("");
+
+  async function load() {
+    status = "loading";
+    try {
+      const [cfg, list] = await Promise.all([
+        invoke<Record<string, unknown>>("settings_get"),
+        invoke<string[]>("themes_list"),
+      ]);
+      snapshot = cfg;
+      themes = list;
+      const t = cfg["theme"];
+      activeTheme = typeof t === "string" && t.trim() ? t : "(default)";
+      status = "ready";
+    } catch (err) {
+      status = "error";
+      error = String(err);
+    }
+  }
+
+  onMount(load);
+
+  async function save(key: string, value: unknown) {
+    busy = true;
+    try {
+      const view = await invoke<{ key: string; value: never }>("settings_set", {
+        key,
+        value: String(value),
+      });
+      snapshot = { ...snapshot, [view.key]: view.value };
+      toast = `${view.key} saved`;
+    } catch (err) {
+      toast = `failed: ${err}`;
+    } finally {
+      busy = false;
+    }
+  }
+
+  async function applyTheme(name: string) {
+    busy = true;
+    try {
+      const tokens = await invoke<Array<[string, string]>>("themes_apply", {
+        name,
+      });
+      applyTokens(tokens);
+      activeTheme = name === "" ? "(default)" : name;
+      toast = `theme applied${name ? `: ${name}` : ""}`;
+    } catch (err) {
+      toast = `theme failed: ${err}`;
+    } finally {
+      busy = false;
+    }
+  }
+</script>
+
+{#if status === "loading"}
+  <p class="note">Loading settings…</p>
+{:else if status === "error"}
+  <p class="note error">{error}</p>
+{:else}
+  <div class="settings">
+    <h1>Settings</h1>
+
+    {#each [
+      ["library-root", "Library root", "Where games are installed (library folders)."],
+      ["dm", "Download manager", "Active manager: fdm, idm, or torrent."],
+      ["content-priority", "Content providers", "Comma-separated provider priority list."],
+    ] as [key, label, hint] (key)}
+      <label class="field">
+        <span class="field-label">{label}</span>
+        <input
+          class:touched={false}
+          type="text"
+          value={String(snapshot[key] ?? "")}
+          onchange={(e) => save(key, (e.currentTarget as HTMLInputElement).value)}
+          onkeydown={(e) => {
+            if (e.key === "Enter") (e.currentTarget as HTMLInputElement).blur();
+          }}
+        />
+        <span class="field-hint">{hint}</span>
+      </label>
+    {/each}
+
+    <label class="field">
+      <span class="field-label">Capture-aware sync</span>
+      <input
+        type="checkbox"
+        checked={snapshot["capture-aware"] === true}
+        onchange={(e) => save("capture-aware", (e.currentTarget as HTMLInputElement).checked)}
+      />
+      <span class="field-hint">Pause network work while the window is captured/streaming.</span>
+    </label>
+
+    <fieldset class="field">
+      <legend class="field-label">Theme</legend>
+      <select
+        value={activeTheme}
+        onchange={(e) => applyTheme((e.currentTarget as HTMLSelectElement).value)}
+      >
+        <option value="">(default)</option>
+        {#each themes as name (name)}
+          <option value={name}>{name}</option>
+        {/each}
+      </select>
+      <span class="field-hint">Skins in config/skins override tokens at runtime — no restart needed.</span>
+    </fieldset>
+
+    {#if toast}<p class="toast" aria-live="polite">{toast}</p>{/if}
+  </div>
+{/if}
+
+<style>
+  .settings {
+    max-width: 640px;
+    padding: var(--lz-gap);
+    display: flex;
+    flex-direction: column;
+    gap: var(--lz-gap);
+  }
+
+  h1 {
+    font-size: 20px;
+    margin: 0;
+  }
+
+  .field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .field-label {
+    font-weight: 600;
+    font-size: 13px;
+    color: var(--lz-text-dim);
+  }
+
+  input[type="text"],
+  select {
+    background: var(--lz-surface-2);
+    border: 1px solid var(--lz-surface-2);
+    color: var(--lz-text);
+    border-radius: var(--lz-radius);
+    padding: 8px 10px;
+    font: inherit;
+  }
+
+  input[type="text"]:focus,
+  select:focus {
+    outline: 1px solid var(--lz-accent);
+    border-color: var(--lz-accent);
+  }
+
+  .field-hint {
+    font-size: 12px;
+    color: var(--lz-text-dim);
+  }
+
+  input[type="checkbox"] {
+    accent-color: var(--lz-accent);
+    width: 16px;
+    height: 16px;
+  }
+
+  .toast {
+    color: var(--lz-ok);
+    margin: 0;
+    font-size: 13px;
+  }
+
+  .note {
+    padding: var(--lz-gap);
+    color: var(--lz-text-dim);
+  }
+
+  .note.error {
+    color: var(--lz-danger);
+  }
+</style>

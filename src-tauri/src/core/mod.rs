@@ -61,6 +61,12 @@ impl From<serde_json::Error> for Error {
     }
 }
 
+impl From<Error> for String {
+    fn from(err: Error) -> Self {
+        err.to_string()
+    }
+}
+
 /// Everything a command needs to do its job: resolved tool paths.
 #[derive(Clone, Debug)]
 pub struct Context {

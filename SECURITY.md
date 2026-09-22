@@ -1,18 +1,6 @@
 # Security Policy
 
-## 1. Supported Versions
-
-Only the latest release of each supported line receives security updates:
-
-| Version | Supported |
-| --- | --- |
-| Current `0.x` | ✅ Supported |
-| Older `0.x` | ❌ End-of-life |
-
-Users are encouraged to stay on the newest release, which contains all
-security fixes.
-
-## 2. Reporting a Vulnerability
+## 1. Reporting a Vulnerability
 
 Please **do not disclose security issues publicly** (issues, PRs, forums)
 before they are resolved.
@@ -29,7 +17,7 @@ Please include:
 - Steps to reproduce or a minimal PoC.
 - Any suggested fix, if you have one.
 
-## 3. Vulnerability Response Timeline
+## 2. Vulnerability Response Timeline
 
 | Stage | Target |
 | --- | --- |
@@ -42,7 +30,7 @@ We practice **coordinated disclosure**: details of a vulnerability are made
 public only after a patched release is available, unless public disclosure is
 required earlier.
 
-## 4. Architectural Security Principles
+## 3. Architectural Security Principles
 
 - **Zero telemetry.** The application phones home nowhere; no analytics, no
   crash reporting, no beacon on launch.
@@ -60,7 +48,7 @@ required earlier.
 - **TLS everywhere.** All outbound HTTP uses HTTPS; certificate verification is
   not disabled.
 
-## 5. Security Best Practices for Host Administrators
+## 4. Security Best Practices for Host Administrators
 
 - Run the latest release.
 - Keep resolved download URLs out of logs and transcripts; they expire anyway

@@ -1,32 +1,26 @@
-# LewdZone Launcher — Repo Roadmap
+# 🗺️ LewdZone App Build Roadmap
 
-**This document is the complete, authoritative roadmap for the entire
-repository — from the very first commit onward.**
+**This is the complete, authoritative roadmap for the repository.** Living plan:
+edited in place as work progresses — a tracked twin of the roadmap tracking
+[issue #1](https://github.com/HELIX-Origin/LewdZone-Launcher/issues/1)
+([Rule 04](.agents/rules/rule-04-remote-issue-protocol.md)).
 
-> **Accuracy contract:** ROADMAP.md must always be 100% accurate. It maps every
-> feature we are working on. When a feature is abandoned, it is **removed** from
-> this file (never marked "cancelled" and left dangling). When a feature is
-> done, it moves to the right list. There is no history kept here — the git log
-> is the history. Current status is in the **Done** and **Now** sections.
-> The canonical tracked copy mirrors this file in the roadmap-first GitHub
-> issue (Rule 04).
-
-**Central command:** `🗺️ LewdZone App Build Roadmap` — the single living
-tracking issue on GitHub. This file is its in-repo twin. Items here move
-together; the issue body is updated when this file changes.
-
----
+> **Accuracy contract:** must always be 100% accurate. When a feature is
+> abandoned it is **removed** here and from the roadmap issue — never left as a
+> cancelled corpse. When done, it moves to **Done**. History lives in the git
+> log, not here.
 
 ## North Star
 
-A cross-platform desktop **game launcher** for lewdzone.com: browse a
-Steam-like store, queue downloads, organize files, and create native shortcuts.
-It is a **Tauri 2 app** (Rust + OS webview, Svelte frontend) whose binary also
-exposes a **native Rust CLI**. The GUI and the CLI are two entry points into
-the same Rust core: the same functions back both. The app is the primary
-product; the CLI is scriptable standalone.
+Cross-platform desktop game launcher for lewdzone.com: Steam-like Store
+(browse/search/download), Library (icons, covers, descriptions), Downloads
+(queue), Settings. **Single Tauri 2 binary** with two faces: a windowed GUI
+(SvelteKit frontend in `src/`, Rust core in `src-tauri/`) and a native Rust CLI
+(same core, clap commands, `--json` machine output). Internal folders mirror the
+Steam client layout
+([ADR-0005](.agents/adr/0005-steam-mirror-folder-structure.md)).
 
-## Overview
+## Plan
 
 ```mermaid
 flowchart TD
@@ -41,89 +35,61 @@ flowchart TD
     style ROAD fill:#e11,color:#fff
 ```
 
----
-
 ## Done ✅
 
-Everything shipped to `main`. (Initial push: `5d65506`.)
+- [x] `.agents/` ecosystem — 10 families, rules 00–13, skills, wiki, ADRs 0001–0005
+- [x] GitHub repo + initial push
+- [x] Root docs: `AGENTS.md`, wiki (16 pages), legal pages (LICENSE/PRIVACY/TOS/SECURITY)
+- [x] Restructure: Python CLI deleted; repo root IS the Tauri 2 app (`src/` + `src-tauri/`)
+- [x] Native Rust CLI core (clap): sync/search/info/download/list/settings/shortcuts/launch/dm + exit-code contract (0–5) + `--json`
+- [x] Shared core: paths, settings, library (Steam-mirror), skins/theme system (ADR-0005) — Rust tests green
+- [x] Tauri commands bridge: settings_get/settings_set/themes_list/themes_tokens/themes_apply
+- [x] App shell: topbar nav (Store/Library/Downloads/Settings) + 4 placeholder views; frontend vitest suites green, svelte-check green
+- [x] Toolchain (Rust 1.98 / MSVC via VS2026 Build Tools), cargo test + clippy + fmt green
 
-### Phase 0 — Foundation
-- [x] `.agents/` agent ecosystem — 11 families, rules 00–13, skills, wiki
-- [x] GitHub repo `HELIX-Origin/LewdZone-Launcher` + initial push
-- [x] Root docs: `AGENTS.md`, `wiki/` (17 pages), `.gitignore`
-- [x] `ROADMAP.md`, `TODO.md`, `BUGS.md` created (this trio)
+## Now 🚧 (Phase 2 — Storefront + Core)
 
-## Now 🚧
-
-Currently worked. **No sub-issues have been created on GitHub yet** — the
-roadmap issue is the umbrella; sub-issues come from these items.
-
-### Phase 1 — Diagnostics & Architecture
-- [x] Scraping proof: archive pagination scheme — **`/games/page/N/`** pretty
-  permalinks, 20 games/page, ~1146 pages; query `?page=N` ignored (normalized
-  to base); filters combine as `?platform=PC&sort=New+to+Old` on the page path
-- [ ] Mermaid compliance cleanup across `.agents/agents/*` (Rule 09)
-  - systems-designer subgraph quoting; gui/testing subgraph quoting;
-    dm-detector/folder-organizer label quoting
-- [x] `src-tauri/src/` Rust crate scaffold + module boundaries (Rule 03)
-- [x] ADRs for cross-layer contracts
-  - [x] ADR-0001 — two entry points, one Rust core (native CLI + Tauri GUI)
-  - [x] ADR-0002 — download-manager adapter layer (FDM/IDM/torrent)
-  - [x] ADR-0003 — SQLite persistence (tokens, not URLs)
-  - [x] ADR-0004 — content-provider enrichment layer
-- [x] Config + SQLite bootstrap (`src-tauri/src/db.rs`, WAL schema, forward-only
-  migrations + `schema_migrations`, DB tests green)
-- [x] Content-provider layer design (`.agents/agents/content/` — provider
-  contract, registry, six v1 providers) — design done, implementation pending
+- [ ] Fix any remaining verification gaps (final svelte-check pass, clippy/fmt clean)
+- [ ] Storefront catalog view: real tiles + game-page lookup (search/content-provider layer)
+- [ ] Scraper: catalog pagination (`?page=N`), game pages, version/download links, genres
+- [ ] Resolver: go/redirect → reveal link, retry, download token handling
+- [ ] DM adapters (FDM, IDM, uTorrent/BitTorrent) + detector + folder-organizer
+- [ ] Download queue + incremental sync pipeline (core `sync`/`download`/`dm`)
+- [ ] Router recreation of store pages (ripped UI mirrored into local HTML)
 
 ## Later ⏳
 
-### Phase 2 — Core Implementation
-- [ ] Scraper: catalog, game page, versions, download entries, genre tags
-- [ ] Resolver: go-token `start` → `reveal`, retry, `\r` strip
-- [ ] DM adapters: FDM, IDM, uTorrent/BitTorrent + detector + folder-organizer
-- [ ] Job queue + sync pipeline (incremental, rate-limited)
-- [ ] CLI commands: `sync/search/info/download/list/settings/shortcuts/launch/dm`
-  with `--json` machine contract (progress on stderr)
-
 ### Phase 3 — Test Suite & Regression
-- [ ] Rust unit/integration suites (cargo test) in `src-tauri/` + Svelte Vitest
-      suites in `src/`, test helper modules in `src-tauri/tests/`
-- [ ] App/CLI parity tests — same core commands drive both entry points
-- [ ] Coverage floors: 85% overall, ~90% core, ~70% gui
+- Frontend unit tests for all four views
+- App/CLI parity tests + protocol tests
+- Coverage floors: 85% overall, ~90% core, ~70% gui
 
-### Phase 4 — Desktop App & Shortcuts
-- [ ] Tauri 2 shell: Rust core, window lifecycle, shared-core commands
-- [ ] Svelte views: Store / Library / Downloads / Settings (incl. API-keys
-      section pasting content-provider keys)
-- [ ] Native shortcuts (.lnk / .desktop / .app) + artwork from the
-      content-provider layer (SteamGridDB icons, multi-provider covers)
-- [ ] Content providers impl: VNDB, IGDB, itch.io, Steam Storefront, IndieDB
-- [ ] Packaging: MSI+NSIS, .app+DMG, AppImage+deb+rpm, updater
+### Phase 4 — Packaging & Shortcuts
+- Native shortcuts (.lnk / .desktop / .app) + SteamGridDB artwork
+- Packaging: MSI+NSIS, .app+DMG, AppImage+deb+rpm, updater
+- **Releases page:** prebuilt installers per OS+arch
+- **GitHub Packages (npm):** CLI-only package for headless/no-GUI users
 
 ### Phase 5 — Verification & Release
-- [ ] Release gate green (cargo fmt/clippy/test, svelte-check, vitest, build smoke)
-- [ ] Docs synced back to `wiki/`; release notes; tag `v0.1.0` / `v1.0.0`
+- Release gate (cargo test/clippy/fmt, vitest, svelte-check, security, build smoke)
+- Docs sync → wiki, release notes, tag `v0.1.0` / `v1.0.0`
 
 ## Abandoned 🗑️
 
-*Nothing abandoned yet. When a feature is dropped, delete it from all sections
-above (and from the tracking issue) — do not leave a corpse.*
+- Python CLI sidecar (lewdzone_launcher package, pytest suites) — replaced by
+  native Rust core + vitest; removed from repo.
 
----
+## Acceptance Criteria
 
-## Acceptance Criteria (project-level)
-
-- [ ] `lewdzone-launcher --help` clean on PowerShell **and** bash
-- [ ] `lewdzone-launcher download --game treasure-of-nadia --version latest --platform PC --tab official --manager fdm --json` resolves and dispatches to a real DM
-- [ ] Store/Library/Downloads/Settings pages all work; every action maps 1:1 to a CLI command
+- [ ] `lewdzone-launcher --help` clean on PowerShell and bash
+- [ ] `download --game treasure-of-nadia --manager fdm --json` resolves and dispatches
+- [ ] Store/Library/Downloads/Settings all map 1:1 to an invoke command or CLI command
 - [ ] Torrent links only accepted by a torrent-capable manager
-- [ ] Files land in `<DownloadRoot>/Games/<Title>/<Title> - <Version> - <Platform>.ext`
-- [ ] Full test suite + coverage floors green on CI
+- [ ] Files land in `<Library>/common/<Title>/` per ADR-0005 mirror layout
+- [ ] Rust + frontend suites green on CI
 
 ## Related
 
-- [AGENTS.md](AGENTS.md) — operating manual
-- [TODO.md](TODO.md) — fine-grained work queue (next steps)
-- [BUGS.md](BUGS.md) — open bugs only
-- [wiki](wiki/Home) — living documentation suite
+In-repo: `TODO.md`, `BUGS.md`, `AGENTS.md`, wiki pages (Architecture,
+CLI-Reference, Download-Managers, Development). Living spec: `.agents/rules/index.md`.
+ADRs: `.agents/adr/` (storage/settings patterns).

@@ -111,6 +111,26 @@ const KNOWN_KEYS: &[&str] = &[
     "library-root",
 ];
 
+/// All known + extra settings as a JSON object (data form for GUI bridge).
+pub fn snapshot(s: &Settings) -> serde_json::Value {
+    let mut all = serde_json::Map::new();
+    for k in KNOWN_KEYS {
+        if let Some(v) = s.get_value(k) {
+            all.insert((*k).to_string(), v);
+        }
+    }
+    for (k, v) in &s.extra {
+        all.insert(k.clone(), v.clone());
+    }
+    serde_json::Value::Object(all)
+}
+
+/// Load settings at `ctx.config_path` and return the snapshot map.
+pub fn load_snapshot(ctx: &Context) -> Result<serde_json::Value, Error> {
+    let s = Settings::load(&ctx.config_path)?;
+    Ok(snapshot(&s))
+}
+
 /// `settings get [key]` — prints one value or the whole map (JSON if `--json`).
 pub fn get(ctx: &Context, key: Option<&str>) -> Result<crate::cli::ExitCode, Error> {
     let s = Settings::load(&ctx.config_path)?;
@@ -125,16 +145,7 @@ pub fn get(ctx: &Context, key: Option<&str>) -> Result<crate::cli::ExitCode, Err
             Ok(crate::cli::ExitCode::Ok)
         }
         None => {
-            let mut all = serde_json::Map::new();
-            for k in KNOWN_KEYS {
-                if let Some(v) = s.get_value(k) {
-                    all.insert((*k).to_string(), v);
-                }
-            }
-            for (k, v) in &s.extra {
-                all.insert(k.clone(), v.clone());
-            }
-            println!("{}", serde_json::to_string_pretty(&all)?);
+            println!("{}", serde_json::to_string_pretty(&snapshot(&s))?);
             Ok(crate::cli::ExitCode::Ok)
         }
     }
@@ -142,6 +153,13 @@ pub fn get(ctx: &Context, key: Option<&str>) -> Result<crate::cli::ExitCode, Err
 
 /// `settings set <key> <value>` — persists a value; secrets validated only.
 pub fn set(ctx: &Context, key: &str, value: &str) -> Result<crate::cli::ExitCode, Error> {
+    let parsed = apply(ctx, key, value)?;
+    println!("{key} = {parsed}");
+    Ok(crate::cli::ExitCode::Ok)
+}
+
+/// Persist a setting and return the new value (data form for the GUI bridge).
+pub fn apply(ctx: &Context, key: &str, value: &str) -> Result<serde_json::Value, Error> {
     let mut s = Settings::load(&ctx.config_path)?;
     let parsed: serde_json::Value = if value == "true" || value == "false" {
         serde_json::Value::Bool(value == "true")
@@ -152,6 +170,5 @@ pub fn set(ctx: &Context, key: &str, value: &str) -> Result<crate::cli::ExitCode
     };
     s.set_value(key, parsed.clone())?;
     s.save(&ctx.config_path)?;
-    println!("{key} = {parsed}");
-    Ok(crate::cli::ExitCode::Ok)
+    Ok(parsed)
 }

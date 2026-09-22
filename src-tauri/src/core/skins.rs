@@ -95,9 +95,9 @@ pub fn validate(m: &SkinManifest) -> Result<(), Error> {
 }
 
 /// Resolve effective tokens for a skin by folder name; malformed or missing
-/// skins fall back to the built-in default (`None` = default theme).
+/// skins fall back to the built-in default (`None`/empty = default theme).
 pub fn resolve(skin_name: Option<&str>) -> Result<BTreeMap<String, String>, Error> {
-    let Some(name) = skin_name else {
+    let Some(name) = skin_name.filter(|n| !n.trim().is_empty()) else {
         return Ok(default_tokens());
     };
     let Some(dir) = paths::skin_dir(name) else {
@@ -196,6 +196,10 @@ mod tests {
     #[test]
     fn resolve_default_when_none() {
         assert_eq!(resolve(None).expect("default"), default_tokens());
+        assert_eq!(
+            resolve(Some("  ")).expect("blank falls back"),
+            default_tokens()
+        );
     }
 
     #[test]
