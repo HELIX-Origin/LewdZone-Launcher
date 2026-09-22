@@ -1,9 +1,11 @@
 //! The Tauri app + native CLI share this crate (Rule 03: one core, two entry
 //! points). Webview handlers are `#[tauri::command]`s over `core`; `main.rs`
 //! routes argv to `cli_main` or the windowed `run`.
-
 pub mod cli;
+
 pub mod core;
+
+pub mod db;
 pub mod dm;
 pub mod resolver;
 pub mod scraper;

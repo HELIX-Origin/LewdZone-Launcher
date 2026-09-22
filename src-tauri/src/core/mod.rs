@@ -63,6 +63,12 @@ impl From<serde_json::Error> for Error {
     }
 }
 
+impl From<rusqlite::Error> for Error {
+    fn from(err: rusqlite::Error) -> Self {
+        Self::Runtime(format!("sqlite: {err}"))
+    }
+}
+
 impl From<Error> for String {
     fn from(err: Error) -> Self {
         err.to_string()
