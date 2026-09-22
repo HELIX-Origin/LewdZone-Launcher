@@ -7,8 +7,8 @@ fn main() -> ExitCode {
     // Native CLI: any argv beyond the binary name dispatches to the CLI
     // (Rule 03 two-entry-points). Run bare → launch the windowed app.
     if std::env::args().count() > 1 {
-        return lewdzone_launcher_lib::cli_main();
+        return lewdzone_lib::cli_main();
     }
-    lewdzone_launcher_lib::run();
+    lewdzone_lib::run();
     ExitCode::SUCCESS
 }

@@ -10,7 +10,7 @@ SemVer `MAJOR.MINOR.PATCH`. The version is synced across:
 - `package.json`
 
 There is a single binary; the CLI reports the same version as the app
-(`lewdzone-launcher --version`).
+(`lewdzone --version`).
 
 ## Release flow
 
@@ -38,7 +38,7 @@ Everything must be green first:
 - `cargo fmt --check` + `cargo clippy -- -D warnings` + `cargo test` (from `src-tauri/`)
 - `npm run check` (svelte-check) + `npm run test` (Vitest)
 - Coverage ≥ floors (`cargo llvm-cov`)
-- `lewdzone-launcher --version` smoke test
+- `lewdzone --version` smoke test
 - `tauri build` succeeds on all target platforms (CI)
 
 ## Release notes structure
@@ -55,4 +55,4 @@ Sections:
 
 Pre-releases use `vX.Y.Z-alpha.N` / `vX.Y.Z-beta.N` with `gh release create --prerelease`.
 
-Tags are annotated and never deleted. Full rule: [Rule 08](../.agents/rules/rule-08-release-standards).
+Tags are annotated and never deleted. Full rule: [Rule 08](https://github.com/helix-origin/lewdzone-launcher/tree/main/.agents/rules/rule-08-release-standards.md).

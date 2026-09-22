@@ -2,7 +2,7 @@
 
 **This is the complete, authoritative roadmap for the repository.** Living plan:
 edited in place as work progresses — a tracked twin of the roadmap tracking
-[issue #1](https://github.com/HELIX-Origin/LewdZone-Launcher/issues/1)
+[issue #1](https://github.com/HELIX-Origin/lewdzone/issues/1)
 ([Rule 04](.agents/rules/rule-04-remote-issue-protocol.md)).
 
 > **Accuracy contract:** must always be 100% accurate. When a feature is
@@ -81,7 +81,7 @@ flowchart TD
 
 ## Acceptance Criteria
 
-- [ ] `lewdzone-launcher --help` clean on PowerShell and bash
+- [ ] `lewdzone --help` clean on PowerShell and bash
 - [ ] `download --game treasure-of-nadia --manager fdm --json` resolves and dispatches
 - [ ] Store/Library/Downloads/Settings all map 1:1 to an invoke command or CLI command
 - [ ] Torrent links only accepted by a torrent-capable manager

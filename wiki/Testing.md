@@ -57,7 +57,7 @@ Fakes **fail loud** on unexpected input so bugs aren't masked. Documented in
 
 ## Protocol & parity tests
 
-- A **parity test** exercises `lewdzone-launcher <cmd> --json` and asserts the
+- A **parity test** exercises `lewdzone <cmd> --json` and asserts the
   CLI's machine output stays 1:1 with the GUI-facing core commands (GUI/CLI
   drift = bug).
 - Long-running commands are tested by feeding canned data through the
@@ -91,5 +91,5 @@ never as scripts in `scratch/`:
 | site fan-out | ~1 req/s (throttled) |
 
 Tracked in `src-tauri/tests/perf/` with micro-benchmarks; N+1 queries are rejected at
-review. See [Rule 11](../.agents/rules/rule-11-testing) and
-[the perf-auditor](../.agents/agents/review/perf-auditor/perf-auditor).
+review. See [Rule 11](https://github.com/helix-origin/lewdzone-launcher/tree/main/.agents/rules/rule-11-testing.md) and
+[the perf-auditor](https://github.com/helix-origin/lewdzone-launcher/tree/main/.agents/agents/review/perf-auditor/perf-auditor.md).

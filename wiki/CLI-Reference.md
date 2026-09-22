@@ -7,7 +7,7 @@
 ## Usage
 
 ```
-lewdzone-launcher <command> [options]
+lewdzone <command> [options]
 ```
 
 ## Global options
@@ -69,13 +69,13 @@ Torrent links are only accepted by a torrent-capable manager.
 ## Examples
 
 ```sh
-lewdzone-launcher search --query "nad" --json
-lewdzone-launcher info --game treasure-of-nadia --json
-lewdzone-launcher download --game treasure-of-nadia \
+lewdzone search --query "nad" --json
+lewdzone info --game treasure-of-nadia --json
+lewdzone download --game treasure-of-nadia \
   --version latest --platform windows --tab official --json
-lewdzone-launcher list --status installed --json
-lewdzone-launcher dm list --json
+lewdzone list --status installed --json
+lewdzone dm list --json
 ```
 
-See also [Exit codes & errors](../.agents/rules/rule-12-error-handling) in the
+See also [Exit codes & errors](https://github.com/helix-origin/lewdzone-launcher/tree/main/.agents/rules/rule-12-error-handling.md) in the
 repo (`.agents/rules/rule-12-error-handling.md`).

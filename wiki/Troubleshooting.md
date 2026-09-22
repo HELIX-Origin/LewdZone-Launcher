@@ -6,10 +6,10 @@
 
 `download`/`launch` exits 4 when no supported manager is found.
 
-- Run `lewdzone-launcher dm list` to see detected managers.
+- Run `lewdzone dm list` to see detected managers.
 - Install FDM / IDM (Windows) or a torrent client, or set one as your
   [active manager](Download-Managers):
-  `lewdzone-launcher dm set active <name>`.
+  `lewdzone dm set active <name>`.
 - See [Download Managers](Download-Managers).
 
 ## Downloads get a redirect page instead of the file
@@ -41,11 +41,11 @@ warnings/text on stdout, that's a bug — file it.
 ## App and CLI versions disagree
 
 There is no sidecar: the CLI is the same binary as the app (Rule 13). If
-`lewdzone-launcher --version` differs from the app version, the binaries were
+`lewdzone --version` differs from the app version, the binaries were
 built from different commits — rebuild both from the same source tree.
 
 ## More help
 
 See [Getting Started](Getting-Started), [Configuration](Configuration), and
 open an issue on the
-[GitHub repository](https://github.com/HELIX-Origin/LewdZone-Launcher).
+[GitHub repository](https://github.com/helix-origin/lewdzone).

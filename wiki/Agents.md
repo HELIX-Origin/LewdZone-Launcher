@@ -66,8 +66,7 @@ Reusable procedures with checkoffs, e.g.:
 | 12 | Error handling | `rule-12-error-handling.md` |
 | 13 | GUI conventions | `rule-13-gui-conventions.md` |
 
-Index: [`.agents/rules/index.md`](../.agents/rules/index.md) (wiki link; repo
-path has `.md`).
+Index: [`.agents/rules/index.md`](https://github.com/helix-origin/lewdzone-launcher/tree/main/.agents/rules/index.md)
 
 ## Templates
 
@@ -84,4 +83,4 @@ issues, roadmaps, release notes, and commit messages — all under
 4. **Fail loudly.** Errors surface with codes, not swallowed.
 5. **ADR before contract change.**
 
-Full detail: [Rule 00](../.agents/rules/rule-00-governance).
+Full detail: [Rule 00](https://github.com/helix-origin/lewdzone-launcher/tree/main/.agents/rules/rule-00-governance.md).

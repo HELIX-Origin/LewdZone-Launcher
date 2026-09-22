@@ -4,6 +4,7 @@
 
 pub mod cli;
 pub mod core;
+pub mod scraper;
 
 use std::collections::BTreeMap;
 use std::path::PathBuf;
@@ -30,6 +31,28 @@ pub struct AppState {
 pub struct SettingView {
     pub key: String,
     pub value: serde_json::Value,
+}
+
+/// Fetch + parse one storefront archive page. The Store view calls this; the
+/// CLI `sync`/`search` subcommands hit the same `core::catalog` function.
+#[tauri::command]
+fn catalog_page(
+    state: tauri::State<'_, AppState>,
+    page: Option<u32>,
+    sort: Option<String>,
+    platform: Option<String>,
+) -> Result<crate::scraper::archive::ArchivePage, String> {
+    let ctx = state
+        .context
+        .lock()
+        .map_err(|_| "state lock poisoned".to_string())?;
+    crate::core::catalog::archive_page(
+        &ctx,
+        page.unwrap_or(1),
+        sort.as_deref(),
+        platform.as_deref(),
+    )
+    .map_err(|e| e.to_string())
 }
 
 /// `settings.get()` — one value or the whole snapshot as JSON for the page.
@@ -137,7 +160,8 @@ pub fn run() {
             settings_set,
             themes_list,
             themes_tokens,
-            themes_apply
+            themes_apply,
+            catalog_page
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

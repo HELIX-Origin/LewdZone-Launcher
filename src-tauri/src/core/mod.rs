@@ -5,12 +5,14 @@
 //! handlers wrap these functions as `#[tauri::command]`s; the CLI wraps them
 //! as subcommands. App == CLI by construction.
 
+pub mod catalog;
 pub mod dm;
 pub mod download;
 pub mod info;
 pub mod launch;
 pub mod library;
 pub mod list;
+pub mod models;
 pub mod paths;
 pub mod search;
 pub mod settings;

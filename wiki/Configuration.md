@@ -4,15 +4,15 @@
 
 ## Config file
 
-LewdZone-Launcher stores a JSON config file in the per-OS config dir
-(`<config_root>/lewdzone-launcher/config.json`, mirrored on the Steam layout —
+lewdzone stores a JSON config file in the per-OS config dir
+(`<config_root>/lewdzone/config.json`, mirrored on the Steam layout —
 see [Architecture](Architecture) → Folder structure):
 
 | OS | Path |
 | --- | --- |
-| Windows | `%APPDATA%/lewdzone-launcher/config.json` |
-| Linux | `$XDG_CONFIG_HOME/lewdzone-launcher/config.json` (or `~/.config/lewdzone-launcher/config.json`) |
-| macOS | `~/Library/Application Support/lewdzone-launcher/config.json` |
+| Windows | `%APPDATA%/lewdzone/config.json` |
+| Linux | `$XDG_CONFIG_HOME/lewdzone/config.json` (or `~/.config/lewdzone/config.json`) |
+| macOS | `~/Library/Application Support/lewdzone/config.json` |
 
 ## Key settings
 
@@ -29,7 +29,7 @@ see [Architecture](Architecture) → Folder structure):
 ## Theme skins (ADR-0005)
 
 Themes are first-class: a skin package lives at
-`<config_root>/lewdzone-launcher/skins/<Name>/theme.json` and overrides the
+`<config_root>/lewdzone/skins/<Name>/theme.json` and overrides the
 `--lz-*` design tokens via CSS custom properties (optional `assets/` folder).
 Skins may only carry tokens + assets — never scripts ([Security](Security)).
 A malformed skin falls back to the built-in default theme.
@@ -46,8 +46,8 @@ A malformed skin falls back to the built-in default theme.
 | `--lz-ok` | `#46D88B` | success |
 
 ```sh
-lewdzone-launcher settings set theme "Pink Neon"
-lewdzone-launcher settings get theme
+lewdzone settings set theme "Pink Neon"
+lewdzone settings get theme
 ```
 
 Switch skins in **Settings → Appearance** without restarting.
@@ -66,8 +66,8 @@ the CLI, and are never displayed back:
 | VNDB / itch.io / IndieDB / Steam | — | no keys required (scrape or keyless) |
 
 ```sh
-lewdzone-launcher settings set sgdb-api-key <key>
-lewdzone-launcher settings set content-priority "vndb,igdb,steamgriddb"
+lewdzone settings set sgdb-api-key <key>
+lewdzone settings set content-priority "vndb,igdb,steamgriddb"
 ```
 
 Keys live in the per-OS config dir (never in the repo; redacted from logs —
@@ -77,22 +77,22 @@ don't enrich — downloads are never affected.
 ## Changing settings via CLI
 
 ```sh
-lewdzone-launcher settings get <key>
-lewdzone-launcher settings set <key> <value>
+lewdzone settings get <key>
+lewdzone settings set <key> <value>
 ```
 
 ## Library root
 
 ADR-0005 mirrors Steam's multi-root library: the active library root is chosen
-by the `library-root` setting (default `<data_root>/lewdzone-launcher/library`).
+by the `library-root` setting (default `<data_root>/lewdzone/library`).
 Per-game manifests (`appmanifest_<post_id>.json`) are the source of truth for
 installed games; see [Architecture](Architecture) → Folder structure.
 
 ## Active download manager
 
 ```sh
-lewdzone-launcher dm list          # show installed managers
-lewdzone-launcher dm set active <name>
+lewdzone dm list          # show installed managers
+lewdzone dm set active <name>
 ```
 
 `<name>` is one of `fdm`, `idm`, `torrent`. See
@@ -100,7 +100,7 @@ lewdzone-launcher dm set active <name>
 
 ## Database
 
-SQLite database lives at `<data_root>/lewdzone-launcher/lewdzone.db`.
+SQLite database lives at `<data_root>/lewdzone/lewdzone.db`.
 Configured with WAL journaling, foreign keys ON, busy timeout 5000ms. See
 [Architecture](Architecture) → Data model.
 
@@ -110,5 +110,5 @@ The app version is the single source of truth; it is synced across:
 - `src-tauri/Cargo.toml` (crate version + `tauri.conf.json`)
 - `package.json`
 
-The CLI reports the same version as the app (`lewdzone-launcher --version`).
+The CLI reports the same version as the app (`lewdzone --version`).
 See [Release Process](Release-Process).

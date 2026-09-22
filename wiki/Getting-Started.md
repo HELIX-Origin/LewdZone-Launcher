@@ -17,26 +17,26 @@
 ```sh
 # build the CLI (from a source checkout) — see Installing & Building
 cargo build --release          # from src-tauri/
-./target/release/lewdzone-launcher --help
+./target/release/lewdzone --help
 
 # point the tool at your download root
-lewdzone-launcher settings set download-root "D:/Games"
+lewdzone settings set download-root "D:/Games"
 
 # refresh the catalog from LewdZone
-lewdzone-launcher sync --json
+lewdzone sync --json
 
 # find a game
-lewdzone-launcher search --query "treasure of nadia" --json
+lewdzone search --query "treasure of nadia" --json
 
 # show a game's versions and download entries
-lewdzone-launcher info --game treasure-of-nadia --json
+lewdzone info --game treasure-of-nadia --json
 
 # enqueue a download to your manager of choice
-lewdzone-launcher download --game treasure-of-nadia --version latest \
+lewdzone download --game treasure-of-nadia --version latest \
   --platform windows --tab official --manager fdm --json
 
 # list installed games
-lewdzone-launcher list --status installed --json
+lewdzone list --status installed --json
 ```
 
 ## Quick start (desktop app)

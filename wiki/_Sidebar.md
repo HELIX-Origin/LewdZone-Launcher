@@ -1,4 +1,4 @@
-**LewdZone-Launcher**
+**lewdzone**
 
 - [Home](Home)
 - [Getting Started](Getting-Started)

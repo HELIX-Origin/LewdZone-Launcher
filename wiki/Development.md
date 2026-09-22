@@ -9,7 +9,7 @@ human-facing distillation; the `.agents` docs are the authoritative spec.
 ## Repo layout
 
 ```
-lewdzone-launcher/
+lewdzone/
   .agents/
     agents/                # 11 agent families + sub-agents
     skills/                # SKILL.md per skill
@@ -45,7 +45,7 @@ See [Agent Ecosystem](Agents).
 Governance, code style, naming, module architecture, remote issue protocol
 (roadmap-first), network etiquette, SQLite conventions, download-manager
 integration, release standards, Mermaid standards, security, testing, error
-handling, GUI conventions. Index: [`.agents/rules/index.md`](../.agents/rules/index.md) (wiki link; repo path has `.md`).
+handling, GUI conventions. Index: [`.agents/rules/index.md`](https://github.com/helix-origin/lewdzone-launcher/tree/main/.agents/rules/index.md) (wiki link; repo path has `.md`).
 
 ## Contribution workflow
 
@@ -58,7 +58,7 @@ handling, GUI conventions. Index: [`.agents/rules/index.md`](../.agents/rules/in
 4. PRs mirror issues (`Part of #parent` / `Closes #sub-issue`); bodies via
    `gh pr create --body-file`.
 
-Full protocol: [Rule 04](../.agents/rules/rule-04-remote-issue-protocol).
+Full protocol: [Rule 04](https://github.com/helix-origin/lewdzone-launcher/tree/main/.agents/rules/rule-04-remote-issue-protocol.md).
 
 ## Branch & commit hygiene
 

@@ -1,5 +1,5 @@
 [package]
-name = "lewdzone-launcher"
+name = "lewdzone"
 version = "0.1.0"
 description = "LewdZone Launcher - cross-platform desktop game launcher"
 authors = ["LewdZone Launcher contributors"]
@@ -11,8 +11,13 @@ edition = "2021"
 # The `_lib` suffix may seem redundant but it is necessary
 # to make the lib name unique and wouldn't conflict with the bin name.
 # This seems to be only an issue on Windows, see https://github.com/rust-lang/cargo/issues/8519
-name = "lewdzone_launcher_lib"
+name = "lewdzone_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
+
+[[bin]]
+# The CLI is invoked as `lewdzone` (the GUI is "the launcher").
+name = "lewdzone"
+path = "src/main.rs"
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
@@ -25,6 +30,8 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 clap = { version = "4", features = ["derive"] }
 dirs = "6"
+scraper = "0.27.0"
+ureq = "3.4.2"
 
 # Read the optimization guideline for more details: https://tauri.app/concept/size/#cargo-configuration
 [profile.release]

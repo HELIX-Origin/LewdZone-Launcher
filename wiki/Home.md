@@ -1,6 +1,6 @@
-# Welcome to the LewdZone-Launcher Wiki
+# Welcome to the lewdzone Wiki
 
-LewdZone-Launcher is a **cross-platform desktop launcher** (Windows, Linux,
+lewdzone is a **cross-platform desktop launcher** (Windows, Linux,
 macOS) for browsing, downloading, and organizing games from
 [LewdZone](https://lewdzone.com). It is built around a **Tauri 2 app** — Rust
 + OS webview, Svelte frontend — whose binary also exposes a **native Rust CLI**:
@@ -9,7 +9,7 @@ one core, two entry points.
 - A **Tauri 2 desktop app** — the primary product. Steam-like pages: **Store**,
   **Library**, **Downloads**, **Settings**.
 - A **native Rust CLI** — the scriptable edition of the same engine.
-  `lewdzone-launcher <command> --json` drives everything the app does.
+  `lewdzone <command> --json` drives everything the app does.
 
 The GUI and the CLI call the same Rust core functions; every GUI action maps
 1:1 to a CLI command.

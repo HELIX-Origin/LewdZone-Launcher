@@ -4,7 +4,7 @@
 
 ## Model
 
-LewdZone-Launcher **never downloads files itself**. The resolver converts a
+lewdzone **never downloads files itself**. The resolver converts a
 go-link token into a **real URL**, then a per-manager **adapter** hands that
 URL to an installed download manager:
 
@@ -13,7 +13,7 @@ URL to an installed download manager:
 - adapters live in `src-tauri/src/dm/` (Rust module).
 - A registry maps adapter names (`fdm` / `idm` / `torrent`) to instances; the
   active manager is a [Configuration](Configuration) setting
-  (`settings set dm` or `lewdzone-launcher dm set active <name>`).
+  (`settings set dm` or `lewdzone dm set active <name>`).
 
 ## Adapter contract
 
@@ -58,5 +58,5 @@ Completed downloads are folded into:
 
 ## Full rule
 
-[Rule 07](../.agents/rules/rule-07-download-manager-integration) in the repo
+[Rule 07](https://github.com/helix-origin/lewdzone-launcher/tree/main/.agents/rules/rule-07-download-manager-integration.md) in the repo
 (`.agents/rules/rule-07-download-manager-integration.md`).

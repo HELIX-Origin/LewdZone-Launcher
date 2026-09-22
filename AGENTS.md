@@ -76,8 +76,8 @@ npm run test           # Vitest unit tests for frontend views
 npm run tauri build    # all platforms
 
 # CLI smoke
-lewdzone-launcher --version
-lewdzone-launcher --help
+lewdzone --version
+lewdzone --help
 ```
 
 ---

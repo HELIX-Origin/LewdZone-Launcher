@@ -4,7 +4,7 @@
 
 ## Two entry points, one core
 
-LewdZone-Launcher is a **modular layered monolith** with two entry points into
+lewdzone is a **modular layered monolith** with two entry points into
 one Rust core:
 
 | Entry point | Role | Talks to |
@@ -29,7 +29,7 @@ hand-off.
 
 Import rule: **inward only**. Domain never imports IO; services never import
 controllers; the webview never touches services directly. Enforced via the
-crate's module boundaries (Rule 03). Full rule: [Rule 03](../.agents/rules/rule-03-module-architecture) —
+crate's module boundaries (Rule 03). Full rule: [Rule 03](https://github.com/helix-origin/lewdzone-launcher/tree/main/.agents/rules/rule-03-module-architecture.md) —
 link resolves on the wiki; in the repo it's `.agents/rules/rule-03-module-architecture.md`.
 
 ## CLI machine contract
@@ -47,7 +47,7 @@ link resolves on the wiki; in the repo it's `.agents/rules/rule-03-module-archit
 flowchart TD
     WV["Svelte webview"]
     RN["Rust core"]
-    CLI["lewdzone-launcher CLI (--json)"]
+    CLI["lewdzone CLI (--json)"]
     CT["controllers"]
     SV["services"]
     WV --> RN
@@ -72,7 +72,7 @@ The on-disk layout mirrors the Steam client's, so the launcher *is* a game
 launcher — same shape as Steam, different target site + palette:
 
 ```
-<data_root>/lewdzone-launcher/          # %APPDATA% / ~/Library/Application Support / $XDG_DATA_HOME
+<data_root>/lewdzone/          # %APPDATA% / ~/Library/Application Support / $XDG_DATA_HOME
   lewdzone.db                           # SQLite catalog (WAL, FK, tokens only)
   config.json                           # JSON settings (Rule 10 secrets redacted)
   appcache/                             # cached catalog/site data
@@ -84,10 +84,10 @@ launcher — same shape as Steam, different target site + palette:
     downloading/<post_id>/              # in-progress downloads
     artwork/<post_id>_<kind>.png        # hero / logo / p / bare grid art
   userdata/<local_user_id>/             # per-user config + shortcuts
-<cache_root>/lewdzone-launcher/         # %LOCALAPPDATA% / ~/Library/Caches / $XDG_CACHE_HOME
+<cache_root>/lewdzone/         # %LOCALAPPDATA% / ~/Library/Caches / $XDG_CACHE_HOME
   htmlcache/                            # webview/tile cache (Steam htmlcache analog)
 <documents>/My Games/<Game Title>/      # per-game saves (Steam Documents\My Games analog)
-<config_root>/lewdzone-launcher/skins/<Name>/   # theme skins (classic Steam skins/)
+<config_root>/lewdzone/skins/<Name>/   # theme skins (classic Steam skins/)
 ```
 
 - Manifest files (`appmanifest_<post_id>.json`) are the source of truth for
@@ -148,7 +148,7 @@ See [Download Managers](Download-Managers).
 | Linux | AppImage + deb + rpm |
 
 The CLI ships as part of the app binary itself (Rule 13): the same executable
-provides the `lewdzone-launcher` command, so no sidecar artifact is bundled.
+provides the `lewdzone` command, so no sidecar artifact is bundled.
 
 ## Cross-platform rules
 

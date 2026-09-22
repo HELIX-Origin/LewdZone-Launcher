@@ -15,8 +15,8 @@
 
 ```sh
 npm install            # from repo root (frontend deps)
-cargo build            # from src-tauri/ — produces src-tauri/target/debug/lewdzone-launcher
-./target/debug/lewdzone-launcher --help
+cargo build            # from src-tauri/ — produces src-tauri/target/debug/lewdzone
+./target/debug/lewdzone --help
 ```
 
 The CLI is a native Rust binary — the same executable the Tauri app ships

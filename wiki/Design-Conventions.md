@@ -44,10 +44,10 @@ Rules:
   `default`, `linkStyle`.
 - Allowed styling: only `classDef` / `linkStyle` / `style` color overrides.
 
-Full rule: [Rule 09](../.agents/rules/rule-09-mermaid-standards).
+Full rule: [Rule 09](https://github.com/helix-origin/lewdzone-launcher/tree/main/.agents/rules/rule-09-mermaid-standards.md).
 
 ## ADRs
 
 Cross-layer contract changes require an **Architecture Decision Record**
 before implementation, filed in `.agents/adr/` using the template
-[`templates/adr.md`](../.agents/templates/adr.md).
+[`templates/adr.md`](https://github.com/helix-origin/lewdzone-launcher/tree/main/.agents/templates/adr.md).

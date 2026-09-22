@@ -5,28 +5,28 @@ use std::path::PathBuf;
 
 use crate::core::Error;
 
-const DATA_DIR: &str = "lewdzone-launcher";
+const DATA_DIR: &str = "lewdzone";
 
 /// Default SQLite catalog path per OS:
-/// - Windows: `%APPDATA%\lewdzone-launcher\lewdzone.db`
-/// - macOS:   `~/Library/Application Support/lewdzone-launcher/lewdzone.db`
-/// - Linux:   `$XDG_DATA_HOME/lewdzone-launcher/lewdzone.db` (`~/.local/share/...`)
+/// - Windows: `%APPDATA%\lewdzone\lewdzone.db`
+/// - macOS:   `~/Library/Application Support/lewdzone/lewdzone.db`
+/// - Linux:   `$XDG_DATA_HOME/lewdzone/lewdzone.db` (`~/.local/share/...`)
 pub fn default_db_path() -> Option<PathBuf> {
     base_data_dir().map(|base| base.join("lewdzone.db"))
 }
 
 /// Default config file path per OS:
-/// - Windows: `%APPDATA%\lewdzone-launcher\config.json`
-/// - macOS:   `~/Library/Application Support/lewdzone-launcher/config.json`
-/// - Linux:   `$XDG_CONFIG_HOME/lewdzone-launcher/config.json` (`~/.config/...`)
+/// - Windows: `%APPDATA%\lewdzone\config.json`
+/// - macOS:   `~/Library/Application Support/lewdzone/config.json`
+/// - Linux:   `$XDG_CONFIG_HOME/lewdzone/config.json` (`~/.config/...`)
 pub fn default_config_path() -> Option<PathBuf> {
     base_config_dir().map(|base| base.join("config.json"))
 }
 
 /// App data root ("steam root", ADR-0005):
-/// - Windows: `%APPDATA%\lewdzone-launcher`
-/// - macOS:   `~/Library/Application Support/lewdzone-launcher`
-/// - Linux:   `$XDG_DATA_HOME/lewdzone-launcher` (`~/.local/share/...`)
+/// - Windows: `%APPDATA%\lewdzone`
+/// - macOS:   `~/Library/Application Support/lewdzone`
+/// - Linux:   `$XDG_DATA_HOME/lewdzone` (`~/.local/share/...`)
 pub fn data_root() -> Option<PathBuf> {
     base_data_dir()
 }
@@ -84,9 +84,9 @@ pub fn userdata_dir() -> Option<PathBuf> {
 }
 
 /// Machine-local caches (Steam `%LOCALAPPDATA%\Steam\` analog):
-/// - Windows: `%LOCALAPPDATA%\lewdzone-launcher\htmlcache` etc.
-/// - macOS:   `~/Library/Caches/lewdzone-launcher`
-/// - Linux:   `$XDG_CACHE_HOME/lewdzone-launcher` (`~/.cache/...`)
+/// - Windows: `%LOCALAPPDATA%\lewdzone\htmlcache` etc.
+/// - macOS:   `~/Library/Caches/lewdzone`
+/// - Linux:   `$XDG_CACHE_HOME/lewdzone` (`~/.cache/...`)
 pub fn cache_dir() -> Option<PathBuf> {
     #[cfg(target_os = "windows")]
     {
@@ -290,7 +290,7 @@ mod tests {
         assert!(cache_dir().expect("cache").is_absolute());
         assert!(htmlcache_dir()
             .expect("htmlcache")
-            .starts_with(&cache_dir().expect("cache")));
+            .starts_with(cache_dir().expect("cache")));
         assert!(my_games_dir().expect("my games").is_absolute());
         assert!(game_saves_dir("Treasure of Nadia")
             .expect("saves")

@@ -5,7 +5,7 @@ import { invoke } from "@tauri-apps/api/core";
 
 vi.mock("@tauri-apps/api/core", () => ({
   invoke: vi.fn(async () => "Hello, test! from Rust"),
-}));
+}));;
 
 vi.mock("$app/state", () => ({
   page: { url: new URL("http://localhost/store") },
@@ -29,9 +29,43 @@ describe("app shell", () => {
 });
 
 describe("store page", () => {
-  it("renders the catalog grid once ready", () => {
+  beforeEach(() => {
+    const invokeMock = invoke as unknown as ReturnType<typeof vi.fn>;
+    invokeMock.mockReset();
+    invokeMock.mockImplementation(async (cmd: string) => {
+      if (cmd === "catalog_page") {
+        return {
+          games: [
+            {
+              slug: "wild-life",
+              title: "Wild Life",
+              thumb_url: "https://h1.lzcdn.com/img/wild-life-cover.jpg",
+              platforms: ["pc"],
+              engine: "Unreal Engine",
+              state: "Ongoing",
+              version_tag: "v2026-06-15 Full",
+              developer: "Adeptus Steve",
+              genres: ["3D Game"],
+              views: "962K",
+            },
+          ],
+          meta: { page: 1, total_pages: 787 },
+        };
+      }
+      return [];
+    });
+  });
+
+  it("renders catalog tiles fetched from Rust", async () => {
     render(StorePage);
-    expect(screen.getByLabelText("Game catalog")).toBeInTheDocument();
+    expect(await screen.findByText("Wild Life")).toBeInTheDocument();
+    expect(await screen.findByText("1 games · page 1 of 787")).toBeInTheDocument();
+  });
+
+  it("renders the catalog grid role", async () => {
+    render(StorePage);
+    expect(await screen.findByText("Wild Life")).toBeInTheDocument();
+    expect(screen.getAllByRole("listitem").length).toBeGreaterThan(0);
   });
 });
 

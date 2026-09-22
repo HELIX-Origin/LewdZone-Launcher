@@ -1,6 +1,6 @@
 //! Native Rust CLI — second entry point into the same binary as the Tauri app.
 //!
-//! Running the binary with a subcommand (e.g. `lewdzone-launcher sync --json`)
+//! Running the binary with a subcommand (e.g. `lewdzone sync --json`)
 //! dispatches here and exits with a stable exit code; running it bare launches
 //! the windowed app (see `main.rs`). All behavior lives in the shared core
 //! (`crate::core`), never in this parser.
@@ -261,7 +261,7 @@ mod tests {
 
     #[test]
     fn parses_sync_with_json_flag() {
-        let cli = Cli::try_parse_from(["lewdzone-launcher", "sync", "--json", "--full"]).unwrap();
+        let cli = Cli::try_parse_from(["lewdzone", "sync", "--json", "--full"]).unwrap();
         assert!(cli.json);
         match cli.command {
             Command::Sync(a) => assert!(a.full),
@@ -272,7 +272,7 @@ mod tests {
     #[test]
     fn parses_download_with_flags() {
         let cli = Cli::try_parse_from([
-            "lewdzone-launcher",
+            "lewdzone",
             "download",
             "treasure-of-nadia",
             "--version",
@@ -296,7 +296,7 @@ mod tests {
 
     #[test]
     fn rejects_unknown_subcommand() {
-        assert!(Cli::try_parse_from(["lewdzone-launcher", "frobnicate"]).is_err());
+        assert!(Cli::try_parse_from(["lewdzone", "frobnicate"]).is_err());
     }
 
     #[test]
