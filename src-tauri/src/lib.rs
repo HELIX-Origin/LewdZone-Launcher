@@ -4,6 +4,7 @@
 
 pub mod cli;
 pub mod core;
+pub mod dm;
 pub mod resolver;
 pub mod scraper;
 
