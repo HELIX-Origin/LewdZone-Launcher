@@ -335,6 +335,81 @@ pub fn game_count(tx: &Connection) -> Result<i64, Error> {
         .map_err(Into::into)
 }
 
+/// Compact catalog rows for `list` / Storefront tiles: each game with its
+/// current version label and genre slugs, ordered by title.
+#[derive(Debug, Clone, serde::Serialize, PartialEq, Eq)]
+pub struct CatalogGame {
+    pub post_id: i64,
+    pub slug: String,
+    pub title: String,
+    pub developer: Option<String>,
+    pub size_label: Option<String>,
+    pub censorship: Option<String>,
+    pub updated_at: Option<String>,
+    pub current_version: Option<String>,
+    pub genres: Vec<String>,
+}
+
+pub fn list_catalog(tx: &Connection, limit: Option<i64>) -> Result<Vec<CatalogGame>, Error> {
+    let mut stmt = tx.prepare(
+        r#"
+        SELECT g.post_id, g.slug, g.title, g.developer, g.size_label,
+               g.censorship, g.updated_at,
+               (SELECT v.label FROM version v
+                 WHERE v.game_id = g.post_id AND v.is_latest = 1
+                 ORDER BY v.label DESC LIMIT 1)
+        FROM game g
+        ORDER BY g.title COLLATE NOCASE
+        "#,
+    )?;
+    let rows = stmt.query_map([], |r| {
+        Ok((
+            r.get::<_, i64>(0)?,
+            r.get::<_, String>(1)?,
+            r.get::<_, String>(2)?,
+            r.get::<_, Option<String>>(3)?,
+            r.get::<_, Option<String>>(4)?,
+            r.get::<_, Option<String>>(5)?,
+            r.get::<_, Option<String>>(6)?,
+            r.get::<_, Option<String>>(7)?,
+        ))
+    })?;
+    let mut out = Vec::new();
+    for row in rows {
+        let (post_id, slug, title, developer, size_label, censorship, updated_at, current_version) =
+            row?;
+        let genres: Vec<String> = {
+            let mut gs = tx.prepare(
+                "SELECT genre.slug FROM game_genre JOIN genre ON genre.slug = game_genre.genre_id
+                 WHERE game_genre.game_id = ?1 ORDER BY genre.label",
+            )?;
+            let gr = gs.query_map([post_id], |g| g.get::<_, String>(0))?;
+            let mut v = Vec::new();
+            for g in gr {
+                v.push(g?);
+            }
+            v
+        };
+        out.push(CatalogGame {
+            post_id,
+            slug,
+            title,
+            developer,
+            size_label,
+            censorship,
+            updated_at,
+            current_version,
+            genres,
+        });
+        if let Some(limit) = limit {
+            if out.len() as i64 >= limit {
+                break;
+            }
+        }
+    }
+    Ok(out)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
