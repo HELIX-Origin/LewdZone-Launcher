@@ -26,7 +26,7 @@ roadmap when they're scoped.
 
 ### Content-provider layer (Phase 2 engine)
 
-- [ ] Implement `src-tauri/src/content/` (contract, registry, adapter stubs) + `game_external`/`artwork_cache` schema
+- [x] Implement `src-tauri/src/content/` (contract, registry, adapter stubs) + `game_external`/`artwork_cache` schema
 - [ ] Implement `enrich-game-and-art` skill + `content-provider` template
 - [ ] `rule-03`/`rule-10` — fold content-provider keys/secrets wording (verify coverage)
 

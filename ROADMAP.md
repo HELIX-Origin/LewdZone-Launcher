@@ -67,7 +67,7 @@ flowchart TD
 - [x] **Non-blocking async download queue** (Rust core): `game_download` enqueues and returns instantly; a background worker resolves + dispatches one request at a time; the Downloads view polls `downloads_list`.
 - [x] **Downloads page**: poll `downloads_list` and render each job's status/message; add Downloads to the icon sidebar nav; store detail `download()` returns `queued` feedback.
 - [x] Persist `download_job` rows + resume across restarts (queue is in-memory for now).
-- [ ] Storefront catalog view: real tiles + game-page lookup (search/content-provider layer) — MVP tiles + `/store/[slug]` detail wired; deeper content-provider enrichment pending.
+- [x] Storefront catalog view: real tiles + game-page lookup (search/content-provider layer) — MVP tiles + `/store/[slug]` detail wired; content-provider artwork cache + SteamGridDB provider implemented.
 - [x] App icons: regenerate from `assets/appicon.png` via `tauri icon`, wire into `tauri.conf.json` bundle icons, and fix the non-rendering sidebar logo image.
 - [ ] Router recreation of store pages (ripped UI mirrored into local HTML)
 
