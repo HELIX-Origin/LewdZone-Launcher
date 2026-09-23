@@ -82,6 +82,7 @@
     { id: "store", label: "Store", icon: "store", path: "/store" },
     { id: "favorites", label: "Favorites", icon: "favorites", path: "/favorites" },
     { id: "library", label: "Library", icon: "library", path: "/library" },
+    { id: "downloads", label: "Downloads", icon: "downloads", path: "/downloads" },
     { id: "settings", label: "Settings", icon: "settings", path: "/settings" },
   ] as const;
 
@@ -92,6 +93,8 @@
       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20.5 4.6 13a4.8 4.8 0 0 1 0-6.9 5.1 5.1 0 0 1 7.4 0l.6.6.6-.6a5.1 5.1 0 0 1 7.4 0 4.8 4.8 0 0 1 0 6.9L12 20.5Z"/></svg>',
     library:
       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 19V5h4v14H5Z"/><path d="M10 19V5h4v14h-4Z"/><path d="M15 19V5h4v14h-4Z"/></svg>',
+    downloads:
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="m6 11 6 6 6-6"/><path d="M4 21h16"/></svg>',
     settings:
       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3.2"/><path d="M19.2 12a7.3 7.3 0 0 0-.1-1.2l1.9-1.5-2-3.4-2.2.9a7.4 7.4 0 0 0-2-1.2L14.5 3h-3.9l-.3 2.6a7.4 7.4 0 0 0-2 1.2l-2.2-.9-2 3.4 1.9 1.5a7.3 7.3 0 0 0 0 2.4L4.1 14.7l2 3.4 2.2-.9a7.4 7.4 0 0 0 2 1.2l.3 2.6h3.9l.3-2.6a7.4 7.4 0 0 0 2-1.2l2.2.9 2-3.4-1.9-1.5c.1-.4.1-.8.1-1.2Z"/></svg>',
   };
@@ -176,7 +179,7 @@
 
   <div class="shell">
     <aside class="sidebar" aria-label="Primary">
-    <img src="/favicon.png" alt="" class="logo" />
+    <img src="/appicon.png" alt="" class="logo" />
     {#each nav as item (item.id)}
       <button
         class="nav-btn"

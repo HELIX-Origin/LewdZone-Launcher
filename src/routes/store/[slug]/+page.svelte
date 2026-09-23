@@ -41,13 +41,17 @@
   }
 
   interface Job {
-    game: string;
+    id: number;
+    slug: string;
     version: string;
     platform: string;
     tab: string;
-    manager: string;
-    url: string;
-    target: string | null;
+    source: string | null;
+    status: "queued" | "resolving" | "dispatching" | "dispatched" | "failed";
+    message: string | null;
+    manager: string | null;
+    created_at: number;
+    updated_at: number;
   }
 
   interface HostSource {
@@ -125,16 +129,14 @@
     downloading = true;
     feedback = "";
     try {
-      const jobs = await invoke<Job[]>("game_download", {
+      const job = await invoke<Job>("game_download", {
         slug: game.slug,
         version: version === "latest" ? "latest" : version,
         platform: platform === "PC" ? "PC" : platform,
         tab,
         source: source || null,
       });
-      feedback = jobs.length > 0
-        ? `Dispatched ${jobs.length} job${jobs.length > 1 ? "s" : ""} to ${jobs[0].manager}.`
-        : "No matching download entries found.";
+      feedback = `Queued download #${job.id}. Watch the Downloads page for progress.`;
     } catch (err) {
       feedback = `Download failed: ${String(err)}`;
     } finally {
@@ -227,7 +229,7 @@
           disabled={downloading || sources.length === 0}
           aria-label={`Download ${game.title}`}
         >
-          {downloading ? "Dispatching…" : "⬇ Download"}
+          {downloading ? "Queueing…" : "⬇ Download"}
         </button>
       </div>
       {#if feedback}

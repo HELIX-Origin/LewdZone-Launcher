@@ -31,6 +31,7 @@ import SettingsPage from "../../routes/settings/+page.svelte";
 import StorePage from "../../routes/store/+page.svelte";
 import GamePage from "../../routes/store/[slug]/+page.svelte";
 import LibraryPage from "../../routes/library/+page.svelte";
+import DownloadsPage from "../../routes/downloads/+page.svelte";
 
 const sampleGame = {
   slug: "wild-life",
@@ -92,13 +93,17 @@ const sampleGameData = {
 };
 
 const sampleJob = {
-  game: "wild-life",
+  id: 1,
+  slug: "wild-life",
   version: "v2026-06-15 Full",
-  platform: "pc",
+  platform: "PC",
   tab: "official",
-  manager: "fdm",
-  url: "https://resolved.example/file.zip",
-  target: "D:/Games/Wild Life/Wild Life - v2026-06-15 Full - PC.zip",
+  source: "fileknot",
+  status: "queued",
+  message: null,
+  manager: null,
+  created_at: 1_716_000_000,
+  updated_at: 1_716_000_000,
 };
 
 const sampleSources = [
@@ -117,7 +122,7 @@ function mockInvoke(impl: (cmd: string, args?: InvokeArgs) => unknown) {
 describe("app shell", () => {
   it("renders the left icon sidebar with primary tabs", () => {
     render(Layout);
-    for (const label of ["Favorites", "Library", "Store", "Settings"]) {
+    for (const label of ["Favorites", "Library", "Store", "Downloads", "Settings"]) {
       expect(screen.getByRole("button", { name: label })).toBeInTheDocument();
     }
     expect(screen.queryByRole("button", { name: "Home" })).not.toBeInTheDocument();
@@ -230,7 +235,7 @@ describe("store game detail page", () => {
     mockInvoke(async (cmd: string) => {
       if (cmd === "game_page") return sampleGameData;
       if (cmd === "game_sources") return sampleSources;
-      if (cmd === "game_download") return [sampleJob];
+      if (cmd === "game_download") return sampleJob;
       return [];
     });
   });
@@ -256,7 +261,7 @@ describe("store game detail page", () => {
     expect((select as HTMLSelectElement).value).toBe("mega");
   });
 
-  it("dispatches a download through game_download", async () => {
+  it("queues a download through game_download", async () => {
     const user = userEvent.setup();
     render(GamePage);
     const btn = await screen.findByRole("button", { name: "Download Wild Life" });
@@ -271,7 +276,9 @@ describe("store game detail page", () => {
         source: "fileknot",
       }),
     );
-    expect(await screen.findByText("Dispatched 1 job to fdm.")).toBeInTheDocument();
+    expect(
+      await screen.findByText("Queued download #1. Watch the Downloads page for progress."),
+    ).toBeInTheDocument();
   });
 });
 
@@ -302,6 +309,51 @@ describe("library page", () => {
     render(LibraryPage);
     expect(await screen.findByText("Wild Life")).toBeInTheDocument();
     expect(screen.getByText("Treasure of Nadia")).toBeInTheDocument();
+  });
+});
+
+describe("downloads page", () => {
+  it("shows the empty state when the queue is empty", async () => {
+    mockInvoke(async (cmd: string) => {
+      if (cmd === "downloads_list") return [];
+      return [];
+    });
+    render(DownloadsPage);
+    expect(await screen.findByText("Downloads")).toBeInTheDocument();
+    expect(
+      screen.getByText(/No active downloads. Start one from the Store/),
+    ).toBeInTheDocument();
+  });
+
+  it("lists queued, dispatched, and failed jobs from the queue", async () => {
+    mockInvoke(async (cmd: string) => {
+      if (cmd === "downloads_list") {
+        return [
+          sampleJob,
+          {
+            ...sampleJob,
+            id: 2,
+            status: "dispatched",
+            manager: "fdm",
+            message: "1 job(s) handed to fdm",
+          },
+          {
+            ...sampleJob,
+            id: 3,
+            status: "failed",
+            message: "no matching download entries found",
+          },
+        ];
+      }
+      return [];
+    });
+    render(DownloadsPage);
+    expect(await screen.findByText("Queued")).toBeInTheDocument();
+    expect(screen.getByText("Dispatched")).toBeInTheDocument();
+    expect(screen.getByText("Failed")).toBeInTheDocument();
+    expect(screen.getAllByText("wild-life").length).toBe(3);
+    expect(screen.getByText("1 job(s) handed to fdm")).toBeInTheDocument();
+    expect(screen.getByText("no matching download entries found")).toBeInTheDocument();
   });
 });
 
