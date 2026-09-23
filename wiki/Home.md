@@ -20,8 +20,9 @@ The GUI and the CLI call the same Rust core functions; every GUI action maps
   LewdZone.
 - **Resolves** go-link tokens to real file URLs (the site blocks naive
   follow-through; the tool uses the site's own two-step `start`→`reveal` API).
-- **Dispatches downloads to a real manager**: FDM, IDM, or a torrent client
-  (uTorrent/BitTorrent). The tool never downloads files itself.
+- **Streams direct-file downloads in-app** with live byte progress; other hosts
+  hand the resolved URL to the OS default handler (installed cloud app or
+  browser) — no download manager needed.
 - **Organizes** downloaded files into `<DownloadRoot>/Games/<Title>/` with
   canonical names.
 - **Builds native shortcuts + icons** per OS (`.lnk`, `.desktop`, `.app`) using
@@ -37,7 +38,7 @@ The GUI and the CLI call the same Rust core functions; every GUI action maps
 | Build & install | [Installing & Building](Installing-and-Building) |
 | How the pieces fit together | [Architecture](Architecture) |
 | Command-line reference | [CLI Reference](CLI-Reference) |
-| FDM / IDM / torrent handling | [Download Managers](Download-Managers) |
+| Downloads & in-app streaming | [Downloads & Streaming](Download-Managers) |
 | Info + art enrichment | [Content Providers](Content-Providers) |
 | Config files & options | [Configuration](Configuration) |
 | Agent ecosystem (governance) | [Agent Ecosystem](Agents) |

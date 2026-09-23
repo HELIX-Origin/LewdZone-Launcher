@@ -29,12 +29,14 @@ lewdzone <command> [options]
 | `sync` | Refresh catalog from the site (paged, incremental; `--full` resyncs) |
 | `search` | Browse the archive (Popularity); free-text search not yet wired |
 | `info` | Game detail: versions, download entries, metadata |
-| `download` | Dispatch a resolved URL to the active download manager |
 | `list` | List the catalog, the installed library, or the job queue |
 | `settings` | Read/write config (`get` / `set`) |
 | `shortcuts` | Build/rebuild native shortcuts for installed games |
 | `launch` | Launch an installed game |
-| `dm` | List download managers or select the active one |
+
+Note: the previous `download` and `dm` subcommands are merged. `download`
+persists; `dm` was removed with the download-manager layer (see
+[Download Managers](Download-Managers)).
 
 ### `sync`
 
@@ -55,9 +57,8 @@ lewdzone info treasure-of-nadia --versions # full version + entry JSON
 
 ### `download`
 
-The game is given positionally or via `--game` (flag form). The manager is
-**not** chosen here — the **active manager** (set with `dm <name>`) receives
-the download:
+The game is given positionally or via `--game` (flag form). The handler is
+chosen automatically by host class — no manager to select:
 
 ```
 lewdzone download treasure-of-nadia
@@ -72,8 +73,9 @@ lewdzone download treasure-of-nadia --queue    # enqueue without starting
 page (e.g. `mega`, `fileknot`, `dropbox`). Without it, every available source
 is dispatched in the configured order (see `source-priority` below).
 
-Torrent links are only accepted by a torrent-capable manager (exit 4
-otherwise).
+Direct-file hosts (`fileknot`) stream in-app and print `[download] N%`
+progress to stderr. Other hosts open in the OS default handler (installed
+cloud app or browser). See [Download Managers](Download-Managers).
 
 ### `list`
 
@@ -91,15 +93,12 @@ lewdzone settings get download-root
 lewdzone settings set download-root "D:/Games"
 lewdzone settings set download-grace-seconds 20   # pause between download starts
 lewdzone settings set source-priority "mega, google, dropbox"  # preferred source order
-lewdzone settings set native-cloud true       # pass cloud hosts to their apps/browser
 ```
 
 ### `dm`
 
-```
-lewdzone dm            # list detected managers + the active one
-lewdzone dm fdm        # select FDM as the active manager
-```
+> Removed. Download dispatch no longer uses an active manager — direct-file
+> hosts stream in-app, everything else opens in the OS default handler.
 
 ## 🧾 Exit codes
 
@@ -109,8 +108,10 @@ lewdzone dm fdm        # select FDM as the active manager
 | 1 | runtime error |
 | 2 | usage error |
 | 3 | network error |
-| 4 | download manager missing / not found |
 | 5 | interrupted |
+
+Exit **4** was the download-manager-missing code; it is now unused (gap left
+to keep earlier codes stable).
 
 ## 🛠️ Protocol details
 
@@ -127,8 +128,6 @@ lewdzone dm fdm        # select FDM as the active manager
 ```sh
 lewdzone sync --json
 lewdzone info --game treasure-of-nadia --json
-lewdzone dm
-lewdzone dm fdm
 lewdzone download --game treasure-of-nadia --version latest \
   --platform PC --tab official --json
 lewdzone list --library --json

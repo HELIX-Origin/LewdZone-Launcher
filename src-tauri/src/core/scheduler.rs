@@ -1,5 +1,5 @@
 //! `scheduler` — serialize downloads so cloud free-tier providers aren't
-//! hammered (owner: dm family / launch skill).
+//! hammered (owner: download family).
 //!
 //! The site's mirrors (Mega, Google Drive, MediaFire, ...) throttle or block
 //! free-tier accounts when many downloads start at once. `download` therefore
@@ -17,8 +17,8 @@ use crate::core::{Context, Error};
 pub const DEFAULT_GRACE_SECONDS: u64 = 20;
 
 /// Serialize dispatch: one job at a time, waiting `grace` between each start.
-/// `dispatch` fires per job (adapter launch); `sleep` is injected so tests can
-/// record the pacing without actually waiting.
+/// `dispatch` fires per job (in-app stream or OS handler); `sleep` is injected
+/// so tests can record the pacing without actually waiting.
 pub fn paced(
     grace: Duration,
     jobs: &[Job],
@@ -56,7 +56,6 @@ mod tests {
             version: "v1.0".to_string(),
             platform: "pc".to_string(),
             tab: "official".to_string(),
-            manager: "fdm".to_string(),
             url: url.to_string(),
             target: Some(PathBuf::from(format!("D:/dl/{n}.zip"))),
         }

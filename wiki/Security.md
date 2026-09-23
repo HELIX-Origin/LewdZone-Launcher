@@ -8,9 +8,12 @@
    `~/.config/lewdzone/` or environment variables, never committed. API keys are
    set via the app's Settings → API keys (`settings set <key> --secret`) and
    are never echoed back or logged.
-2. **The tool never downloads content itself** — resolved URLs are handed to a
-   download manager, and only for **allowlisted hosts** derived from the site's
-   own go-link host table (reverified regularly). Unknown host → refuse.
+2. **Downloads stay on allowlisted hosts, and never detour.** The launcher
+   streams direct-file hosts and hands other resolved URLs to the OS default
+   handler — but only for **allowlisted hosts** derived from the site's own
+   go-link host table (reverified regularly). Unknown host → refuse. When a
+   direct stream is redirected, the redirect must remain on the same host (or a
+   dot-boundary subdomain) — any other target is refused.
 3. **No shell interpolation** — external processes are spawned with
    `std::process::Command` using argv arrays (`CREATE_NO_WINDOW` on Windows,
    detached session on POSIX). Never build a command string from user input.
@@ -27,7 +30,8 @@
 - SQLite injection?
 - Path traversal / unsafe filenames?
 - URL smuggling via a non-allowlisted host?
-- Download-manager spawn injection?
+- Redirect detour to a foreign host during an in-app stream?
+- OS-default-handler misuse (opening a non-URL or a non-allowlisted URL)?
 - Secret leakage (keys/tokens in logs, outputs, or the repo)?
 - Unsafe redirect following?
 
@@ -41,4 +45,6 @@ Host slugs come from the site's go.js ICONS list (e.g. `mediafire`, `mega`,
 `google`, `pixeldrain`, …). The resolved-URL allowlist is derived from that list
 and kept in sync during [Release Process](Release-Process); changes require a
 security review ADR. Dead services are removed — currently `gofile` is out of
-the allowlist.
+the allowlist. Direct-stream host class is a subset of it (`fileknot` today);
+only that subset is ever streamed in-app, and its redirects are validated to
+stay on-host.

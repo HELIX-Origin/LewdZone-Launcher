@@ -28,7 +28,7 @@ Copilot-style workflows, and others). Everything is documented with
 | **scraper** | catalog + page scraping | archive-scraper, game-page-scraper, fixture-engineer |
 | **resolver** | go-token resolution | token-prober, dispatch-builder |
 | **database** | schema + sync | schema-designer, sync-orchestrator |
-| **dm** | download managers | dm-detector, fdm-adapter, idm-adapter, torrent-adapter, folder-organizer |
+| **dm** | downloads + folder folding | folder-organizer |
 | **cli** | the engine | command-designer, output-formatter |
 | **gui** | Tauri app | app-shell, view-designer |
 | **shortcuts** | artwork + shortcuts | artwork-fetch, shortcut-builder |
@@ -44,7 +44,7 @@ Reusable procedures with checkoffs, e.g.:
 - `scrape-catalog` — page the archive into the catalog
 - `resolve-go-token` — the two-step start/reveal resolution
 - `parse-version-prompts` — normalize version strings
-- `launch-download` — dispatch a resolved URL to the active manager (DM-agnostic)
+- `launch-download` — stream direct-file hosts in-app or hand other resolved URLs to the OS default handler
 - `enrich-game-and-art` — fill info + art gaps from the content-provider layer
 
 ## ⚖️ Rules 00-13
@@ -58,7 +58,7 @@ Reusable procedures with checkoffs, e.g.:
 | 04 | Remote issue protocol | `rule-04-remote-issue-protocol.md` |
 | 05 | Network etiquette | `rule-05-network-etiquette.md` |
 | 06 | SQLite conventions | `rule-06-sqlite-conventions.md` |
-| 07 | Download manager integration | `rule-07-download-manager-integration.md` |
+| 07 | Download dispatch | `rule-07-download-manager-integration.md` |
 | 08 | Release standards | `rule-08-release-standards.md` |
 | 09 | Mermaid standards | `rule-09-mermaid-standards.md` |
 | 10 | Security | `rule-10-security.md` |

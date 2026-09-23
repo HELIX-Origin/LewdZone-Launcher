@@ -79,7 +79,6 @@
 
 {#each [
       ["library-root", "Library root", "Where games are installed (library folders)."],
-      ["dm", "Download manager", "Active manager: fdm, idm, or torrent."],
       ["content-priority", "Content providers", "Comma-separated provider priority list."],
       [
         "source-priority",
@@ -126,16 +125,6 @@
         onchange={(e) => save("capture-aware", (e.currentTarget as HTMLInputElement).checked)}
       />
       <span class="field-hint">Pause network work while the window is captured/streaming.</span>
-    </label>
-
-    <label class="field">
-      <span class="field-label">Native cloud apps</span>
-      <input
-        type="checkbox"
-        checked={snapshot["native-cloud"] === true}
-        onchange={(e) => save("native-cloud", (e.currentTarget as HTMLInputElement).checked)}
-      />
-      <span class="field-hint">Hand Google Drive, Dropbox, MediaFire, and MEGA downloads to their desktop apps instead of the download manager.</span>
     </label>
 
     <fieldset class="field">

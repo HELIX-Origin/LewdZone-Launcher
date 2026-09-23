@@ -101,7 +101,8 @@ const sampleJob = {
   source: "fileknot",
   status: "queued",
   message: null,
-  manager: null,
+  bytes_done: 0,
+  bytes_total: 0,
   created_at: 1_716_000_000,
   updated_at: 1_716_000_000,
 };
@@ -325,7 +326,7 @@ describe("downloads page", () => {
     ).toBeInTheDocument();
   });
 
-  it("lists queued, dispatched, and failed jobs from the queue", async () => {
+  it("lists queued, downloading, dispatched, and failed jobs from the queue", async () => {
     mockInvoke(async (cmd: string) => {
       if (cmd === "downloads_list") {
         return [
@@ -333,13 +334,20 @@ describe("downloads page", () => {
           {
             ...sampleJob,
             id: 2,
-            status: "dispatched",
-            manager: "fdm",
-            message: "1 job(s) handed to fdm",
+            status: "downloading",
+            bytes_done: 2_147_483_648,
+            bytes_total: 5_368_709_120,
+            message: "downloaded 2.1 GB of 5 GB",
           },
           {
             ...sampleJob,
             id: 3,
+            status: "dispatched",
+            message: "downloaded 1 of 1 bytes",
+          },
+          {
+            ...sampleJob,
+            id: 4,
             status: "failed",
             message: "no matching download entries found",
           },
@@ -349,10 +357,12 @@ describe("downloads page", () => {
     });
     render(DownloadsPage);
     expect(await screen.findByText("Queued")).toBeInTheDocument();
+    expect(screen.getByText("Downloading")).toBeInTheDocument();
     expect(screen.getByText("Dispatched")).toBeInTheDocument();
     expect(screen.getByText("Failed")).toBeInTheDocument();
-    expect(screen.getAllByText("wild-life").length).toBe(3);
-    expect(screen.getByText("1 job(s) handed to fdm")).toBeInTheDocument();
+    expect(screen.getAllByText("wild-life").length).toBe(4);
+    expect(screen.getByText("downloaded 2.1 GB of 5 GB")).toBeInTheDocument();
+    expect(screen.getByRole("progressbar", { name: /Download progress for wild-life/ })).toBeInTheDocument();
     expect(screen.getByText("no matching download entries found")).toBeInTheDocument();
   });
 });
@@ -419,11 +429,6 @@ describe("settings page", () => {
       expect.objectContaining({ key: "source-priority", value: "dropbox,mega" }),
     );
     expect(await screen.findByText("source-priority saved")).toBeInTheDocument();
-  });
-
-  it("exposes the native-cloud toggle", async () => {
-    render(SettingsPage);
-    expect(await screen.findByText("Native cloud apps")).toBeInTheDocument();
   });
 
   it("saves the home page selection", async () => {

@@ -13,8 +13,6 @@ use crate::core::{Context, Error};
 pub struct Settings {
     /// Root folder where downloaded games land.
     pub download_root: Option<String>,
-    /// Active download manager name: `fdm`, `idm`, or a torrent client.
-    pub dm: Option<String>,
     /// Content-provider priority order (comma-separated).
     pub content_priority: Option<String>,
     /// Enable installer capture heuristics.
@@ -29,9 +27,6 @@ pub struct Settings {
     /// Preferred cloud-source hosts, comma-separated (e.g. `mega,google,dropbox`).
     /// Entries are ordered/filtered by this list before download selection.
     pub source_priority: Option<String>,
-    /// Hand downloads from native-cloud hosts (Google Drive, Dropbox, MediaFire,
-    /// Mega) to the default cloud handler instead of the download manager.
-    pub native_cloud: Option<bool>,
     /// Which sidebar tab opens at launch (`store`, `favorites`, `library`,
     /// `downloads`, `settings`); unset = `store`.
     pub home_page: Option<String>,
@@ -62,14 +57,12 @@ impl Settings {
     pub fn get_value(&self, key: &str) -> Option<serde_json::Value> {
         let s = match key {
             "download-root" => self.download_root.clone().map(serde_json::Value::String),
-            "dm" => self.dm.clone().map(serde_json::Value::String),
             "content-priority" => self.content_priority.clone().map(serde_json::Value::String),
             "capture-aware" => self.capture_aware.map(serde_json::Value::Bool),
             "theme" => self.theme.clone().map(serde_json::Value::String),
             "library-root" => self.library_root.clone().map(serde_json::Value::String),
             "download-grace-seconds" => self.download_grace_seconds.map(serde_json::Value::from),
             "source-priority" => self.source_priority.clone().map(serde_json::Value::String),
-            "native-cloud" => self.native_cloud.map(serde_json::Value::Bool),
             "home-page" => self.home_page.clone().map(serde_json::Value::String),
             other => self.extra.get(other).cloned(),
         };
@@ -80,9 +73,6 @@ impl Settings {
         match key {
             "download-root" => {
                 self.download_root = Some(take_string(key, value)?);
-            }
-            "dm" => {
-                self.dm = Some(take_string(key, value)?);
             }
             "content-priority" => {
                 self.content_priority = Some(take_string(key, value)?);
@@ -101,9 +91,6 @@ impl Settings {
             }
             "source-priority" => {
                 self.source_priority = Some(take_string(key, value)?);
-            }
-            "native-cloud" => {
-                self.native_cloud = Some(take_bool(key, value)?);
             }
             "home-page" => {
                 self.home_page = Some(take_string(key, value)?);
@@ -137,14 +124,12 @@ fn take_u64(key: &str, value: serde_json::Value) -> Result<u64, Error> {
 
 const KNOWN_KEYS: &[&str] = &[
     "download-root",
-    "dm",
     "content-priority",
     "capture-aware",
     "theme",
     "library-root",
     "download-grace-seconds",
     "source-priority",
-    "native-cloud",
     "home-page",
 ];
 
@@ -248,7 +233,7 @@ mod tests {
             serde_json::Value::Number(serde_json::Number::from(30u64))
         );
         assert_eq!(
-            apply(&ctx, "native-cloud", "true").expect("bool"),
+            apply(&ctx, "capture-aware", "true").expect("bool"),
             serde_json::Value::Bool(true)
         );
         assert_eq!(

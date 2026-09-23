@@ -6,7 +6,13 @@
 
   type LoadState = "loading" | "ready" | "error";
 
-  type Status = "queued" | "resolving" | "dispatching" | "dispatched" | "failed";
+  type Status =
+    | "queued"
+    | "resolving"
+    | "dispatching"
+    | "downloading"
+    | "dispatched"
+    | "failed";
 
   interface QueueJob {
     id: number;
@@ -17,7 +23,8 @@
     source: string | null;
     status: Status;
     message: string | null;
-    manager: string | null;
+    bytes_done: number;
+    bytes_total: number;
     created_at: number;
     updated_at: number;
   }
@@ -26,6 +33,7 @@
     queued: "Queued",
     resolving: "Resolving",
     dispatching: "Dispatching",
+    downloading: "Downloading",
     dispatched: "Dispatched",
     failed: "Failed",
   };
@@ -65,6 +73,23 @@
       linux: "Linux",
     };
     return map[p.toLowerCase()] ?? p;
+  }
+
+  function fmtBytes(n: number): string {
+    if (n < 1024) return `${n} B`;
+    const units = ["KB", "MB", "GB", "TB"];
+    let value = n / 1024;
+    let i = 0;
+    while (value >= 1024 && i < units.length - 1) {
+      value /= 1024;
+      i++;
+    }
+    return `${value.toFixed(value >= 10 ? 0 : 1)} ${units[i]}`;
+  }
+
+  function progressPct(job: QueueJob): number {
+    if (job.bytes_total <= 0) return 0;
+    return Math.min(100, Math.round((job.bytes_done * 100) / job.bytes_total));
   }
 </script>
 
@@ -107,11 +132,27 @@
               <span>·</span>
               <span>{job.source}</span>
             {/if}
-            {#if job.manager}
-              <span>·</span>
-              <span>{job.manager}</span>
-            {/if}
           </div>
+          {#if job.status === "downloading"}
+            <div
+              class="bar"
+              role="progressbar"
+              aria-valuemin="0"
+              aria-valuemax="100"
+              aria-valuenow={progressPct(job)}
+              aria-label={`Download progress for ${job.slug}`}
+            >
+              <div class="bar-fill" style={`width: ${progressPct(job)}%`}></div>
+            </div>
+            <p class="item-bytes">
+              {fmtBytes(job.bytes_done)}
+              {#if job.bytes_total > 0}
+                / {fmtBytes(job.bytes_total)} · {progressPct(job)}%
+              {:else}
+                downloaded
+              {/if}
+            </p>
+          {/if}
           {#if job.message}
             <p class="item-msg" class:error={job.status === "failed"}>{job.message}</p>
           {/if}
@@ -205,6 +246,26 @@
     line-height: 1.4;
   }
 
+  .bar {
+    margin-top: 8px;
+    height: 6px;
+    border-radius: 4px;
+    background: var(--lz-surface-2);
+    overflow: hidden;
+  }
+
+  .bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--lz-primary), var(--lz-accent));
+    transition: width 0.3s ease;
+  }
+
+  .item-bytes {
+    margin: 4px 0 0;
+    font-size: 11px;
+    color: var(--lz-text-dim);
+  }
+
   .item-msg.error {
     color: var(--lz-danger);
   }
@@ -225,7 +286,8 @@
   }
 
   .badge.resolving,
-  .badge.dispatching {
+  .badge.dispatching,
+  .badge.downloading {
     color: var(--lz-accent);
   }
 

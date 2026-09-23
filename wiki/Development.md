@@ -30,7 +30,7 @@ lewdzone/
 | scraper | site scraping, fixtures (archive-scraper, game-page-scraper, fixture-engineer) |
 | resolver | go-token → real URL (token-prober, dispatch-builder) |
 | database | schema, sync (schema-designer, sync-orchestrator) |
-| dm | download managers (dm-detector, fdm-adapter, idm-adapter, torrent-adapter, folder-organizer) |
+| dm | downloads + folder folding (direct-stream routing, OS-native dispatch, folder-organizer) |
 | cli | the engine, output (command-designer, output-formatter) |
 | gui | Tauri app (app-shell, view-designer) |
 | shortcuts | artwork + native shortcuts (artwork-fetch, shortcut-builder) |

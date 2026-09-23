@@ -6,7 +6,6 @@ pub mod cli;
 pub mod core;
 
 pub mod db;
-pub mod dm;
 pub mod resolver;
 pub mod scraper;
 
@@ -146,9 +145,9 @@ fn game_sources(
 
 /// Enqueue a game's download for the background worker — the Store's "Download"
 /// button. Returns instantly with the queued job row; the worker (owned Context,
-/// never the state lock) resolves go-links and dispatches to the active manager
-/// off the webview thread, so the UI stays interactive and more downloads can be
-/// scheduled while any are active (Rule 05). `source` (chosen from the game page
+/// never the state lock) resolves go-links and dispatches (in-app stream or
+/// OS handler) off the webview thread, so the UI stays interactive and more
+/// downloads can be scheduled while any are active (Rule 05). `source` (chosen from the game page
 /// dropdown) restricts to one host; `None` = all available sources.
 #[tauri::command]
 fn game_download(

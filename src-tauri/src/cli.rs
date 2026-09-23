@@ -20,8 +20,6 @@ pub enum ExitCode {
     Usage = 2,
     /// Network / site error.
     Network = 3,
-    /// Download manager missing.
-    DmMissing = 4,
     /// Interrupted (user cancelled).
     Interrupted = 5,
 }
@@ -82,8 +80,6 @@ enum Command {
     Shortcuts(ShortcutsArgs),
     /// Launch an installed game.
     Launch(LaunchArgs),
-    /// Configure download managers.
-    Dm(DmArgs),
 }
 
 #[derive(clap::Args, Debug, Default)]
@@ -195,12 +191,6 @@ struct LaunchArgs {
     game: String,
 }
 
-#[derive(clap::Args, Debug, Default)]
-struct DmArgs {
-    /// The download manager to make active, e.g. `fdm`.
-    active: Option<String>,
-}
-
 /// Dispatch a parsed CLI invocation, printing results, returning the exit code.
 pub fn run(cli: Cli) -> ExitCode {
     let result = dispatch(cli);
@@ -259,7 +249,6 @@ fn dispatch(cli: Cli) -> Result<ExitCode, crate::core::Error> {
             core::shortcuts::run(&ctx, args.game.as_deref(), args.skip_artwork)
         }
         Command::Launch(args) => core::launch::run(&ctx, &args.game),
-        Command::Dm(args) => core::dm::run(&ctx, args.active.as_deref()),
     }
 }
 
@@ -268,7 +257,6 @@ impl From<&crate::core::Error> for ExitCode {
         match err {
             crate::core::Error::Usage(_) => ExitCode::Usage,
             crate::core::Error::Network(_) => ExitCode::Network,
-            crate::core::Error::DmMissing(_) => ExitCode::DmMissing,
             crate::core::Error::Interrupted => ExitCode::Interrupted,
             crate::core::Error::Runtime(_) => ExitCode::Runtime,
         }
@@ -345,7 +333,6 @@ mod tests {
         assert_eq!(ExitCode::Runtime.as_i32(), 1);
         assert_eq!(ExitCode::Usage.as_i32(), 2);
         assert_eq!(ExitCode::Network.as_i32(), 3);
-        assert_eq!(ExitCode::DmMissing.as_i32(), 4);
         assert_eq!(ExitCode::Interrupted.as_i32(), 5);
     }
 }

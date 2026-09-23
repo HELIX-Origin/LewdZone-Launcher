@@ -20,11 +20,9 @@ see [Architecture](Architecture) → Folder structure):
 {
   "download-root": "D:/Games",          // where downloaded games land (ADR-0005)
   "download-grace-seconds": 20,         // pause between download starts (cloud free-tier throttle protection)
-  "dm": "fdm",                          // active download manager
   "content-priority": "steamgriddb, vndb, igdb, itch, steam, indiedb", // dispatch order
   "capture-aware": true,                // installer capture heuristics
   "source-priority": "mega, google, dropbox, mediafire", // preferred download-source order
-  "native-cloud": true,                 // hand cloud hosts to their desktop apps or browser
   "theme": "Pink Neon"                  // theme skin name (unset = built-in default)
 }
 ```
@@ -50,23 +48,14 @@ Valid hosts are the [resolver allowlist](Download-Managers) (`fileknot`,
 `dropbox`, `pixeldrain`). Hosts you name that aren't on the game page are
 simply skipped — the download never fails just because a source is missing.
 
-## 💻 Native cloud pass-through
+## 📥 How downloads are dispatched
 
-`native-cloud` (default off) hands downloads from cloud hosts that run their own
-desktop apps — **Google Drive**, **Dropbox**, **MediaFire**, **Mega**, and
-**pixeldrain** — to the OS default handler for that URL instead of
-spawing the download manager:
+There is no download manager to configure. Every resolved URL is dispatched
+by host class (see [Downloads & In-App Streaming](Download-Managers)):
 
-```sh
-lewdzone settings set native-cloud true
-```
-
-When enabled, the launcher opens the resolved URL with the platform's
-native-opening mechanism (`rundll32 url.dll,FileProtocolHandler` on Windows,
-`open` on macOS, `xdg-open` on Linux). If the host doesn't have a desktop app
-installed the URL lands in the default browser, which still starts the download.
-(Dispatch is not silently skipped: a host with a cloud app always resumes in
-that app or the browser.)
+- **Direct-file hosts** — streamed in-app with byte progress.
+- **Everything else** — opened in the OS default handler (the installed cloud
+  app for the service, or the browser). Zero configuration.
 
 ## 🎨 Theme skins (ADR-0005)
 
@@ -150,16 +139,6 @@ by the `library-root` setting (default `<data_root>/library`, i.e.
 `%APPDATA%\lewdzone\library` on Windows).
 Per-game manifests (`appmanifest_<post_id>.json`) are the source of truth for
 installed games; see [Architecture](Architecture) → Folder structure.
-
-## 🚚 Active download manager
-
-```sh
-lewdzone dm          # list detected managers + the active one
-lewdzone dm <name>   # select the active manager
-```
-
-`<name>` is one of `fdm`, `idm`, `torrent`. See
-[Download Managers](Download-Managers).
 
 ## 🗄️ Database
 

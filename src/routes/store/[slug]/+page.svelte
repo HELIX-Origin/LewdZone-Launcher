@@ -47,9 +47,10 @@
     platform: string;
     tab: string;
     source: string | null;
-    status: "queued" | "resolving" | "dispatching" | "dispatched" | "failed";
+    status: "queued" | "resolving" | "dispatching" | "downloading" | "dispatched" | "failed";
     message: string | null;
-    manager: string | null;
+    bytes_done: number;
+    bytes_total: number;
     created_at: number;
     updated_at: number;
   }

@@ -47,7 +47,7 @@ The suite never touches real anything by default. Key fakes:
 | Fake | Stands in for |
 | --- | --- |
 | fake HTTP transport (`support/http.rs`) | real site/api, canned by URL |
-| DM exe shims (per manager) | FDM / IDM / torrent, record argv to file |
+| stream-seam stub | in-app download stream (bytes + reader), offline-dispatching redirects |
 | fake SteamGrid (`support/steamgrid.rs`) | SteamGridDB artwork API |
 | command-test harness | core commands called in-process, assert on results |
 | shortcut fakes | `.lnk`, `.desktop`, macOS alias |

@@ -1,8 +1,10 @@
 # LewdZone Launcher — Agent Operating Manual
 
 The LewdZone Launcher is a cross-platform desktop game launcher that scrapes
-[lewdzone.com](https://lewdzone.com), resolves download tokens, and hands
-resolved URLs to an installed download manager (FDM, IDM, or a torrent client).
+[lewdzone.com](https://lewdzone.com), resolves download tokens, streams
+direct-file hosts in-app with byte progress, and hands every other resolved
+URL to the OS default handler (the installed cloud app or the browser) — no
+download manager needed.
 It is a **Tauri 2 app** (Rust + OS webview, Svelte frontend) whose binary also
 exposes a **native Rust CLI** (`src-tauri/src/cli.rs`). The GUI and the CLI are
 two entry points into the same Rust core: the same functions back both (Rule
@@ -22,7 +24,7 @@ two entry points into the same Rust core: the same functions back both (Rule
 | `scraper` | scraper.md | archive-scraper, game-page-scraper, fixture-engineer | lewdzone.com page scraping, fixtures, HTML parsing |
 | `resolver` | resolver.md | token-prober, dispatch-builder | Go-link token resolution via start→reveal API |
 | `database` | database.md | schema-designer, sync-orchestrator | SQLite schema, migrations, sync pipeline |
-| `dm` | dm.md | dm-detector, fdm-adapter, idm-adapter, torrent-adapter, folder-organizer | Download-manager detection, per-manager dispatch, folder folding |
+| `dm` | dm.md | folder-organizer | Direct-stream routing, OS-native dispatch, folder folding |
 | `cli` | cli.md | command-designer, output-formatter | Native Rust CLI, subcommands, GUI/CLI parity |
 | `gui` | gui.md | app-shell, view-designer | Tauri 2 desktop app, Rust core, Svelte views, shared-core commands |
 | `shortcuts` | shortcuts.md | artwork-fetch, shortcut-builder | SteamGridDB artwork, per-OS native shortcuts |
@@ -45,7 +47,7 @@ See [wiki/Agents](wiki/Agents) for the full agent catalog with sub-agent details
 | 04 | Remote Issue Protocol | Roadmap-first, sub-issue lifecycle, commit format |
 | 05 | Network Etiquette | 1 req/s, retry, offline fixtures, live opt-in |
 | 06 | SQLite Conventions | WAL, FK, migrations, store tokens not URLs |
-| 07 | Download Manager Integration | Adapter contract, cross-platform spawn |
+| 07 | Download Dispatch | Direct-stream routing, OS-native dispatch, folder folding |
 | 08 | Release Standards | SemVer, version sync, verification gate |
 | 09 | Mermaid Standards | GitHub v10, quoted labels, ≤12 nodes |
 | 10 | Security | Secrets, allowlists, subprocess safety |

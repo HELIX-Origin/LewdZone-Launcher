@@ -2,21 +2,18 @@
 
 > Links between wiki pages are relative and omit the `.md` extension.
 
-## ⚠️ Exit code 4: download manager missing
+## ⚠️ A cloud-host/page download didn't start in-app
 
-`download`/`launch` exits 4 when no supported manager is found.
-
-- Run `lewdzone dm` to see detected managers.
-- Install FDM / IDM (Windows) or a torrent client, or set one as your
-  [active manager](Download-Managers):
-  `lewdzone dm <name>`.
-- See [Download Managers](Download-Managers).
+Direct-file hosts (`fileknot`) stream inside the app. Everything else is opened
+by the **OS default handler** — if the service doesn't have a desktop app
+installed, the resolved page opens in the default browser. That's by design,
+not a bug.
 
 ## ↩️ Downloads get a redirect page instead of the file
 
 The go-link `#fragment` was passed through instead of being resolved. The tool
-must resolve tokens via the site's `start`→`reveal` API and hand only the real
-URL to the manager. Re-run with a fresh resolve; report as a bug if it
+must resolve tokens via the site's `start`→`reveal` API and act only on the
+real URL it returns. Re-run with a fresh resolve; report as a bug if it
 persists.
 
 ## 🐌 Slow or incomplete catalog after `sync`

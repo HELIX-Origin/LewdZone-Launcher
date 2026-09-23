@@ -1,10 +1,9 @@
-//! `native` — native cloud-app pass-through (source-priority setting).
+//! `native` — OS default-handler pass-through.
 //!
-//! Cloud hosts with their own desktop client (Google Drive, Dropbox, MediaFire,
-//! MEGA) can receive downloads without a download manager: when the
-//! `native-cloud` setting is on and the chosen entry resolves to one of these
-//! hosts, the resolved URL is handed to the operating system's default handler
-//! instead of a DM adapter. The URL still goes through the resolver allowlist
+//! Hosts that are not direct-file streams (see `download::DIRECT_STREAM_HOSTS`)
+//! hand their resolved URL to the operating system's default handler — the
+//! installed cloud app (MEGA, Google Drive, Dropbox, …) or the browser — with
+//! zero configuration. The URL still goes through the resolver allowlist
 //! (Rule 10.2) before it can be opened here.
 //!
 //! The actual "open URL with the default handler" call lives in a per-OS
@@ -13,10 +12,7 @@
 
 use crate::core::Error;
 
-/// Host slugs that have a native desktop app/browser handler.
-pub const NATIVE_CLOUD_HOSTS: &[&str] = &["google", "dropbox", "mediafire", "mega", "pixeldrain"];
-
-/// Human-readable app name for a native-cloud host slug.
+/// Human-readable app name for a cloud host slug.
 pub fn app_name(host: &str) -> &'static str {
     match host {
         "google" => "Google Drive",
@@ -26,17 +22,6 @@ pub fn app_name(host: &str) -> &'static str {
         "pixeldrain" => "pixeldrain",
         _ => "native cloud app",
     }
-}
-
-/// Whether `host` should be passed to its native desktop app when `native-cloud`
-/// is enabled.
-pub fn is_native_cloud_host(host: &str) -> bool {
-    NATIVE_CLOUD_HOSTS.contains(&host)
-}
-
-/// Whether the `native-cloud` setting is enabled for a specific host.
-pub fn native_cloud_enabled(settings: &crate::core::settings::Settings, host: &str) -> bool {
-    settings.native_cloud == Some(true) && is_native_cloud_host(host)
 }
 
 /// Open `url` with the OS default handler (the native cloud app if installed),
@@ -94,32 +79,9 @@ mod tests {
     use super::*;
 
     #[test]
-    fn native_cloud_hosts_are_the_cloud_apps() {
-        assert!(is_native_cloud_host("google"));
-        assert!(is_native_cloud_host("dropbox"));
-        assert!(is_native_cloud_host("mediafire"));
-        assert!(is_native_cloud_host("mega"));
-        assert!(is_native_cloud_host("pixeldrain"));
-        assert!(!is_native_cloud_host("fileknot"));
-        assert!(!is_native_cloud_host("transfaze"));
-    }
-
-    #[test]
     fn app_names_are_human_readable() {
         assert_eq!(app_name("mega"), "MEGA");
         assert_eq!(app_name("pixeldrain"), "pixeldrain");
         assert_eq!(app_name("fileknot"), "native cloud app");
-    }
-
-    #[test]
-    fn native_cloud_enabled_requires_both_setting_and_host() {
-        let off = crate::core::settings::Settings::default();
-        assert!(!native_cloud_enabled(&off, "mega"));
-        let on = crate::core::settings::Settings {
-            native_cloud: Some(true),
-            ..Default::default()
-        };
-        assert!(native_cloud_enabled(&on, "mega"));
-        assert!(!native_cloud_enabled(&on, "fileknot"));
     }
 }

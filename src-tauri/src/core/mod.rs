@@ -6,8 +6,8 @@
 //! as subcommands. App == CLI by construction.
 
 pub mod catalog;
-pub mod dm;
 pub mod download;
+pub mod folder;
 pub mod info;
 pub mod launch;
 pub mod library;
@@ -32,8 +32,6 @@ pub enum Error {
     Usage(String),
     /// Network/site error (exit 3).
     Network(String),
-    /// Required download manager missing (exit 4).
-    DmMissing(String),
     /// User interrupted (exit 5).
     Interrupted,
     /// Everything else (exit 1).
@@ -45,7 +43,6 @@ impl std::fmt::Display for Error {
         match self {
             Self::Usage(msg) => write!(f, "{msg}"),
             Self::Network(msg) => write!(f, "network error: {msg}"),
-            Self::DmMissing(msg) => write!(f, "download manager missing: {msg}"),
             Self::Interrupted => write!(f, "interrupted"),
             Self::Runtime(msg) => write!(f, "{msg}"),
         }

@@ -21,11 +21,11 @@ hand-off.
 | Layer | Contains | May use |
 | --- | --- | --- |
 | `src/` (Tauri webview) | Svelte views (Store / Library / Downloads / Settings) | core commands only; never site or DB |
-| `src-tauri/src/` (Rust core) | `cli.rs`, `db.rs`, `scraper.rs`, `resolver.rs`, `content.rs`, `dm.rs`, domain structs | inner layers only |
+| `src-tauri/src/` (Rust core) | `cli.rs`, `db.rs`, `scraper.rs`, `resolver.rs`, `content.rs`, `core/` (download, queue, folder, native), domain structs | inner layers only |
 | controllers | game, download, sync, shortcut, artwork, content commands | services + domain |
 | domain | `Game`, `Version`, `DownloadEntry`, `GoToken` (plain structs) | stdlib only |
-| services | scraping, resolver, db, dm adapters, shortcuts, artwork, content providers | domain |
-| external | lewdzone.com, FDM/IDM/torrent, sqlite, SteamGridDB/VNDB/IGDB/itch/Steam/IndieDB, native shortcuts | — |
+| services | scraping, resolver, db, in-app streaming, OS-native open, shortcuts, artwork, content providers | domain |
+| external | lewdzone.com, sqlite, OS default handler (cloud apps/browser), SteamGridDB/VNDB/IGDB/itch/Steam/IndieDB, native shortcuts | — |
 
 Import rule: **inward only**. Domain never imports IO; services never import
 controllers; the webview never touches services directly. Enforced via the
@@ -137,12 +137,14 @@ listing or download. See [Agents](Agents) for the `content` family.
    (tokens, not URLs).
 2. Resolver turns a chosen token into a real URL via the site's
    `start` → `reveal` API (rate-limited).
-3. **The tool never downloads files itself.** The resolved URL is handed to an
-   installed download-manager adapter (FDM / IDM / torrent).
-4. `folder-organizer` folds the result into
+3. **Direct-file hosts** (`fileknot`) are streamed in-app into the download
+   root with live byte progress; **every other host** opens in the OS default
+   handler (installed cloud app or browser). Redirects during a stream must
+   stay on the same host (or a subdomain) — anything else is refused.
+4. `core/folder` folds the result into
    `<DownloadRoot>/Games/<Title>/<Title> - <Version> - <Platform>[- <Variant>].<ext>`.
 
-See [Download Managers](Download-Managers).
+See [Downloads & In-App Streaming](Download-Managers).
 
 ## 📦 Packaging
 

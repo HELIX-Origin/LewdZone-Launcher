@@ -3,8 +3,9 @@
 //! `start` → `reveal` API (Rule 05).
 //!
 //! The `#fragment` token is never sent to any server; only `api.php` sees the
-//! token, and only a resolved real URL is ever handed to a download manager
-//! (Rule 07). Host validation keeps unknown hosts from reaching an adapter
+//! token, and only a resolved real URL leaves the resolver — streamed in-app
+//! when the host serves a direct file, otherwise handed to the OS default
+//! handler. Host validation keeps unknown hosts from ever being dispatched
 //! (Rule 10.2).
 
 use std::time::Duration;
@@ -28,8 +29,8 @@ const HOST_INTERVAL: Duration = Duration::from_secs(1);
 
 /// Allowlisted host slugs (Rule 10.2). Product policy (user, 2026-09): the site
 /// hosted many cloud providers, but most have shut down or are untrusted/dodgy
-/// — only reputable mirrors that are known to still accept uploads may reach a
-/// download manager. Anything else is refused.
+/// — only reputable mirrors that are known to still accept uploads may be
+/// dispatched (in-app stream or OS handler). Anything else is refused.
 const KNOWN_HOSTS: &[&str] = &[
     "fileknot",
     "transfaze",
@@ -101,8 +102,7 @@ pub fn extract_token(go_link: &str) -> Option<&str> {
     go_link.split("#t=").nth(1).map(str::trim)
 }
 
-/// Allowlist gate (Rule 10.2): only hosts we have re-verified may reach a
-/// download manager.
+/// Allowlist gate (Rule 10.2): only hosts we have re-verified may be dispatched.
 pub fn validate_host(host: &str) -> Result<(), Error> {
     if KNOWN_HOSTS.contains(&host) {
         Ok(())
@@ -114,12 +114,6 @@ pub fn validate_host(host: &str) -> Result<(), Error> {
 /// The allowlist, for validation of user-supplied priority lists.
 pub fn allowed_hosts() -> &'static [&'static str] {
     KNOWN_HOSTS
-}
-
-/// Whether a host has a native cloud desktop app/browser handler that should
-/// receive downloads before the download manager (`native-cloud` setting).
-pub fn is_native_cloud_host(host: &str) -> bool {
-    matches!(host, "google" | "dropbox" | "mediafire" | "mega")
 }
 
 /// Rank of `host` inside a comma-separated `source-priority` list (higher =

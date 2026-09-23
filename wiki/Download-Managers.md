@@ -1,62 +1,52 @@
-# 📥 Download Managers
+# 📥 Downloads & In-App Streaming
 
 > Links between wiki pages are relative and omit the `.md` extension.
 
 ## 🧠 Model
 
-LewdZone Launcher **never downloads files itself**. The resolver converts a
-go-link token into a **real URL**, then a per-manager **adapter** hands that
-URL to an installed download manager:
+LewdZone Launcher resolves a go-link token into a **real URL**, then dispatches
+it based on the host class:
 
-- If no manager is installed, the command fails fast (exit code **4**) and
-  lists what's available.
-- adapters live in `src-tauri/src/dm/` (Rust module).
-- A registry maps adapter names (`fdm` / `idm` / `torrent`) to instances; the
-  active manager is selected with `lewdzone dm <name>` and persisted in the
-  `dm` [Configuration](Configuration) setting.
+- **Direct-file hosts** (currently `fileknot`) are **streamed inside the app**:
+  the file downloads directly to `<DownloadRoot>/Games/<Title>/` with live byte
+  progress on the **Downloads** page.
+- **Everything else** (cloud apps, page-gated hosts) hands the resolved URL to
+  the **OS default handler**: the installed desktop app for the service
+  (MEGA, Google Drive, Dropbox, OneDrive, ...) or the browser otherwise. No
+  configuration needed — no download manager to install, detect, or select.
 
-## 📋 Adapter contract
+The download-manager layer (FDM / IDM / torrent adapters) was removed: DM
+detection was unreliable and every host has a free in-app or native path.
 
-Every adapter implements a Rust trait / enum variant (Rule 07):
+## 🚦 Dispatch rules
 
-| Member | Purpose |
-| --- | --- |
-| `name -> &str` | `fdm` / `idm` / `torrent` |
-| `platforms` | `windows`, `linux`, `macos`, … |
-| `handles_kind` | `http` or `torrent` |
-| `detect() -> Option<PathBuf>` | locate the manager executable |
-| `launch(url, target_dir, filename)` | spawn detached, silent |
-| `confirm_launch() -> Option<bool>` | optional post-check |
-
-## 🚀 Per-manager invocation
-
-| Manager | Platforms | Kind | Invocation shape |
-| --- | --- | --- | --- |
-| FDM | Windows | http | `fdm.exe -fs <url>` |
-| IDM | Windows | http | `IDMan.exe /d <url> /n /p <target_dir> [/f <filename>]` |
-| uTorrent / BitTorrent | Windows, Linux, macOS | torrent | `<client> <magnet-or-local-torrent>` |
-
-Torrents (magnet / `.torrent`) are **never** routed to HTTP managers. For a
-`.torrent` URL the tool downloads the small torrent file itself into a job temp
-dir, then hands the local path to the client.
-
-## 🔒 Resolution rule
-
-Only a **resolved real URL** may be handed to a manager. The go-link
-`#fragment` is never passed on — naive follow-through would download a redirect
-page (see [Security](Security) for the allowlist). Resolved URLs may carry a
-trailing literal `\r` that is stripped.
+1. The reveal URL is **not** the final file URL — it is the *file host's page*
+   (the go-button leaves for the file host; only `fileknot` returns a direct
+   zip). Cloud/page hosts open in their native handler.
+2. Non-2xx redirects are followed manually, **same-owner only**: a redirect may
+   stay on the host or move to a dot-boundary subdomain of it — anything else is
+   refused and the download fails (never routed to a foreign host).
+3. At most 3 redirect hops per stream; retried (3×, backoff) like every polite
+   network call (Rule 05).
+4. Only a **resolved** real URL is ever acted on (see [Security](Security)).
+   The go-link `#fragment` is never passed anywhere.
 
 ## 📂 Folder folding
 
-Completed downloads are folded into:
+Downloads land in:
 `<DownloadRoot>/Games/<Title>/<Title> - <Version> - <Platform>[- <Variant>].<ext>`
 
 - Never overwrite an existing file → append `(N)`.
-- Multipart parts merge into a `_parts/` folder inside the game folder.
 - Path sanitization strips `\ : * ? " < > |` (and `/` where needed).
 
-## 📖 Full rule
+## 🧵 Queue
 
-[Rule 07](https://github.com/helix-origin/lewdzone-launcher/tree/main/.agents/rules/rule-07-download-manager-integration.md) in the repo
-(`.agents/rules/rule-07-download-manager-integration.md`).
+Downloads run one at a time through the scheduler (see
+[Configuration](Configuration) `download-grace-seconds`). Statuses:
+`queued → resolving → dispatching → downloading → dispatched`, or `failed`.
+
+## 🔗 See also
+
+- [Configuration](Configuration) — `download-root`, `source-priority`
+- [Security](Security) — the host allowlist and redirect validation
+- [CLI Reference](CLI-Reference) — `lewdzone download`

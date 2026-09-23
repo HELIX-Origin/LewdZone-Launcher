@@ -6,11 +6,10 @@
 
 - **Windows**, **Linux**, or **macOS**
 - **Rust toolchain** (stable) + **Node.js/npm** when building from source
-- A **download manager** for actual transfers:
-  - Windows: Free Download Manager (FDM) or Internet Download Manager (IDM)
-  - Any platform: uTorrent / BitTorrent for torrent links
-  - If none is installed, download commands fail fast (exit code 4) and list
-    what's available.
+- No download manager needed. Direct-file hosts (`fileknot`) stream in-app;
+  cloud-host pages open in the OS default handler — the installed desktop app
+  for that service (MEGA, Google Drive, Dropbox, ...) or the browser if none is
+  installed.
 
 ## ⚡ Quick start (CLI)
 
@@ -32,8 +31,7 @@ lewdzone list
 # show a game's versions and download entries
 lewdzone info --game treasure-of-nadia --json
 
-# choose the download manager and enqueue a download
-lewdzone dm fdm
+# choose the download source and stream / open the download
 lewdzone download --game treasure-of-nadia --version latest \
   --platform PC --tab official --json
 
@@ -51,7 +49,7 @@ launch:
 2. **Downloads** page — watch live progress; cancel if needed.
 3. **Library** — launched/installed games with artwork; right-click for
    Launch, Rebuild shortcuts, Uninstall.
-4. **Settings** — download root, active download manager, artwork cache, and
+4. **Settings** — download root, preferred sources, artwork cache, and
    content-provider API keys (SteamGridDB / IGDB etc.).
 
 ## 📁 Where things live
@@ -61,7 +59,7 @@ launch:
 - Download files: `<DownloadRoot>/Games/<Title>/`.
 - Installed library: `<data_root>/library/` with
   `common/<Title>/`, `downloads`, and `artwork/` (see
-  [Download Managers](Download-Managers)).
+  [Downloads & Streaming](Download-Managers)).
 - Start-menu / desktop shortcuts: `lewdzone` group (per OS).
 
 ## 🔄 First sync

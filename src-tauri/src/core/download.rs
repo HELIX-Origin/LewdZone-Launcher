@@ -1,21 +1,22 @@
-//! `download` — resolve a token and hand the URL to a download manager
-//! (ADR-0002, dispatch-builder + launch-download skill).
+//! `download` — resolve a token and download the file (or hand the resolved
+//! URL to the OS). Runs inline in the CLI or through the async queue worker.
 //!
 //! The pipeline is: pick a `Game` page → find the `DownloadEntry` matching
 //! (version, platform, tab) → resolve its go-link via the start→reveal API →
-//! dispatch the real URL to the active manager with a canonical folder
-//! basename (folder-organizer). The game fetch and the resolver are injectable
-//! so every path is covered offline with fixtures (Rule 11).
+//! either stream the file into a canonical target (hosts whose reveal is a
+//! direct file URL — see `DIRECT_STREAM_HOSTS`, folder-organizer) or pass the
+//! URL to the OS default handler (installed cloud app / browser; zero config).
+//! The game fetch, the resolver, and the stream are injectable so every path
+//! is covered offline with fixtures (Rule 11).
 
+use std::io::{Read, Write};
 use std::path::PathBuf;
 
+use crate::core::folder;
+use crate::core::models::{DownloadEntry, Game};
 use crate::core::{Context, Error};
-use crate::dm;
-use crate::dm::folder;
 use crate::resolver;
 use crate::scraper;
-
-use crate::core::models::{DownloadEntry, Game};
 
 /// A fully dispatched download job (what `run` prints back).
 #[derive(Debug, Clone, serde::Serialize)]
@@ -24,7 +25,6 @@ pub struct Job {
     pub version: String,
     pub platform: String,
     pub tab: String,
-    pub manager: String,
     pub url: String,
     pub target: Option<PathBuf>,
 }
@@ -207,7 +207,6 @@ pub fn sources_for_selection(
 pub fn job_for(
     game: &Game,
     entry: &DownloadEntry,
-    manager: &str,
     root: &std::path::Path,
     resolve: &mut dyn FnMut(&str) -> Result<resolver::ResolvedUrl, Error>,
 ) -> Result<Job, Error> {
@@ -237,7 +236,6 @@ pub fn job_for(
         version: entry_label(entry),
         platform,
         tab: entry.host.clone(),
-        manager: manager.to_string(),
         url: resolved.url,
         target: Some(final_path),
     })
@@ -272,45 +270,93 @@ pub fn run(
         source,
     };
     let grace = crate::core::scheduler::grace_for(ctx);
+    let mut last_pct = -1_i32;
     run_with(
         ctx,
         &sel,
         &mut |url| scraper::fetch(url),
         &mut resolver::resolve,
-        &mut |_manager, job| dispatch(ctx, job),
+        &mut |job| {
+            dispatch_with(job, &mut scraper::download_stream, &mut |done, total| {
+                let pct = done.saturating_mul(100).checked_div(total).unwrap_or(0) as i32;
+                if pct != last_pct {
+                    last_pct = pct;
+                    eprintln!("[download] {pct}%");
+                }
+            })
+        },
         grace,
         &mut |d| std::thread::sleep(d),
     )
 }
 
-/// Spawn a single job via its adapter, unless the `native-cloud` setting routes
-/// native-cloud hosts to their desktop app first. Errors stop the batch before
-/// any manager receives a URL (so the batch is atomic on pre-checks). Shared by
-/// the synchronous CLI path and the async GUI queue worker.
-pub fn dispatch(ctx: &Context, job: &Job) -> Result<(), Error> {
-    let settings = crate::core::settings::Settings::load(&ctx.config_path)?;
-    let host = &job.tab;
-    if crate::core::native::native_cloud_enabled(&settings, host) {
-        return crate::core::native::open_url(&job.url);
+/// Hosts whose revealed URL is a direct file (streamed inside the app with
+/// byte progress). Everything else hands its resolved URL to the OS default
+/// handler — the installed cloud app or the browser — with zero configuration.
+pub const DIRECT_STREAM_HOSTS: &[&str] = &["fileknot"];
+
+/// Stream seam: takes a URL, returns `(total bytes, body reader)` (Rule 11).
+pub type StreamFn<'a> = &'a mut dyn FnMut(&str) -> Result<(u64, Box<dyn Read>), Error>;
+
+/// Progress callback: `(bytes done, bytes total)`.
+pub type ProgressCallback<'a> = &'a mut dyn FnMut(u64, u64);
+
+/// True when `host` (a `Job::tab` slug) is a direct-file host we stream in-app.
+pub fn is_direct_stream_host(host: &str) -> bool {
+    DIRECT_STREAM_HOSTS
+        .iter()
+        .any(|h| h.eq_ignore_ascii_case(host))
+}
+
+/// Dispatch a single job: direct-file hosts stream into `job.target`,
+/// everything else opens in the OS default handler. Host allowlisting already
+/// happened at resolve time via `resolver::validate_host`, so we only ever act
+/// on validated hosts (Rule 10). Shared by the synchronous CLI path and the
+/// async GUI queue worker.
+pub fn dispatch(job: &Job) -> Result<(), Error> {
+    dispatch_with(job, &mut scraper::download_stream, &mut |_, _| {})
+}
+
+/// `dispatch` with the stream seam injected (Rule 11 offline fixtures).
+pub fn dispatch_with(
+    job: &Job,
+    download: StreamFn<'_>,
+    progress: ProgressCallback<'_>,
+) -> Result<(), Error> {
+    if is_direct_stream_host(&job.tab) {
+        return stream_target(job, download, progress);
     }
-    let adapter = dm::find(&job.manager).ok_or_else(|| {
-        Error::DmMissing(format!(
-            "active download manager '{}' is not installed",
-            job.manager
-        ))
-    })?;
-    let (dir, name) = match &job.target {
-        Some(p) => {
-            let dir = p.parent().map(|d| d.to_path_buf()).unwrap_or_default();
-            let name = p
-                .file_name()
-                .map(|f| f.to_string_lossy().to_string())
-                .unwrap_or_default();
-            (dir, Some(name))
+    crate::core::native::open_url(&job.url)
+}
+
+/// Stream `download(url)` into `job.target`, reporting `(bytes done, total)`.
+/// Fails without touching the network when the job has no computed target.
+pub fn stream_target(
+    job: &Job,
+    download: StreamFn<'_>,
+    progress: ProgressCallback<'_>,
+) -> Result<(), Error> {
+    let target = job
+        .target
+        .as_ref()
+        .ok_or_else(|| Error::Usage("direct-stream job has no target path".to_string()))?;
+    if let Some(parent) = target.parent() {
+        std::fs::create_dir_all(parent)?;
+    }
+    let (total, mut reader) = download(&job.url)?;
+    let mut file = std::fs::File::create(target)?;
+    let mut buf = [0_u8; 128 * 1024];
+    let mut done: u64 = 0;
+    loop {
+        let n = reader.read(&mut buf)?;
+        if n == 0 {
+            break;
         }
-        None => (PathBuf::new(), None),
-    };
-    adapter.launch(&job.url, &dir, name.as_deref())
+        file.write_all(&buf[..n])?;
+        done += n as u64;
+        progress(done, total);
+    }
+    Ok(())
 }
 
 /// Everything except the network+spawn seams; wired for tests with fixtures.
@@ -324,12 +370,12 @@ pub fn run_with(
     sel: &Select<'_>,
     fetch: &mut dyn FnMut(&str) -> Result<String, Error>,
     resolve: &mut dyn FnMut(&str) -> Result<resolver::ResolvedUrl, Error>,
-    dispatch: &mut dyn FnMut(&str, &Job) -> Result<(), Error>,
+    dispatch: &mut dyn FnMut(&Job) -> Result<(), Error>,
     grace: std::time::Duration,
     sleep: &mut dyn FnMut(std::time::Duration),
 ) -> Result<crate::cli::ExitCode, Error> {
     let jobs = jobs_for(ctx, sel, fetch, resolve)?;
-    crate::core::scheduler::paced(grace, &jobs, &mut |job| dispatch(&job.manager, job), sleep)?;
+    crate::core::scheduler::paced(grace, &jobs, dispatch, sleep)?;
 
     print!("{}", serde_json::to_string_pretty(&jobs).unwrap());
     Ok(crate::cli::ExitCode::Ok)
@@ -338,8 +384,7 @@ pub fn run_with(
 /// Build the resolved job list for a selection WITHOUT dispatching or printing.
 /// Shared by the CLI (which then dispatches + prints) and the Store GUI command
 /// (which dispatches and returns the jobs to the view). Validates the game
-/// slug, the active manager, and the download root before any job is built, so
-/// a missing manager fails before any network/manager work (dispatch-builder).
+/// slug and the download root before any job is built (dispatch-builder).
 pub fn jobs_for(
     ctx: &Context,
     sel: &Select<'_>,
@@ -364,19 +409,11 @@ pub fn jobs_for(
         settings.source_priority.as_deref(),
         sel.source,
     )?;
-    let manager = dm::active_name(ctx)?;
-    if dm::find(&manager).is_none() {
-        let names = dm::available_names();
-        return Err(Error::DmMissing(format!(
-            "active download manager '{manager}' is not available on this platform (available: {})",
-            names.join(", ")
-        )));
-    }
-    let root = dm::download_root(ctx)?;
+    let root = folder::download_root(ctx)?;
 
     let mut jobs: Vec<Job> = Vec::new();
     for entry in entries {
-        let job = job_for(&parsed, entry, &manager, &root, resolve)?;
+        let job = job_for(&parsed, entry, &root, resolve)?;
         jobs.push(job);
     }
     Ok(jobs)
@@ -518,7 +555,7 @@ mod tests {
         let game = sample_game();
         let entry = sample_entry(&game);
         let root = std::path::Path::new("D:/Downloads");
-        let job = job_for(&game, entry, "fdm", root, &mut stub_resolve).unwrap();
+        let job = job_for(&game, entry, root, &mut stub_resolve).unwrap();
         assert!(job.url.starts_with("https://fileknot.io/"));
         let target = job.target.unwrap();
         assert!(target.starts_with(root));
@@ -547,7 +584,7 @@ mod tests {
                 Ok(GAME_FIXTURE.to_string())
             },
             &mut stub_resolve,
-            &mut |_mgmt, job| {
+            &mut |job| {
                 dispatched.push(job.url.clone());
                 let _ =
                     std::fs::create_dir_all(job.target.as_ref().and_then(|p| p.parent()).unwrap());

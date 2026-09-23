@@ -4,9 +4,15 @@
 //! Layout: `<DownloadRoot>/Games/<Title>/<Title> - <Version> - <Platform>
 //! [- <Variant>].<ext>`. Multi-part downloads merge into `<Title>/_parts/`.
 //! All name logic here is pure and unit-tested; file moves belong to the
-//! download pipeline (todo #6).
+//! download pipeline.
+//!
+//! Also owns the **download root** resolution now that the download-manager
+//! layer is gone: in-app downloads land under `download-root` (defaulting to
+//! the app's library dir).
 
 use std::path::{Component, Path, PathBuf};
+
+use crate::core::{Context, Error};
 
 /// Charset never allowed in a file or folder name.
 const FORBIDDEN: &[char] = &['\\', '/', ':', '*', '?', '"', '<', '>', '|'];
@@ -126,6 +132,17 @@ pub fn within_root(root: &Path, out: &Path) -> bool {
             Component::ParentDir | Component::RootDir | Component::Prefix(_)
         )
     })
+}
+
+/// Resolve where in-app downloads land: the `download-root` setting when set,
+/// otherwise the app's library dir.
+pub fn download_root(ctx: &Context) -> Result<PathBuf, Error> {
+    let settings = crate::core::settings::Settings::load(&ctx.config_path)?;
+    match settings.download_root {
+        Some(root) if !root.trim().is_empty() => Ok(PathBuf::from(root)),
+        _ => crate::core::paths::library_dir()
+            .ok_or_else(|| Error::Runtime("cannot resolve download root (no app data dir)".into())),
+    }
 }
 
 #[cfg(test)]

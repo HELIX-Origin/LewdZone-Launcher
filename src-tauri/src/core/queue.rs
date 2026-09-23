@@ -1,13 +1,14 @@
-//! `queue` — non-blocking download queue + worker thread (owner: dm family,
-//! dispatch skill).
+//! `queue` — non-blocking download queue + worker thread (owner: download
+//! family, dispatch skill).
 //!
 //! The Storefront's Download button must never block the webview on network
 //! (Rule 05) or on the resolver's start→reveal rounds — that froze the app and
 //! left users unable to schedule further downloads. Instead, the webview
 //! enqueues a request and returns instantly; a background worker picks queued
 //! requests up one at a time, resolves their go-links, and dispatches (paced,
-//! Rule 05-style throttle protection) to the active manager. Every state
-//! change is recorded so the Downloads view can poll [`Queue::snapshot`].
+//! Rule 05-style throttle protection): direct-file hosts are streamed in-app
+//! with byte progress, everything else opens in the OS default handler. Every
+//! state change is recorded so the Downloads view can poll [`Queue::snapshot`].
 //!
 //! The CLI stays fully synchronous (one shot per process) and does NOT use the
 //! queue — both entry points share the same `core::download` pipeline, which is
@@ -31,8 +32,10 @@ pub enum Status {
     Queued,
     /// Fetching the game page + resolving go-link tokens.
     Resolving,
-    /// Handing resolved URLs to the manager(s).
+    /// Dispatching jobs (paced) to the OS default handler or a stream.
     Dispatching,
+    /// Streaming a direct-file host into the download root (bytes shown live).
+    Downloading,
     /// All jobs handed off successfully.
     Dispatched,
     /// Resolution or dispatch failed (see `message`).
@@ -45,6 +48,7 @@ impl std::fmt::Display for Status {
             Self::Queued => write!(f, "queued"),
             Self::Resolving => write!(f, "resolving"),
             Self::Dispatching => write!(f, "dispatching"),
+            Self::Downloading => write!(f, "downloading"),
             Self::Dispatched => write!(f, "dispatched"),
             Self::Failed => write!(f, "failed"),
         }
@@ -62,7 +66,10 @@ pub struct QueueJob {
     pub source: Option<String>,
     pub status: Status,
     pub message: Option<String>,
-    pub manager: Option<String>,
+    /// Bytes streamed so far / total for direct-file hosts (0 when unknown or
+    /// when the job opens in the OS handler instead of streaming).
+    pub bytes_done: u64,
+    pub bytes_total: u64,
     pub created_at: u64,
     pub updated_at: u64,
 }
@@ -127,7 +134,8 @@ impl Queue {
             source,
             status: Status::Queued,
             message: None,
-            manager: None,
+            bytes_done: 0,
+            bytes_total: 0,
             created_at: now,
             updated_at: now,
         };
@@ -178,7 +186,7 @@ impl Queue {
 
 /// Spawn the background worker that drains the queue. Runs for the life of the
 /// process; the runtime context is owned (not borrowed) so no locks are held
-/// while network/resolver/manager work happens.
+/// while network/resolver/dispatch work happens.
 pub fn spawn_worker(queue: Arc<Queue>, ctx: Context) -> std::thread::JoinHandle<()> {
     std::thread::spawn(move || loop {
         let id = queue.wait_for_queued();
@@ -189,7 +197,9 @@ pub fn spawn_worker(queue: Arc<Queue>, ctx: Context) -> std::thread::JoinHandle<
             id,
             &mut |url| crate::scraper::fetch(url),
             &mut |go| resolver::resolve(go),
-            &mut |job| download::dispatch(&ctx, job),
+            &mut |job, progress| {
+                download::dispatch_with(job, &mut crate::scraper::download_stream, progress)
+            },
             grace,
             &mut |d| std::thread::sleep(d),
         );
@@ -199,7 +209,9 @@ pub fn spawn_worker(queue: Arc<Queue>, ctx: Context) -> std::thread::JoinHandle<
 /// Resolve + dispatch ONE queued request, recording progress/result on the
 /// queue. Injectable seams (`fetch`, `resolve`, `dispatch`, `sleep`) keep every
 /// path offline-testable with fixtures (Rule 11). The worker thread passes the
-/// real network/manager seams; tests pass stubs.
+/// real network/dispatch seams; tests pass stubs. The `dispatch` seam reports
+/// `(bytes done, total)` so direct-host streams drive the `Downloading` state
+/// and the progress bar; OS-handler jobs never call it and stay `Dispatching`.
 #[allow(clippy::too_many_arguments)]
 pub fn process(
     queue: &Queue,
@@ -207,7 +219,7 @@ pub fn process(
     id: u64,
     fetch: &mut dyn FnMut(&str) -> Result<String, Error>,
     resolve: &mut dyn FnMut(&str) -> Result<resolver::ResolvedUrl, Error>,
-    dispatch: &mut dyn FnMut(&Job) -> Result<(), Error>,
+    dispatch: &mut dyn FnMut(&Job, download::ProgressCallback<'_>) -> Result<(), Error>,
     grace: Duration,
     sleep: &mut dyn FnMut(Duration),
 ) {
@@ -221,6 +233,8 @@ pub fn process(
     queue.update(id, |j| {
         j.status = Status::Resolving;
         j.message = None;
+        j.bytes_done = 0;
+        j.bytes_total = 0;
     });
 
     let select = Select {
@@ -252,17 +266,45 @@ pub fn process(
 
     queue.update(id, |j| {
         j.status = Status::Dispatching;
-        j.manager = Some(jobs[0].manager.clone());
     });
 
-    match crate::core::scheduler::paced(grace, &jobs, dispatch, sleep) {
+    let streamed = jobs
+        .iter()
+        .filter(|j| download::is_direct_stream_host(&j.tab))
+        .count();
+    let opened = jobs.len() - streamed;
+    let mut dispatch_adapt = |job: &Job| {
+        queue.update(id, |j| {
+            j.status = Status::Dispatching;
+        });
+        let mut progress = |done: u64, total: u64| {
+            queue.update(id, |j| {
+                j.status = Status::Downloading;
+                j.bytes_done = done;
+                j.bytes_total = total;
+            });
+        };
+        dispatch(job, &mut progress)
+    };
+
+    match crate::core::scheduler::paced(grace, &jobs, &mut dispatch_adapt, sleep) {
         Ok(()) => queue.update(id, |j| {
             j.status = Status::Dispatched;
-            j.message = Some(format!(
-                "{} job(s) handed to {}",
-                jobs.len(),
-                jobs[0].manager
-            ));
+            let (done, total) = (j.bytes_done, j.bytes_total);
+            let suffix = if opened > 0 {
+                format!(", {opened} opened")
+            } else {
+                String::new()
+            };
+            j.message = Some(if total > 0 {
+                format!("downloaded {done} of {total} bytes{suffix}")
+            } else if done > 0 {
+                format!("downloaded {done} bytes{suffix}")
+            } else if opened > 0 {
+                format!("{opened} job(s) opened in the default handler")
+            } else {
+                format!("{streamed} job(s) dispatched")
+            });
         }),
         Err(err) => queue.update(id, |j| {
             j.status = Status::Failed;
@@ -389,7 +431,7 @@ mod tests {
                 Ok(GAME_FIXTURE.to_string())
             },
             &mut stub_resolve,
-            &mut |job| {
+            &mut |job, _progress| {
                 dispatched.push(job.url.clone());
                 let _ =
                     std::fs::create_dir_all(job.target.as_ref().and_then(|p| p.parent()).unwrap());
@@ -401,9 +443,8 @@ mod tests {
         assert!(!dispatched.is_empty(), "fixture yields multiple jobs");
         let job = q.get(id).unwrap();
         assert_eq!(job.status, Status::Dispatched);
-        assert!(job.manager.is_some());
         let msg = job.message.unwrap();
-        assert!(msg.contains("job(s) handed to"), "msg was: {msg}");
+        assert!(msg.contains("job(s)"), "msg was: {msg}");
     }
 
     #[test]
@@ -416,7 +457,7 @@ mod tests {
             id,
             &mut |_| Err(Error::Network("offline".to_string())),
             &mut stub_resolve,
-            &mut |_| Ok(()),
+            &mut |_, _progress| Ok(()),
             Duration::ZERO,
             &mut |_| {},
         );
@@ -435,13 +476,13 @@ mod tests {
             id,
             &mut |_| Ok(GAME_FIXTURE.to_string()),
             &mut stub_resolve,
-            &mut |_| Err(Error::Runtime("manager exploded".to_string())),
+            &mut |_, _| Err(Error::Runtime("dispatch exploded".to_string())),
             Duration::ZERO,
             &mut |_| {},
         );
         let job = q.get(id).unwrap();
         assert_eq!(job.status, Status::Failed);
-        assert!(job.message.unwrap().contains("manager exploded"));
+        assert!(job.message.unwrap().contains("dispatch exploded"));
     }
 
     #[test]
@@ -458,7 +499,7 @@ mod tests {
             id,
             &mut |_| Ok(GAME_FIXTURE.to_string()),
             &mut stub_resolve,
-            &mut |_| {
+            &mut |_, _| {
                 calls += 1;
                 Ok(())
             },
@@ -467,5 +508,30 @@ mod tests {
         );
         assert_eq!(calls, 0, "already-dispatched request is skipped");
         assert_eq!(slept, 0);
+    }
+
+    #[test]
+    fn process_records_stream_progress_bytes() {
+        let q = Queue::new();
+        let id = enqueue_sample(&q);
+        process(
+            &q,
+            &mem_ctx(),
+            id,
+            &mut |_| Ok(GAME_FIXTURE.to_string()),
+            &mut stub_resolve,
+            &mut |_job, progress| {
+                progress(3, 10);
+                progress(10, 10);
+                Ok(())
+            },
+            Duration::ZERO,
+            &mut |_| {},
+        );
+        let job = q.get(id).unwrap();
+        assert_eq!(job.status, Status::Dispatched);
+        assert_eq!(job.bytes_done, 10);
+        assert_eq!(job.bytes_total, 10);
+        assert!(job.message.unwrap().contains("bytes"));
     }
 }
