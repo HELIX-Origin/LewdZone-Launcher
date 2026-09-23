@@ -71,7 +71,7 @@ lewdzone-launcher/
 
 | Layer | Contains | May import |
 | --- | --- | --- |
-| `src-tauri/src/` | `lib.rs` (commands), `cli.rs` (CLI), core modules (db, scrape, resolve, download, queue, folder, native, artwork…) | each other + crate deps |
+| `src-tauri/src/` | `lib.rs` (commands), `cli.rs` (CLI), core modules (db, scrape, resolve, content, download, queue, folder, native, artwork…) | each other + crate deps |
 | `src/` (Svelte) | webview views | Tauri `invoke()` only — never Rust internals directly |
 | external | lewdzone.com, sqlite, SteamGridDB/VNDB/IGDB | — |
 

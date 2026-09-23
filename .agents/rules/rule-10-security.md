@@ -13,8 +13,9 @@ Every resolved URL, every path, every spawned process is a trust boundary.
 
 ## Hard rules
 
-1. **No secrets in the repo.** Never commit SteamGridDB API keys, tokens, or
-   `.env` files. Keys load from `~/.config/lewdzone/` or env at runtime.
+1. **No secrets in the repo.** Never commit SteamGridDB / IGDB / updater keys,
+   tokens, or `.env` files. Content-provider API keys live in the SQLite
+   `secret` table (Rule 06) and are surfaced as presence-only in the UI.
 2. **Resolved-URL allowlist.** Only hosts present in the go.js `ICONS` list
    (or a re-verified allowlist) may be dispatched — either streamed in-app or
    handed to the OS default handler. Anything unknown → refuse and log
@@ -29,8 +30,10 @@ Every resolved URL, every path, every spawned process is a trust boundary.
    `: * ? " < > |` (Rule 02) before join; reject traversal (`..`).
 6. **Do not follow unknown redirects.** An in-app stream may follow a redirect
    only to the same host or a dot-boundary subdomain, max 3 hops; a cross-host
-   detour aborts the stream (Rule 07). The scraper sees `lewdzone.com` +
-   `www.steamgriddb.com`.
+   detour aborts the stream (Rule 07). The scraper sees `lewdzone.com` plus
+   content-provider domains: `www.steamgriddb.com`, `api.igdb.com`,
+   `api.twitch.tv`, `www.vndb.org`, `itch.io`, `store.steampowered.com`,
+   `api.steampowered.com`, and `www.indiedb.com`.
 7. **No secrets in logs** (Rule 12 redaction).
 8. **Dependency hygiene:** `cargo audit` and `cargo deny` run in the review
    gate.
@@ -56,6 +59,19 @@ flowchart TD
 
 - `cargo audit` (known-vulnerability scan of the dependency tree)
 - `cargo deny check` (licenses + advisories + bans)
+
+## Content-provider secrets
+
+External enrichment providers (SteamGridDB, IGDB, VNDB, itch.io, Steam,
+IndieDB) may require API keys. Those keys follow the same secret handling as
+any other launcher secret:
+
+- Keys are stored in the SQLite `secret` table, never in `config.json`.
+- A provider whose key is missing is silently skipped; it never blocks the UI.
+- Keys are read at runtime and are never echoed in commands, settings output,
+  or logs (Rule 12 redaction).
+- All provider network calls use the polite `scraper::fetch` agent over HTTPS
+  (Rule 05) and respect the same timeout/retry budget.
 
 ## Acceptable-risk callouts
 
