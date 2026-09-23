@@ -31,6 +31,7 @@ import SettingsPage from "../../routes/settings/+page.svelte";
 import StorePage from "../../routes/store/+page.svelte";
 import GamePage from "../../routes/store/[slug]/+page.svelte";
 import LibraryPage from "../../routes/library/+page.svelte";
+import FavoritesPage from "../../routes/favorites/+page.svelte";
 import DownloadsPage from "../../routes/downloads/+page.svelte";
 
 const sampleGame = {
@@ -287,6 +288,7 @@ describe("library page", () => {
   it("shows the empty state when nothing is installed", async () => {
     mockInvoke(async (cmd: string) => {
       if (cmd === "library_list") return { root: "/fake/library", games: [] };
+      if (cmd === "favorites_list") return [];
       return [];
     });
     render(LibraryPage);
@@ -331,6 +333,7 @@ describe("library page", () => {
           ],
         };
       }
+      if (cmd === "favorites_list") return [];
       return [];
     });
     render(LibraryPage);
@@ -365,12 +368,148 @@ describe("library page", () => {
           ],
         };
       }
+      if (cmd === "favorites_list") return [];
       return [];
     });
     render(LibraryPage);
     const btn = await screen.findByRole("button", { name: /Launch Wild Life/ });
     await user.click(btn);
     expect(invocations.some((i) => i.cmd === "game_launch" && i.args?.slug === "wild-life")).toBe(true);
+  });
+
+  it("shows a heart button on each installed game", async () => {
+    mockInvoke(async (cmd: string) => {
+      if (cmd === "library_list") {
+        return {
+          root: "/fake/library",
+          games: [
+            {
+              slug: "wild-life",
+              post_id: 54321,
+              title: "Wild Life",
+              version: "v2026",
+              platform: "pc",
+              tab: "fileknot",
+              engine: "Unity",
+              install_path: "/fake/library/lzapps/wild-life",
+              candidates: ["WildLife.exe"],
+              launch_exe: "",
+              installed_at: "2026-01-01T00:00:00Z",
+              size_on_disk: 5_368_709_120,
+            },
+          ],
+        };
+      }
+      if (cmd === "favorites_list") return [];
+      return [];
+    });
+    render(LibraryPage);
+    expect(await screen.findByRole("button", { name: /Add Wild Life to favorites/ })).toBeInTheDocument();
+  });
+
+  it("invokes favorite_add when the heart button is clicked", async () => {
+    const user = userEvent.setup();
+    const invocations: Array<{ cmd: string; args?: InvokeArgs }> = [];
+    mockInvoke(async (cmd: string, args?: InvokeArgs) => {
+      invocations.push({ cmd, args });
+      if (cmd === "library_list") {
+        return {
+          root: "/fake/library",
+          games: [
+            {
+              slug: "wild-life",
+              post_id: 54321,
+              title: "Wild Life",
+              version: "v2026",
+              platform: "pc",
+              tab: "fileknot",
+              engine: "Unity",
+              install_path: "/fake/library/lzapps/wild-life",
+              candidates: ["WildLife.exe"],
+              launch_exe: "",
+              installed_at: "2026-01-01T00:00:00Z",
+              size_on_disk: 5_368_709_120,
+            },
+          ],
+        };
+      }
+      if (cmd === "favorites_list") return [];
+      return [];
+    });
+    render(LibraryPage);
+    const btn = await screen.findByRole("button", { name: /Add Wild Life to favorites/ });
+    await user.click(btn);
+    expect(invocations.some((i) => i.cmd === "favorite_add" && i.args?.slug === "wild-life")).toBe(true);
+  });
+});
+
+describe("favorites page", () => {
+  it("shows the empty state when there are no favorites", async () => {
+    mockInvoke(async (cmd: string) => {
+      if (cmd === "favorites_list") return [];
+      return [];
+    });
+    render(FavoritesPage);
+    expect(await screen.findByRole("heading", { name: "Favorites" })).toBeInTheDocument();
+    expect(screen.getByText(/No favorites yet/)).toBeInTheDocument();
+  });
+
+  it("lists favorited games", async () => {
+    mockInvoke(async (cmd: string) => {
+      if (cmd === "favorites_list") {
+        return [
+          {
+            slug: "wild-life",
+            post_id: 54321,
+            title: "Wild Life",
+            thumb_url: null,
+            platforms: ["pc"],
+            engine: "Unity",
+            state: "Ongoing",
+            version_tag: "v2026",
+            developer: "Adeptus Steve",
+            genres: ["3D Game"],
+            genre_slugs: ["3d-games"],
+            views: "962K",
+          },
+        ];
+      }
+      return [];
+    });
+    render(FavoritesPage);
+    expect(await screen.findByText("Wild Life")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Remove Wild Life from favorites/ })).toBeInTheDocument();
+  });
+
+  it("invokes favorite_remove when the heart button is clicked", async () => {
+    const user = userEvent.setup();
+    const invocations: Array<{ cmd: string; args?: InvokeArgs }> = [];
+    mockInvoke(async (cmd: string, args?: InvokeArgs) => {
+      invocations.push({ cmd, args });
+      if (cmd === "favorites_list") {
+        return [
+          {
+            slug: "wild-life",
+            post_id: 54321,
+            title: "Wild Life",
+            thumb_url: null,
+            platforms: ["pc"],
+            engine: "Unity",
+            state: "Ongoing",
+            version_tag: "v2026",
+            developer: "Adeptus Steve",
+            genres: ["3D Game"],
+            genre_slugs: ["3d-games"],
+            views: "962K",
+          },
+        ];
+      }
+      return [];
+    });
+    render(FavoritesPage);
+    const btn = await screen.findByRole("button", { name: /Remove Wild Life from favorites/ });
+    await user.click(btn);
+    expect(invocations.some((i) => i.cmd === "favorite_remove" && i.args?.slug === "wild-life")).toBe(true);
   });
 });
 

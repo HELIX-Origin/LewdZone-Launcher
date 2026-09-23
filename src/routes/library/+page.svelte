@@ -26,12 +26,18 @@
     games: LibraryGame[];
   }
 
+  interface FavoriteCard {
+    slug: string;
+  }
+
   let status: LoadState = $state("loading");
   let error = $state("");
   let games: LibraryGame[] = $state([]);
   let root: string | null = $state(null);
   let launching = $state<Record<string, boolean>>({});
   let coverUrls: Record<string, string | null> = $state({});
+  let favorites: Record<string, boolean> = $state({});
+  let togglingFavorite = $state<Record<string, boolean>>({});
 
   function formatSize(bytes: number): string {
     if (bytes <= 0) return "—";
@@ -61,11 +67,24 @@
       const listing = await invoke<LibraryListing>("library_list");
       games = listing.games;
       root = listing.root;
-      await loadArtwork(listing.games);
+      await Promise.all([loadArtwork(listing.games), loadFavorites()]);
       status = "ready";
     } catch (err) {
       status = "error";
       error = String(err);
+    }
+  }
+
+  async function loadFavorites() {
+    try {
+      const rows = await invoke<FavoriteCard[]>("favorites_list");
+      const next: Record<string, boolean> = {};
+      for (const row of rows) {
+        next[row.slug] = true;
+      }
+      favorites = next;
+    } catch {
+      favorites = {};
     }
   }
 
@@ -102,7 +121,31 @@
     }
   }
 
-  onMount(load);
+  async function toggleFavorite(game: LibraryGame) {
+    if (togglingFavorite[game.slug]) return;
+    togglingFavorite[game.slug] = true;
+    try {
+      if (favorites[game.slug]) {
+        await invoke("favorite_remove", { slug: game.slug });
+        favorites[game.slug] = false;
+      } else {
+        await invoke("favorite_add", { slug: game.slug });
+        favorites[game.slug] = true;
+      }
+      window.dispatchEvent(new CustomEvent("favorites-changed"));
+    } catch (err) {
+      error = String(err);
+    } finally {
+      togglingFavorite[game.slug] = false;
+    }
+  }
+
+  onMount(() => {
+    load();
+    const handler = () => loadFavorites();
+    window.addEventListener("favorites-changed", handler);
+    return () => window.removeEventListener("favorites-changed", handler);
+  });
 </script>
 
 {#if status === "loading"}
@@ -131,18 +174,34 @@
       <div class="grid" role="list">
         {#each games as game (game.slug)}
           <div class="tile" role="listitem" title={game.install_path}>
-            <div
-              class="icon"
-              aria-hidden="true"
-              data-post-id={game.post_id ?? ""}
-            >
-              {#if coverUrls[game.slug]}
-                <img src={coverUrls[game.slug]} alt="" loading="lazy" />
-              {:else}
-                <span class="icon-glyph"
-                  ><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6.5" width="18" height="11" rx="5.5"/><circle cx="8" cy="11.5" r="1.1" fill="currentColor" stroke="none"/><circle cx="12.5" cy="11.5" r="1.1" fill="currentColor" stroke="none"/><path d="M16.2 14.4h.01M18.6 12.4h.01"/></svg></span
-                >
-              {/if}
+            <div class="tile-cover">
+              <div
+                class="icon"
+                aria-hidden="true"
+                data-post-id={game.post_id ?? ""}
+              >
+                {#if coverUrls[game.slug]}
+                  <img src={coverUrls[game.slug]} alt="" loading="lazy" />
+                {:else}
+                  <span class="icon-glyph"
+                    ><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6.5" width="18" height="11" rx="5.5"/><circle cx="8" cy="11.5" r="1.1" fill="currentColor" stroke="none"/><circle cx="12.5" cy="11.5" r="1.1" fill="currentColor" stroke="none"/><path d="M16.2 14.4h.01M18.6 12.4h.01"/></svg></span
+                  >
+                {/if}
+              </div>
+              <button
+                class="heart-btn"
+                class:filled={favorites[game.slug]}
+                onclick={() => toggleFavorite(game)}
+                disabled={togglingFavorite[game.slug]}
+                aria-label={favorites[game.slug]
+                  ? `Remove ${game.title} from favorites`
+                  : `Add ${game.title} to favorites`}
+                title={favorites[game.slug] ? "Remove favorite" : "Add favorite"}
+              >
+                <svg viewBox="0 0 24 24" fill={favorites[game.slug] ? "currentColor" : "none"} stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M12 20.5 4.6 13a4.8 4.8 0 0 1 0-6.9 5.1 5.1 0 0 1 7.4 0l.6.6.6-.6a5.1 5.1 0 0 1 7.4 0 4.8 4.8 0 0 1 0 6.9L12 20.5Z"/>
+                </svg>
+              </button>
             </div>
             <div class="tile-body">
               <div class="tile-name">{game.title}</div>
@@ -219,6 +278,10 @@
     flex-direction: column;
   }
 
+  .tile-cover {
+    position: relative;
+  }
+
   .icon {
     aspect-ratio: 2 / 3;
     background:
@@ -227,6 +290,43 @@
     align-items: center;
     justify-content: center;
     overflow: hidden;
+  }
+
+  .heart-btn {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    width: 28px;
+    height: 28px;
+    border: none;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.45);
+    color: var(--lz-bg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    padding: 0;
+    transition: transform 0.1s ease, background 0.15s ease;
+  }
+
+  .heart-btn:hover:not(:disabled) {
+    background: rgba(0, 0, 0, 0.65);
+    transform: scale(1.08);
+  }
+
+  .heart-btn:disabled {
+    opacity: 0.5;
+    cursor: default;
+  }
+
+  .heart-btn.filled {
+    color: var(--lz-danger);
+  }
+
+  .heart-btn :global(svg) {
+    width: 16px;
+    height: 16px;
   }
 
   .icon img {
