@@ -118,4 +118,26 @@ CREATE TABLE IF NOT EXISTS queue_job (
 CREATE INDEX IF NOT EXISTS idx_queue_job_status ON queue_job(status);
 "#,
     ),
+    (
+        "004_content_artwork",
+        r#"
+CREATE TABLE IF NOT EXISTS game_external (
+    post_id     INTEGER NOT NULL REFERENCES game(post_id) ON DELETE CASCADE,
+    provider    TEXT    NOT NULL,
+    external_id TEXT    NOT NULL,
+    data        TEXT    NOT NULL DEFAULT '{}',
+    updated_at  TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now')),
+    PRIMARY KEY (post_id, provider)
+);
+
+CREATE TABLE IF NOT EXISTS artwork_cache (
+    key         TEXT    NOT NULL,
+    kind        TEXT    NOT NULL,
+    provider    TEXT    NOT NULL,
+    file_path   TEXT    NOT NULL,
+    fetched_at  TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now')),
+    PRIMARY KEY (key, kind)
+);
+"#,
+    ),
 ];

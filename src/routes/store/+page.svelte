@@ -7,8 +7,9 @@
 
   type LoadState = "loading" | "ready" | "error";
 
-  interface GameCard {
+interface GameCard {
     slug: string;
+    post_id: number | null;
     title: string;
     thumb_url: string | null;
     platforms: string[];
@@ -18,7 +19,7 @@
     developer: string | null;
     genres: string[];
     genre_slugs: string[];
-    views: string | null;
+    views: number | null;
   }
 
   interface ArchiveFilter {
@@ -81,6 +82,7 @@
   let totalPages: number | null = $state(null);
   let games: GameCard[] = $state([]);
   let genres: Genre[] = $state([]);
+  let coverUrls: Record<string, string | null> = $state({});
 
   let q = $state("");
   let platform = $state("");
@@ -112,6 +114,24 @@
     };
   }
 
+  async function loadArtwork(list: GameCard[]) {
+    const next: Record<string, string | null> = {};
+    await Promise.all(
+      list.map(async (game) => {
+        try {
+          const url = await invoke<string | null>("artwork_url", {
+            card: game,
+            kind: "cover",
+          });
+          next[game.slug] = url ?? game.thumb_url ?? null;
+        } catch {
+          next[game.slug] = game.thumb_url ?? null;
+        }
+      }),
+    );
+    coverUrls = next;
+  }
+
   async function load(p: number) {
     status = "loading";
     try {
@@ -120,6 +140,7 @@
         filter: buildFilter(),
       });
       games = archive.games;
+      await loadArtwork(archive.games);
       totalPages = archive.meta.total_pages;
       page = archive.meta.page;
       status = "ready";
@@ -312,8 +333,8 @@
                 aria-label={game.title}
               >
                 <div class="cover" aria-hidden="true">
-                  {#if game.thumb_url}
-                    <img src={game.thumb_url} alt="" loading="lazy" />
+                  {#if coverUrls[game.slug]}
+                    <img src={coverUrls[game.slug]} alt="" loading="lazy" />
                   {/if}
                 </div>
                 <div class="tile-title">{game.title}</div>

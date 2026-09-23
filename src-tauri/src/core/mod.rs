@@ -6,6 +6,7 @@
 //! as subcommands. App == CLI by construction.
 
 pub mod catalog;
+pub mod content;
 pub mod download;
 pub mod extract;
 pub mod folder;

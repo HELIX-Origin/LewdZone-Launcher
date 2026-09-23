@@ -208,6 +208,41 @@ fn game_launch(state: tauri::State<'_, AppState>, slug: String) -> Result<(), St
     Ok(())
 }
 
+/// Best-effort enrichment for a game card from external content providers.
+#[tauri::command]
+fn content_enrich(
+    state: tauri::State<'_, AppState>,
+    card: crate::core::models::GameCard,
+) -> Result<crate::core::content::Enrichment, String> {
+    let ctx = state
+        .context
+        .lock()
+        .map_err(|_| "state lock poisoned".to_string())?;
+    crate::core::content::enrich(&ctx, &card).map_err(|e| e.to_string())
+}
+
+/// Return a cached artwork file URL for a game card, fetching on cache miss.
+#[tauri::command]
+fn artwork_url(
+    state: tauri::State<'_, AppState>,
+    card: crate::core::models::GameCard,
+    kind: String,
+) -> Result<Option<String>, String> {
+    let ctx = state
+        .context
+        .lock()
+        .map_err(|_| "state lock poisoned".to_string())?;
+    let kind = match kind.as_str() {
+        "icon" => crate::core::content::ArtworkKind::Icon,
+        "cover" => crate::core::content::ArtworkKind::Cover,
+        "background" => crate::core::content::ArtworkKind::Background,
+        _ => return Err(format!("unknown artwork kind: {kind}")),
+    };
+    crate::core::content::artwork(&ctx, &card, kind)
+        .map(|opt| opt.map(|p| crate::core::content::path_to_url(&p)))
+        .map_err(|e| e.to_string())
+}
+
 /// `settings.get()` — one value or the whole snapshot as JSON for the page.
 #[tauri::command]
 fn settings_get(
@@ -337,7 +372,9 @@ pub fn run() {
             downloads_list,
             favorites_list,
             library_list,
-            game_launch
+            game_launch,
+            content_enrich,
+            artwork_url
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

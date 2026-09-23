@@ -31,6 +31,7 @@
   let games: LibraryGame[] = $state([]);
   let root: string | null = $state(null);
   let launching = $state<Record<string, boolean>>({});
+  let coverUrls: Record<string, string | null> = $state({});
 
   function formatSize(bytes: number): string {
     if (bytes <= 0) return "—";
@@ -60,11 +61,34 @@
       const listing = await invoke<LibraryListing>("library_list");
       games = listing.games;
       root = listing.root;
+      await loadArtwork(listing.games);
       status = "ready";
     } catch (err) {
       status = "error";
       error = String(err);
     }
+  }
+
+  async function loadArtwork(list: LibraryGame[]) {
+    const next: Record<string, string | null> = {};
+    await Promise.all(
+      list.map(async (game) => {
+        try {
+          const url = await invoke<string | null>("artwork_url", {
+            card: {
+              slug: game.slug,
+              post_id: game.post_id,
+              title: game.title,
+            },
+            kind: "cover",
+          });
+          next[game.slug] = url ?? null;
+        } catch {
+          next[game.slug] = null;
+        }
+      }),
+    );
+    coverUrls = next;
   }
 
   async function launch(game: LibraryGame) {
@@ -112,9 +136,13 @@
               aria-hidden="true"
               data-post-id={game.post_id ?? ""}
             >
-              <span class="icon-glyph"
-                ><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6.5" width="18" height="11" rx="5.5"/><circle cx="8" cy="11.5" r="1.1" fill="currentColor" stroke="none"/><circle cx="12.5" cy="11.5" r="1.1" fill="currentColor" stroke="none"/><path d="M16.2 14.4h.01M18.6 12.4h.01"/></svg></span
-              >
+              {#if coverUrls[game.slug]}
+                <img src={coverUrls[game.slug]} alt="" loading="lazy" />
+              {:else}
+                <span class="icon-glyph"
+                  ><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6.5" width="18" height="11" rx="5.5"/><circle cx="8" cy="11.5" r="1.1" fill="currentColor" stroke="none"/><circle cx="12.5" cy="11.5" r="1.1" fill="currentColor" stroke="none"/><path d="M16.2 14.4h.01M18.6 12.4h.01"/></svg></span
+                >
+              {/if}
             </div>
             <div class="tile-body">
               <div class="tile-name">{game.title}</div>
@@ -198,6 +226,13 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    overflow: hidden;
+  }
+
+  .icon img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
   }
 
   .icon-glyph {

@@ -463,6 +463,127 @@ pub fn queue_prune_finished(tx: &Connection, before: u64) -> Result<usize, Error
     Ok(removed)
 }
 
+/// External enrichment record for a game (content-provider layer).
+#[derive(Debug)]
+pub struct GameExternalRow {
+    pub post_id: i64,
+    pub provider: String,
+    pub external_id: String,
+    pub data: String,
+    pub updated_at: String,
+}
+
+pub fn game_external_get(
+    conn: &Connection,
+    post_id: i64,
+    provider: &str,
+) -> Result<Option<GameExternalRow>, Error> {
+    conn.query_row(
+        "SELECT post_id, provider, external_id, data, updated_at
+         FROM game_external WHERE post_id = ?1 AND provider = ?2",
+        params![post_id, provider],
+        |row| {
+            Ok(GameExternalRow {
+                post_id: row.get(0)?,
+                provider: row.get(1)?,
+                external_id: row.get(2)?,
+                data: row.get(3)?,
+                updated_at: row.get(4)?,
+            })
+        },
+    )
+    .optional()
+    .map_err(Into::into)
+}
+
+pub fn game_external_upsert(
+    tx: &Connection,
+    post_id: i64,
+    provider: &str,
+    external_id: &str,
+    data: &str,
+) -> Result<(), Error> {
+    tx.execute(
+        "INSERT INTO game_external (post_id, provider, external_id, data, updated_at)
+         VALUES (?1, ?2, ?3, ?4, strftime('%Y-%m-%dT%H:%M:%SZ','now'))
+         ON CONFLICT(post_id, provider) DO UPDATE SET
+             external_id = excluded.external_id,
+             data = excluded.data,
+             updated_at = excluded.updated_at",
+        params![post_id, provider, external_id, data],
+    )?;
+    Ok(())
+}
+
+pub fn game_external_list(conn: &Connection, post_id: i64) -> Result<Vec<GameExternalRow>, Error> {
+    let mut stmt = conn.prepare(
+        "SELECT post_id, provider, external_id, data, updated_at
+         FROM game_external WHERE post_id = ?1 ORDER BY provider",
+    )?;
+    let rows = stmt.query_map([post_id], |row| {
+        Ok(GameExternalRow {
+            post_id: row.get(0)?,
+            provider: row.get(1)?,
+            external_id: row.get(2)?,
+            data: row.get(3)?,
+            updated_at: row.get(4)?,
+        })
+    })?;
+    rows.collect::<Result<Vec<_>, _>>().map_err(Into::into)
+}
+
+/// Cached artwork file record.
+#[derive(Debug)]
+pub struct ArtworkCacheRow {
+    pub key: String,
+    pub kind: String,
+    pub provider: String,
+    pub file_path: String,
+    pub fetched_at: String,
+}
+
+pub fn artwork_cache_get(
+    conn: &Connection,
+    key: &str,
+    kind: &str,
+) -> Result<Option<ArtworkCacheRow>, Error> {
+    conn.query_row(
+        "SELECT key, kind, provider, file_path, fetched_at
+         FROM artwork_cache WHERE key = ?1 AND kind = ?2",
+        params![key, kind],
+        |row| {
+            Ok(ArtworkCacheRow {
+                key: row.get(0)?,
+                kind: row.get(1)?,
+                provider: row.get(2)?,
+                file_path: row.get(3)?,
+                fetched_at: row.get(4)?,
+            })
+        },
+    )
+    .optional()
+    .map_err(Into::into)
+}
+
+pub fn artwork_cache_upsert(
+    tx: &Connection,
+    key: &str,
+    kind: &str,
+    provider: &str,
+    file_path: &str,
+) -> Result<(), Error> {
+    tx.execute(
+        "INSERT INTO artwork_cache (key, kind, provider, file_path, fetched_at)
+         VALUES (?1, ?2, ?3, ?4, strftime('%Y-%m-%dT%H:%M:%SZ','now'))
+         ON CONFLICT(key, kind) DO UPDATE SET
+             provider = excluded.provider,
+             file_path = excluded.file_path,
+             fetched_at = excluded.fetched_at",
+        params![key, kind, provider, file_path],
+    )?;
+    Ok(())
+}
+
 /// Resolve a stable post id to its current permalink slug (inverse of the
 /// slug UNIQUE index). Used by `info`/`download` when the user passes an id.
 pub fn slug_by_post_id(tx: &Connection, post_id: i64) -> Result<Option<String>, Error> {
