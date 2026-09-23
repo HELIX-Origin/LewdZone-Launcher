@@ -119,11 +119,18 @@ pub fn artwork_dir() -> Result<PathBuf, Error> {
     })
 }
 
-/// Best-effort enrichment for a game. Each enabled provider is tried; the
-/// first result wins per field. Records are stored in `game_external`.
+/// Best-effort enrichment for a game. LewdZone scraped data is the baseline;
+/// each enabled external provider is tried only to fill missing fields.
+/// Records are stored in `game_external`.
 pub fn enrich(ctx: &Context, card: &GameCard) -> Result<Enrichment, Error> {
     let secrets = load_secrets(ctx)?;
-    let mut merged = Enrichment::default();
+    let mut merged = Enrichment {
+        description: card.description.clone(),
+        developer: card.developer.clone(),
+        rating: None,
+        tags: card.genres.clone(),
+        screenshots: Vec::new(),
+    };
     let mut stored_any = false;
 
     for provider in providers() {

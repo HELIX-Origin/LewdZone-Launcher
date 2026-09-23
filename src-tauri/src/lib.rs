@@ -246,7 +246,9 @@ fn content_enrich(
     crate::core::content::enrich(&ctx, &card).map_err(|e| e.to_string())
 }
 
-/// Return a cached artwork file URL for a game card, fetching on cache miss.
+/// Return an artwork URL for a game card. LewdZone's own thumbnail is the
+/// default cover source; external providers are only queried when it is
+/// missing or when a non-cover kind is requested.
 #[tauri::command]
 fn artwork_url(
     state: tauri::State<'_, AppState>,
@@ -263,6 +265,12 @@ fn artwork_url(
         "background" => crate::core::content::ArtworkKind::Background,
         _ => return Err(format!("unknown artwork kind: {kind}")),
     };
+
+    // LewdZone is the authoritative source for its own cover thumbnail.
+    if kind == crate::core::content::ArtworkKind::Cover && card.thumb_url.is_some() {
+        return Ok(card.thumb_url.clone());
+    }
+
     crate::core::content::artwork(&ctx, &card, kind)
         .map(|opt| opt.map(|p| crate::core::content::path_to_url(&p)))
         .map_err(|e| e.to_string())
