@@ -50,7 +50,11 @@ pub struct Enrichment {
     pub description: Option<String>,
     pub developer: Option<String>,
     pub rating: Option<f32>,
+    /// External content-provider tags (e.g., VNDB/itch tags).
     pub tags: Vec<String>,
+    /// Actual genres from external providers (e.g., Steam/IGDB genres),
+    /// separate from LewdZone's own tag taxonomy.
+    pub genres: Vec<String>,
     pub screenshots: Vec<String>,
 }
 
@@ -128,7 +132,8 @@ pub fn enrich(ctx: &Context, card: &GameCard) -> Result<Enrichment, Error> {
         description: card.description.clone(),
         developer: card.developer.clone(),
         rating: None,
-        tags: card.genres.clone(),
+        tags: Vec::new(),
+        genres: card.external_genres.clone(),
         screenshots: Vec::new(),
     };
     let mut stored_any = false;
@@ -154,6 +159,9 @@ pub fn enrich(ctx: &Context, card: &GameCard) -> Result<Enrichment, Error> {
                 }
                 if merged.tags.is_empty() && !data.tags.is_empty() {
                     merged.tags = data.tags;
+                }
+                if merged.genres.is_empty() && !data.genres.is_empty() {
+                    merged.genres = data.genres;
                 }
                 if merged.screenshots.is_empty() && !data.screenshots.is_empty() {
                     merged.screenshots = data.screenshots;

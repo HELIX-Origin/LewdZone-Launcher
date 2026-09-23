@@ -35,7 +35,7 @@ impl Provider for Igdb {
         };
 
         let description = game.summary.filter(|s| !s.is_empty());
-        let tags: Vec<String> = game
+        let genres: Vec<String> = game
             .genres
             .unwrap_or_default()
             .into_iter()
@@ -52,7 +52,8 @@ impl Provider for Igdb {
             description,
             developer: None,
             rating: None,
-            tags,
+            tags: Vec::new(),
+            genres,
             screenshots,
         }))
     }

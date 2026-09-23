@@ -19,6 +19,7 @@
     developer: string | null;
     genres: string[];
     genre_slugs: string[];
+    external_genres: string[];
     views: number | null;
   }
 

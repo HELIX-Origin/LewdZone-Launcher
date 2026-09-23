@@ -52,6 +52,7 @@ impl Provider for Vndb {
             rating,
             tags,
             screenshots,
+            genres: Vec::new(),
         }))
     }
 

@@ -38,6 +38,9 @@ pub struct GameCard {
     pub genres: Vec<String>,
     /// Genre slugs (from `/game-genre/<slug>/` hrefs).
     pub genre_slugs: Vec<String>,
+    /// Actual genres from external content providers (e.g., Steam/IGDB),
+    /// separate from LewdZone's tag taxonomy.
+    pub external_genres: Vec<String>,
     /// Last update date text, e.g. "June 18, 2026".
     pub updated_at: Option<String>,
     /// Human view count label, e.g. "962K".
@@ -218,6 +221,7 @@ mod tests {
             description: Some("A mad universe...".into()),
             genres: vec!["3D Game".into()],
             genre_slugs: vec!["3d-games".into()],
+            external_genres: vec![],
             updated_at: Some("June 18, 2026".into()),
             views: Some("962K".into()),
         };

@@ -683,6 +683,7 @@ pub fn favorite_list(conn: &Connection) -> Result<Vec<crate::core::models::GameC
             description: None,
             genres,
             genre_slugs,
+            external_genres: Vec::new(),
             updated_at,
             views: None,
         });

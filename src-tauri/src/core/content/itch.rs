@@ -55,6 +55,7 @@ impl Provider for Itch {
             rating: None,
             tags,
             screenshots,
+            genres: Vec::new(),
         }))
     }
 

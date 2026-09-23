@@ -156,6 +156,7 @@ fn parse_cards(document: &Html) -> Vec<GameCard> {
             description,
             genres,
             genre_slugs,
+            external_genres: Vec::new(),
             updated_at,
             views,
         });

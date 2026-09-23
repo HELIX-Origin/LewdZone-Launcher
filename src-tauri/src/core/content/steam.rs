@@ -40,6 +40,7 @@ impl Provider for Steam {
             .into_iter()
             .map(|s| s.path_full)
             .collect();
+        let genres: Vec<String> = details.genres.into_iter().map(|g| g.description).collect();
 
         Ok(Some(Enrichment {
             description,
@@ -47,6 +48,7 @@ impl Provider for Steam {
             rating: None,
             tags: Vec::new(),
             screenshots,
+            genres,
         }))
     }
 
@@ -134,6 +136,12 @@ struct AppDetails {
     developers: Vec<String>,
     screenshots: Vec<SteamScreenshot>,
     header_image: Option<String>,
+    genres: Vec<SteamGenre>,
+}
+
+#[derive(Debug, Deserialize)]
+struct SteamGenre {
+    description: String,
 }
 
 #[derive(Debug, Deserialize)]

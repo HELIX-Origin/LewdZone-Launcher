@@ -45,6 +45,7 @@ const sampleGame = {
   developer: "Adeptus Steve",
   genre_slugs: ["3d-games"],
   genres: ["3D Game"],
+  external_genres: [],
   views: "962K",
 };
 
@@ -62,6 +63,7 @@ const sampleGameData = {
   engine: "Unreal Engine",
   platforms: ["pc"],
   genres: ["3d-games", "adventure"],
+  external_genres: [],
   size_label: "5.0 GB",
   censorship: "Uncensored",
   screenshots: ["https://h1.lzcdn.com/img/wild-life-shot.jpg"],
@@ -238,6 +240,9 @@ describe("store game detail page", () => {
       if (cmd === "game_page") return sampleGameData;
       if (cmd === "game_sources") return sampleSources;
       if (cmd === "game_download") return sampleJob;
+      if (cmd === "content_enrich") {
+        return { description: null, developer: null, rating: null, tags: [], screenshots: [], genres: [] };
+      }
       return [];
     });
   });
@@ -255,6 +260,9 @@ describe("store game detail page", () => {
     mockInvoke(async (cmd: string) => {
       if (cmd === "game_page") return sampleGameData;
       if (cmd === "game_sources") return [...sampleSources, { host: "mega", label: "MEGA", preferred: true }];
+      if (cmd === "content_enrich") {
+        return { description: null, developer: null, rating: null, tags: [], screenshots: [], genres: [] };
+      }
       return [];
     });
     render(GamePage);
@@ -470,6 +478,7 @@ describe("favorites page", () => {
             developer: "Adeptus Steve",
             genres: ["3D Game"],
             genre_slugs: ["3d-games"],
+            external_genres: [],
             views: "962K",
           },
         ];
@@ -500,6 +509,7 @@ describe("favorites page", () => {
             developer: "Adeptus Steve",
             genres: ["3D Game"],
             genre_slugs: ["3d-games"],
+            external_genres: [],
             views: "962K",
           },
         ];

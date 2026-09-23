@@ -74,6 +74,7 @@ impl Provider for IndieDb {
             rating: None,
             tags: Vec::new(),
             screenshots,
+            genres: Vec::new(),
         }))
     }
 

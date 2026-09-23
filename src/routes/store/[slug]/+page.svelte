@@ -32,12 +32,22 @@
     engine: string | null;
     platforms: string[];
     genres: string[];
+    external_genres: string[];
     size_label: string | null;
     censorship: string | null;
     screenshots: string[];
     description: string | null;
     versions: Version[];
     download_entries: DownloadEntry[];
+  }
+
+  interface Enrichment {
+    description: string | null;
+    developer: string | null;
+    rating: number | null;
+    tags: string[];
+    screenshots: string[];
+    genres: string[];
   }
 
   interface Job {
@@ -89,10 +99,39 @@
         version = data.versions.find((v) => v.is_latest)?.label ?? data.versions[0].label;
       }
       await refreshSources();
+      await enrichGame(data);
       status = "ready";
     } catch (err) {
       status = "error";
       error = String(err);
+    }
+  }
+
+  async function enrichGame(data: GameData) {
+    try {
+      const enrichment = await invoke<Enrichment>("content_enrich", {
+        card: {
+          slug: data.slug,
+          post_id: data.post_id,
+          title: data.title,
+          thumb_url: data.screenshots[0] ?? null,
+          platforms: data.platforms,
+          engine: data.engine,
+          state: null,
+          version_tag: data.current_version,
+          developer: data.developer,
+          description: data.description,
+          genres: data.genres,
+          genre_slugs: data.genres,
+          views: null,
+          external_genres: [],
+        },
+      });
+      if (game && enrichment.genres.length > 0) {
+        game.external_genres = enrichment.genres;
+      }
+    } catch {
+      // Enrichment is best-effort; leave external_genres empty on failure.
     }
   }
 
@@ -177,6 +216,13 @@
             <a class="genre-chip" href={`/store/${genre}`}>{genre}</a>
           {/each}
         </div>
+        {#if game.external_genres.length > 0}
+          <div class="external-genre-row">
+            {#each game.external_genres as genre (genre)}
+              <span class="genre-chip external">{genre}</span>
+            {/each}
+          </div>
+        {/if}
       </div>
     </div>
 
@@ -339,6 +385,13 @@
     margin-top: 8px;
   }
 
+  .external-genre-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 6px;
+  }
+
   .genre-chip {
     color: var(--lz-cyan);
     background: var(--lz-surface-2);
@@ -346,6 +399,12 @@
     padding: 2px 10px;
     font-size: 12px;
     text-decoration: none;
+  }
+
+  .genre-chip.external {
+    color: var(--lz-accent);
+    background: var(--lz-surface);
+    border: 1px solid var(--lz-surface-2);
   }
 
   .desc {
