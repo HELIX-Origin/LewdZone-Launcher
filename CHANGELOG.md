@@ -8,12 +8,6 @@ the top; the current development state lives under `Unreleased`.
 
 ## ⏳ Unreleased
 
-*Nothing yet.*
-
----
-
-## [v0.2.0](https://github.com/HELIX-Origin/LewdZone-Launcher/releases/tag/v0.2.0) — 2026-09-23
-
 ### ✨ Added
 
 - **feat(download): replace download-manager layer with in-app streaming and OS-native dispatch** [8c691f9](https://github.com/HELIX-Origin/LewdZone-Launcher/commit/8c691f9)
@@ -51,10 +45,10 @@ the top; the current development state lives under `Unreleased`.
 | Wiki suite | 16 pages, GitHub-wiki synced, relative links | ✅ |
 | Root docs | `AGENTS.md`, `ROADMAP.md`, `TODO.md`, `BUGS.md`, `CHANGELOG.md` | ✅ |
 | Roadmap tracking | Tracking issue #1, roadmap-first (Rule 04) | ✅ |
-| Core implementation | Scraping, resolver, in-app streaming, CLI engine | ✅ v0.2.0 |
-| Desktop app | Tauri 2 shell + Store/Library/Downloads/Favorites/Settings | ✅ v0.2.0 |
-| Tests | cargo test 177, Vitest 29, clippy/fmt/svelte-check green | ✅ v0.2.0 |
-| Release | Tagged releases (SemVer, Rule 08) | ✅ v0.2.0 |
+| Core implementation | Scraping, resolver, in-app streaming, CLI engine | ✅ |
+| Desktop app | Tauri 2 shell + Store/Library/Downloads/Favorites/Settings | ✅ |
+| Tests | cargo test 177, Vitest 29, clippy/fmt/svelte-check green | ✅ |
+| Release | Tagged releases (SemVer, Rule 08) | ⏳ pending v0.1.0 |
 
 ## Additional
 
