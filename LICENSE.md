@@ -34,7 +34,7 @@ The name "LewdZone", "LewdZone-Launcher", "HELIX Origin", and associated project
 Instance operators, distributors, and hosting administrators assume sole responsibility for:
 - Securely provisioning server hardware, containers, and operating systems.
 - Protecting sensitive authentication credentials, including content-provider API keys and environment configurations.
-- Maintaining compliance with all applicable third-party terms of service, including the [lewdzone.com Terms of Service](https://lewdzone.com) and those of any download managers or content providers (SteamGridDB, VNDB, IGDB, itch.io, Steam, IndieDB) used with this software.
+- Maintaining compliance with all applicable third-party terms of service, including the [lewdzone.com Terms of Service](https://lewdzone.com) and those of any content providers (SteamGridDB, VNDB, IGDB, itch.io, Steam, IndieDB) used with this software.
 
 ---
 

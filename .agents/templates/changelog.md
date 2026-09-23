@@ -67,7 +67,7 @@ record: every change is listed, newest releases first, living state under
 | Component | Description | Status |
 | :--- | :--- | :--- |
 | Root docs | AGENTS.md, ROADMAP.md, TODO.md, BUGS.md | ✅ |
-| Core implementation | Scraping, resolver, DM adapters, CLI engine | ⏳ |
+| Core implementation | Scraping, resolver, download dispatch, CLI engine | ⏳ |
 ```
 
 ## Verify

@@ -13,9 +13,9 @@ deterministic, and fast.
 
 ## Mission
 
-Make it safe to change anything: parsers, resolvers, DB schema, FDM spawns,
-CLI commands, GUI flows. Every family's "definition of done" ends with tests
-that this family owns and maintains.
+Make it safe to change anything: parsers, resolvers, DB schema, download
+streams, CLI commands, GUI flows. Every family's "definition of done" ends
+with tests that this family owns and maintains.
 
 ## Test layers
 
@@ -73,7 +73,7 @@ flowchart TD
 ## Delegation
 
 - `fixture-crafter` — static fixtures for HTML/API/CLI golden output.
-- `mock-engineer` — fakes for api.php, FDM exe, SteamGridDB, widgets/db seams.
+- `mock-engineer` — fakes for api.php, download stream, SteamGridDB, widgets/db seams.
 - `test-suite-architect` — the modular `src-tauri/tests/` layout, Rust test
   harness + Vitest config, coverage floors via `cargo llvm-cov`, and
   watch/report tooling.

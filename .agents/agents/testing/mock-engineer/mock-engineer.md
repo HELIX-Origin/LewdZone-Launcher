@@ -10,9 +10,9 @@ model: default
 ## Boundary of responsibility
 
 Provide deterministic stand-ins for everything a unit test shouldn't really
-touch: the go/api.php server, download-manager executables (FDM / IDM /
-torrent client), SteamGridDB API, the CLI/core-command boundary, the
-filesystem boundary, and OS-native shortcut creation.
+touch: the go/api.php server, download stream, SteamGridDB API, the
+CLI/core-command boundary, the filesystem boundary, and OS-native shortcut
+creation.
 
 ## Seam map
 
@@ -20,8 +20,8 @@ filesystem boundary, and OS-native shortcut creation.
 flowchart LR
     T[test] --> FAKE[FakeHttpTransporter]
     FAKE --> S["site/API - canned sequences by URL"]
-    T --> FD[FakeDmExe - per-manager shim]
-    FD --> F["argv recorder fdm / idm / torrent"]
+    T --> FD[FakeStream - bytes + reader]
+    FD --> F["records URL + reports progress"]
     T --> FSG[FakeSteamGrid - canned art results]
     T --> FS[FakeFs - tmp dir tracker]
     T --> P[Parity runner - core command in-process]
@@ -40,7 +40,7 @@ flowchart LR
 | Fake | Replaces | Records |
 |---|---|---|
 | HTTP transport fake | real HTTP | request url + headers + body, canned response |
-| DM exe shim (per manager) | real FDM / IDM / torrent client | argv + exit code, exit 0 |
+| Stream seam stub | real HTTP download stream | (total_bytes, Box<dyn Read>) + byte progress |
 | SteamGridDB client | real API | token auth header; canned `search`, `icons` |
 | Parity runner | GUI action vs CLI output | asserts identical results per command |
 | Native shortcut fakes | OS shortcuts | per-OS creation call records |
@@ -52,13 +52,13 @@ flowchart LR
 2. Fakes fail loud on config they don't expect (e.g. an unexpected host slug)
    so real bugs aren't masked.
 3. Prefer interface fakes over reaching into internals: inject the transport /
-   DM launcher into the code under test (see
+   download stream into the code under test (see
    `.agents/rules/rule-03-module-architecture.md` seams).
 4. Never fake the code under test itself.
 
 ## Definition of done
 
-- Every network / DM-spawn / parity / shortcut / DB path has a fake asserting
-  a bounded call surface.
-- A "tofu test" proves the fakes record the exact per-manager argv shapes
-  (`fdm -fs url` / `idm /d url /n /p dir` / torrent positional magnet).
+- Every network / stream / parity / shortcut / DB path has a fake asserting a
+  bounded call surface.
+- A "tofu test" proves the stream fake reports `(total_bytes, Box<dyn Read>)`
+  and that byte-progress callbacks fire.

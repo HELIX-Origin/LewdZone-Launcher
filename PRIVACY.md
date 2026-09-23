@@ -49,14 +49,15 @@ user action.
 - Your data lives in your local database.
 - **Deleting the local database deletes all application data** — including
   catalog records, tokens, configuration, and provider caches.
-- Downloads you start are handed to a download manager (FDM, IDM, or a torrent
-  client) that you control; the files they produce are yours and are managed
-  by you, not by this project.
+- Direct-file downloads stream in-app to your local `downloads/` staging folder
+  and are extracted into `lzapps/`; other resolved URLs are opened by your OS
+  default handler (installed cloud app or browser). The files are yours and are
+  managed by you, not by this project.
 
 ## 5. Security Architecture
 
-- No secrets are committed to the repository; API keys are kept in local
-  configuration files that are git-ignored.
+- No secrets are committed to the repository; API keys are kept in the SQLite
+  `secret` table and are never written to the readable JSON config.
 - Subprocess calls use argument arrays (never shell interpolation) to avoid
   injection (see [SECURITY](SECURITY)).
 - The application never uploads your database or tokens anywhere.

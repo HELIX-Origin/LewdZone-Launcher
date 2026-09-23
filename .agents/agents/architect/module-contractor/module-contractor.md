@@ -31,7 +31,7 @@ flowchart LR
     C --> D[T1 scraper parsers]
     C --> E[T2 db schema+repo]
     C --> F[T3 resolver api flow]
-    C --> G[T4 fdm bridge]
+    C --> G[T4 download dispatch]
     D --> H["Contract lock<br/>Game model shape"]
     E --> H
     F --> I["Contract lock<br/>ResolvedUrl shape"]
@@ -66,5 +66,5 @@ flowchart LR
 
 - Each primary agent can pick up its first task with zero ambiguity about what
   to build and how to prove it works.
-- Task ordering respects module layering (db before gui, resolver before fdm,
-  etc.).
+- Task ordering respects module layering (db before gui, resolver before
+  download dispatch, etc.).

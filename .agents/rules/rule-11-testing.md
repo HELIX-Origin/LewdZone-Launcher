@@ -24,9 +24,9 @@ Svelte frontend is covered by Vitest unit tests in `src/`.
 
 ## Offline-first
 
-- No test touches lewdzone.com, `api.php`, SteamGridDB, or FDM.
-- Fakes live in `src-tauri/tests/support/`: transport shim, `fdm.exe` argv
-  recorder, SteamGridDB client fake, shortcut fake
+- No test touches lewdzone.com, `api.php`, SteamGridDB, or a live download stream.
+- Fakes live in `src-tauri/tests/support/`: transport shim, download-stream seam
+  stub, SteamGridDB client fake, shortcut fake
   ([mock-engineer](../agents/testing/mock-engineer/mock-engineer.md)).
 - HTML/JSON fixtures committed in `src-tauri/tests/fixtures/` from the
   reference captures (treasure-of-nadia page with 47 go-links; archive page).

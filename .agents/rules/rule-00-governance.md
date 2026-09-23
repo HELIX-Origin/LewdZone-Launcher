@@ -64,4 +64,4 @@ flowchart TD
 - A build agent "fixing" another family's contract unilaterally.
 - Adding a `subprocess`/network dependency without [Rule 10](./rule-10-security.md).
 - Writing rules after the code they govern already exists (corrective-only).
-- GUI directly calling the site, FDM, or SQLite (must go through controllers).
+- GUI directly calling the site, download dispatch, or SQLite (must go through controllers).

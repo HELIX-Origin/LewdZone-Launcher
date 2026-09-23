@@ -37,11 +37,12 @@ required earlier.
 - **Secrets never committed.** API keys live in git-ignored local config; the
   repository contains no real credentials. Environment-provided values are
   preferred where supported.
-- **No shell interpolation.** All external commands (download managers, the
-  CLI, and other helper binaries) are spawned with argument arrays and
-  `shell=false`; no untrusted input is ever interpolated into a shell string.
+- **No shell interpolation.** All external commands (OS default handler, game
+  launch, the CLI, and other helper binaries) are spawned with argument arrays
+  and `shell=false`; no untrusted input is ever interpolated into a shell
+  string.
 - **Component boundaries.** The webview never talks to the site, the database,
-  or download managers directly — every action flows through the Rust core,
+  or download dispatch directly — every action flows through the Rust core,
   which validates and allowlists inputs.
 - **Minimal dependencies.** The dependency set is kept deliberately small to
   reduce the attack surface.

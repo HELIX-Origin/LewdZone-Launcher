@@ -21,7 +21,7 @@ flowchart TD
     T --> R[malicious redirect from resolved URL]
     T --> S["secret leakage: API keys"]
     T --> D["DB tampering / injection"]
-    T --> F[FDM spawn injection]
+    T --> F[stream redirect detour]
     T --> C[phishing artifact in organized folders]
 ```
 
@@ -32,19 +32,24 @@ flowchart TD
    paths, reserved names (CON, PRN...), trailing dots/spaces. Golden test with
    `..\evil`-style titles.
 2. **URL validation**: resolved URLs must:
-   - come back with a host in the allowlist (go.js ICONS slug set);
-   - be `http`/`https` only (magnet/torrent only for explicitly chosen links).
-   Redirects from resolved URLs must re-validate the scheme + host before any
-   FDM spawn. Malformed/truncated URLs (trailing `\r`) are stripped, checked,
-   then passed.
-3. **Secrets**: SteamGridDB API key, any cookies — stored only in the settings
-   table (or environment), never logged, never in fixtures, never in `--json`
-   output, never in `--debug` logs.
+   -    come back with a host in the allowlist (go.js ICONS slug set);
+   - be `http`/`https` only.
+   Redirects during an in-app stream must re-validate the scheme + host and
+   stay on the same owner (host or dot-boundary subdomain). Malformed/truncated
+   URLs (trailing `\r`) are stripped, checked, then passed.
+3. **Secrets**: SteamGridDB/IGDB API keys — stored only in the SQLite `secret`
+   table, never in the JSON config, never logged, never in fixtures, never in
+   `--json` output, never in `--debug` logs.
 4. **DB hardening**: parameterized SQL everywhere (no string-built queries);
    the DB is a local file with host-based ACL; treat downloaded content as
-   hostile — never execute, never auto-open archives.
-5. **DM spawn**: argv array only via `std::process::Command` (no shell),
-   `-fs` only; URL is a single positional argument (no option injection).
+   hostile — validate paths, never execute a downloaded file except through the
+   explicit Launch action on a user-selected executable candidate.
+5. **Launch / open**: OS-handler URLs are opened via `std::process::Command`
+   with a fixed argv (no shell) on Windows (`rundll32 url.dll,FileProtocolHandler
+   <URL>` + `CREATE_NO_WINDOW`), macOS (`open <URL>`), and Linux (`xdg-open
+   <URL>`). Explicit game launches use the user-overridable `launch_exe` from
+   `app.json` or the first auto-detected candidate; the path is validated to
+   exist inside the install folder.
 6. **Artifact hygiene**: warn before saving emails/password-style content if
    the game page suggests a "password" field — this is normal for the genre,
    but the tool may offer to store it via keyring, not plaintext.
@@ -59,6 +64,6 @@ flowchart TD
 ## Definition of done
 
 - All five check areas have regression tests (traversal, allowlist, secret
-  redaction, DB injection, DM argv safety).
+  redaction, DB injection, launch/open argv safety).
 - `cargo audit` + `cargo deny` clean for the pinned lockfile.
 - No secrets in fixtures or tests (a grep-guard enforces this).

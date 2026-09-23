@@ -16,10 +16,10 @@ roadmap when they're scoped.
 - [x] `rule-08` example title: `catalog sync + FDM queue` → `catalog sync + DM queue`
 - [x] `rule-00-governance` family list: `database/fdm/cli` → `database/dm/cli`
 - [x] `launch-fdm` skill → DM-agnostic `launch-download` skill (done; `launch-fdm/` deleted)
-- [ ] Delete stale `.agents/agents/fdm/fdm.md` shim (the family is `dm`; `fdm-adapter` lives under `.agents/agents/dm/`)
-- [ ] `testing.md` + `test-suite-architect.md` — swap remaining `fdm` fake / `test_fdm` wording for the dm family (`.agents/agents/fdm/fdm.md` still present)
+- [x] Delete stale `.agents/agents/fdm/fdm.md` shim (the family is `dm`; `fdm-adapter` lives under `.agents/agents/dm/`)
+- [x] `testing.md` + `mock-engineer.md` — swap remaining `fdm` fake / `test_fdm` wording for the dm family
 - [ ] `module-contractor.md` — `T4 fdm bridge` → dm bridge
-- [ ] Write `.agents/README.md` index
+- [x] Write `.agents/README.md` index
 - [ ] Write the rest of the templates layer (only `adr.md` + `changelog.md` exist of the ~17 planned)
 - [ ] Add `gui-build-loop` + `package-desktop-app` skills (referenced by gui.md)
 - [ ] Verify archive pagination scheme (`?page=N` vs `/page/N/`) on live site

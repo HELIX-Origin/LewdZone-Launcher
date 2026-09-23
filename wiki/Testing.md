@@ -8,7 +8,7 @@
 | --- | --- | --- |
 | **Unit** | pure logic: parsers, formats, domain, organizers | `cargo test` in `src-tauri/` — offline, fast |
 | **Integration** | controllers, db with scratch DB, resolver/adapters | `cargo test`; no live network |
-| **Live** | real `lewdzone.com`, SteamGridDB, real FDM | opt-in `cargo test -- --ignored` (tagged `#[ignore]`) |
+| **Live** | real `lewdzone.com`, SteamGridDB, real download stream | opt-in `cargo test -- --ignored` (tagged `#[ignore]`) |
 | **GUI tests** | Svelte views against the Rust core | Vitest (`npm run test`) in `src/` |
 | **Windows-specific** | spawn flags, `.lnk`, path rules | `cargo test` on a Windows CI runner |
 

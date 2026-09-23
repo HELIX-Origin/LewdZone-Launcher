@@ -10,11 +10,11 @@ model: default
 ## Boundary of responsibility
 
 - Proposes the crate/module tree (e.g. the `src-tauri/src/` crate with `core`,
-  `scraping`, `resolver`, `db`, `dm`, `cli` modules).
+  `scraper`, `resolver`, `db`, `cli` modules).
 - Defines dependency direction (layering) and forbids cycles.
 - Specifies public interfaces / protocols for each module (what a module must
   expose to the rest of the app).
-- Chooses seams where the site, FDM, and the filesystem can be mocked in tests.
+- Chooses seams where the site, download stream, and the filesystem can be mocked in tests.
 
 ## Inputs
 
@@ -41,12 +41,12 @@ flowchart TD
         I1[db - SQLite repository]
         I2[scraping - fetch + parse]
         I3[resolver - go-link token API]
-        I4[dm - download-manager adapters]
+        I4[download - in-app stream + OS-native dispatch]
         I5[shortcuts - lnk + SteamGridDB art]
     end
     subgraph EXT["external seams"]
         E1["lewdzone.com site"]
-        E2[FDM / IDM / torrent executables]
+        E2[OS default handler / cloud apps]
         E3[SQLite file on disk]
         E4[SteamGridDB API]
         E5[desktop .lnk files]
@@ -90,8 +90,8 @@ the same controllers; a GUI action maps to a CLI command and vice versa.
    through the module's public facade.
 2. The DB layer is the only place allowed to know SQLite (all other modules use
    the repository facade).
-3. Network calls (site + api.php) only live in `scraping`/`resolver`; FDM calls
-   only in `fdm`; GUI only in `gui`.
+3. Network calls (site + api.php) only live in `scraper`/`resolver`; download
+   dispatch only in `core::download`; GUI only in `gui`.
 4. Prefer explicit traits / trait objects over inheritance for seams.
 5. No glob imports inside `src`.
 

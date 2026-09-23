@@ -19,7 +19,7 @@ scope: architecture decision records for cross-layer contract changes
 ## Context
 
 What problem prompted this decision? What are the constraints (Rule 03 layers,
-Rule 06 data, Rule 07 DM adapters, Rule 10 security, Rule 12 errors)? Include
+Rule 06 data, Rule 07 download dispatch, Rule 10 security, Rule 12 errors)? Include
 the actors: the CLI engine, the Tauri app shell, controllers, services, and
 external seams involved.
 

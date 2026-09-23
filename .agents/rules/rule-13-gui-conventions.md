@@ -10,7 +10,7 @@ enforcement: app-shell + view-designer + cli agent; cli/gui parity checks
 The GUI is a **Tauri 2 desktop app** — the primary product. It is one process
 with a Svelte webview and a Rust core. The same Rust binary also exposes a
 **native CLI** (Rule 03): two entry points, one core. The webview never
-touches the site, download managers, SQLite, or content providers directly —
+touches the site, download dispatch, SQLite, or content providers directly —
 every workflow goes through `invoke()` → Rust commands, and every command has
 a CLI twin in `cli.rs`.
 

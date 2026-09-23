@@ -28,7 +28,7 @@ platforms' terms.
 You agree to:
 
 - Comply with the terms of service of lewdzone.com and of any content provider
-  and download manager you use with this project.
+  or third-party service you use with this project.
 - Poll sites and APIs at a reasonable, non-abusive rate (the project itself
   enforces rate limits; see the network etiquette rule).
 - Use the software only for lawful purposes and in a manner consistent with

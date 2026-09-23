@@ -1,58 +1,51 @@
-# ADR-0002: Download-manager adapter layer
+# ADR-0002: Download dispatch (supersedes download-manager adapter layer)
 
-- **Status:** accepted
+- **Status:** superseded (2026-09-23)
 - **Date:** 2026-09-21
-- **Owner:** dm family
+- **Owner:** download family (formerly dm family)
 - **Applies to:** Rule 03, Rule 07, Rule 12
 
 ## Context
 
-The tool must not download files itself. Resolved real URLs (and magnets) go to
-an installed download manager, and the supported set must be extensible beyond
-FDM. Managers differ per OS: FDM/IDM are Windows-only; torrent clients exist on
-all platforms. Spawn modes and silent flags differ.
+The original design handed every resolved real URL to an installed download
+manager (FDM, IDM, or a torrent client) through a pluggable adapter layer.
+Detection proved unreliable across versions and platforms, and every supported
+host already has a viable in-app or OS-native path. The DM layer was removed in
+favor of a simpler dispatch model.
 
 ## Decision
 
-- A pluggable **DownloadManager adapter contract** under
-  `src/lewdzone_launcher/services/dm/adapters/`:
+Downloads are dispatched by host class:
 
-  ```
-  name: str
-  platforms: tuple[str, ...]            # sys.platform subset
-  handles_kind: Literal["http", "torrent"]
-  detect() -> Path | None               # override, known paths, PATH, config dirs
-  launch(url: str, target_dir: Path, filename: str) -> None
-  ```
+- **Direct-file hosts** (`fileknot` today) stream in-app with byte progress to
+  the staging folder (`<downloads>/Games/<Title>/`), then auto-extract `.zip`
+  archives into `<lzapps>/<slug>/` and write an `app.json` manifest.
+- **All other hosts** hand the resolved URL to the OS default handler
+  (`core::native::open_url`). This opens the installed cloud app or browser
+  with zero configuration.
 
-- Registry `MANAGERS: dict[str, DownloadManager]`; active manager chosen with
-  `lewdzone dm <name>` (persisted to the `dm` setting).
-- **Torrent** links route only to torrent-capable managers (`handles_kind`);
-  HTTP adapters never receive magnets and torrent adapters never get HTTP URLs.
-- **Resolution rule:** only the resolved real URL is handed over, never a
-  `#fragment`. Trailing literal `\r` stripped from reveal responses.
-- **Spawn:** `shell=False`, args array (no interpolation); Windows
-  `CREATE_NO_WINDOW`, POSIX `start_new_session=True`; silent flags mandatory
-  (FDM `-fs`, IDM `/n`, torrent positional).
-- **Failure:** no manager installed → exit 4 listing alternatives; unhandled
-  kind → typed error (Rule 12).
+No registry of external download managers is kept. There is no `dm` setting.
+Exit code 4 (download manager missing) is reserved/unused.
+
+### Seams
+
+- `core::download::dispatch_with(job, stream, progress)` — routes by host class.
+- `core::extract::install_from_archive(...)` — zip extraction + `app.json`.
+- `core::native::open_url(...)` — OS default handler, no shell.
 
 ## Consequences
 
-- **Benefits:** "more managers" = one new adapter file + registry entry +
-  fake in `tests/support/`; per-manager argv shapes pinned by tests.
-- **Costs/risks:** per-manager quirks (IDM `/p` dir flag); version drift of
-  third-party CLIs; must re-verify detection paths.
-- **Migration:** forward-only; new adapters are additive.
-
-## Alternatives considered
-
-1. Bake FDM calls directly into controllers — rejected: violates Rule 03
-   layers, non-extensible, Windows-only.
-2. One "spawn browser helper" — rejected: silent flags/detection are per-manager.
+- **Benefits:** zero download-manager setup; no per-manager detection or argv
+  drift; cross-platform by default; direct downloads get live progress.
+- **Costs/risks:** page-gated hosts (workupload, mixdrop) open in the browser
+  and require the user to click; non-zip archives stay in `downloads/` and must
+  be handled manually.
+- **Migration:** forward-only; the old adapter files were deleted.
 
 ## Verification
 
-- [x] Contract documented in `dm.md`, adapters, `rule-07`
-- [ ] argv-shape unit tests per adapter (fakes in `tests/support/`, `-m live` opt-in)
-- [x] Wiki `Download-Managers` updated
+- [x] Contract documented in `dm.md`, `rule-07-download-manager-integration.md`
+      (renamed Rule 07: Download Dispatch), and wiki `Download-Managers.md`.
+- [x] Stream redirect tests cover same-owner validation.
+- [x] Extraction + manifest tests cover zip install and replacement updates.
+- [x] Launch tests cover `launch_exe` override and candidate fallback.

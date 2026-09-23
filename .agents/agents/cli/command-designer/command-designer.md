@@ -20,8 +20,8 @@ discoverable.
 | name | `download` |
 | args | `GAME` (slug or id, required) |
 | options | `--version V`, `--platform PC`, `--tab official|community`, `--json`, `--resume`, `--queue` |
-| behavior | resolves the selected go-link via resolver, submits DownloadJob to the active dm adapter |
-| exit codes | 0 ok, 1 no game found, 2 bad platform, 3 resolution failed, 4 dm missing, 5 interrupted |
+| behavior | resolves the selected go-link via resolver, enqueues a download job (direct-file hosts stream in-app; others open via OS handler) |
+| exit codes | 0 ok, 1 no game found, 2 bad platform, 3 resolution failed, 4 reserved/unused, 5 interrupted |
 | controller | `controllers::download::download_game(...)` |
 | json out | `{"job_id":..., "title":..., "url_host":...}` |
 
@@ -36,7 +36,7 @@ flowchart TD
     F -- human --> G[table output]
     F -- json --> H[stdout json]
     B -- download --> I["dispatch-builder --> resolver"]
-    I --> J[dm dispatch - submit to adapter]
+    I --> J[queue + dispatch (stream or OS handler)]
     J --> K[job_id out]
     B -- unknown --> L[usage error exit 2]
 

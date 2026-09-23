@@ -8,9 +8,9 @@ model: default
 # Architect (Primary Agent)
 
 The Architect owns the overall design of **lewdzone-launcher**: a
-cross-platform **desktop game launcher** (Tauri 2) that downloads games from
-lewdzone.com via pluggable download managers, powered by a Rust core whose
-binary also exposes a native CLI.
+cross-platform **desktop game launcher** (Tauri 2) that streams direct-file
+downloads in-app and hands other resolved URLs to the OS default handler,
+powered by a Rust core whose binary also exposes a native CLI.
 
 ## Mission
 
@@ -24,10 +24,10 @@ parsing details (Scraper family) or download-manager-specific details
 ## Non-negotiables (project pillars)
 
 1. Modular Rust core. Each capability lives in its own module.
-2. The tool **never downloads itself**. The resolver hands resolved real URLs
-   to an installed **download manager** through a pluggable adapter layer
-   (FDM, IDM, uTorrent/BitTorrent; more later). Torrents route only to
-   torrent clients.
+2. The resolver hands resolved real URLs to the download family. Direct-file
+   hosts (e.g. `fileknot`) stream in-app with byte progress into the staging
+   folder; all other URLs open via the OS default handler (installed cloud
+   app or browser).
 3. SQLite is the single source of persisted state (games, genres, versions,
    links, download history, settings); it stores go-link **tokens**, never
    resolved URLs.
@@ -53,8 +53,8 @@ parsing details (Scraper family) or download-manager-specific details
 - Download links are `https://lewdzone.com/go/#t=v1.<payload>.<sig>` go-links.
 - Real URLs are ONLY obtainable by the api.php two-step flow
   (`action=start` -> wait -> `action=reveal`) via
-  `https://lewdzone.com/go/api.php`. Never hand any download manager a
-  `#fragment` link.
+   `https://lewdzone.com/go/api.php`. Never hand any dispatch path a
+   `#fragment` link.
 - Android is a **game platform only** (APK downloads); the tool itself runs
   on Windows, Linux, macOS.
 - Site contracts must be verified empirically, not assumed.
@@ -66,7 +66,7 @@ parsing details (Scraper family) or download-manager-specific details
 | Site HTML/API parsing | scraper | archive-scraper, game-page-scraper, fixture-engineer |
 | go-link resolution | resolver | token-prober, dispatch-builder |
 | SQLite schema & sync | database | schema-designer, sync-orchestrator |
-| Download-manager adapters | dm | dm-detector, fdm-adapter, idm-adapter, torrent-adapter, folder-organizer |
+| Downloads + folder folding | dm | folder-organizer |
 | Command line surface (primary UI) | cli | command-designer, output-formatter |
 | Desktop GUI (Tauri launcher) | gui | app-shell, view-designer |
 | Shortcuts & SteamGridDB art | shortcuts | artwork-fetch, shortcut-builder |
@@ -105,11 +105,7 @@ flowchart TD
     D --> D1[schema-designer]
     D --> D2[sync-orchestrator]
 
-    E --> E1[dm-detector]
-    E --> E2[fdm-adapter]
-    E --> E3[idm-adapter]
-    E --> E4[torrent-adapter]
-    E --> E5[folder-organizer]
+    E --> E1[folder-organizer]
 
     F --> F1[command-designer]
     F --> F2[output-formatter]
@@ -148,7 +144,7 @@ flowchart TD
     subgraph BIN["lewdzone-launcher binary (Rust core)"]
         CLIF["cli - command parsers"]
         CTL[controllers]
-        SVC["services: scraper / resolver / db / dm / shortcuts"]
+        SVC["services: scraper / resolver / db / download / shortcuts"]
     end
     subgraph APP["Tauri desktop app"]
         SH[app-shell - Rust core]
@@ -157,7 +153,7 @@ flowchart TD
     WV --> SH
     SH --> CTL
     CLIF --> CTL
-    SVC --> DM["dm adapters: fdm / idm / torrent"]
+    SVC --> DM["in-app stream + OS handler"]
     SVC --> SQL["sqlite"]
     SVC --> SITE["lewdzone.com"]
 
