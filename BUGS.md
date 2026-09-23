@@ -4,11 +4,16 @@ Only open bugs belong here. Each entry links to its GitHub issue (once filed)
 and is closed by editing this file, not by deleting history. When a bug is fixed,
 move it to the commit that resolved it (`git log`).
 
-## 🎉 None yet
+## 2026-09-23 — `core::favorites` roundtrip test fails on Windows (#<issue>)
 
-No open bugs tracked. The project is in design/documentation phase (Phase 0–1 of
-ROADMAP.md); known *deficiencies and TODO items* live in [TODO.md](TODO.md) until
-they can be reproduced and confirmed as bugs.
+- **Steps to reproduce:** Run `cargo test --lib core::favorites::tests::favorites_roundtrip_by_slug` on Windows.
+- **Expected:** Test passes.
+- **Actual:** `SqliteFailure(CannotOpen, extended_code 14)`: unable to open database file at `C:\Users\...\AppData\Local\Temp\lz-fav-roundtrip-<pid>\lewdzone.db`.
+- **Root cause:** The test helper in `src-tauri/src/core/favorites.rs` removes the temp dir but never creates it before opening the SQLite database.
+- **Environment:** Windows 11, Rust 1.85, commit `a9265fb`.
+- [ ] Fix in PR (`Closes #<issue>`)
+
+## 📝 Filing a bug
 
 ## 📝 Filing a bug
 
