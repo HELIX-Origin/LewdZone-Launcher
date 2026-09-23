@@ -20,17 +20,17 @@ roadmap when they're scoped.
 - [x] `testing.md` + `mock-engineer.md` — swap remaining `fdm` fake / `test_fdm` wording for the dm family
 - [x] `module-contractor.md` — `T4 fdm bridge` → dm bridge
 - [x] Write `.agents/README.md` index
-- [ ] Write the rest of the templates layer (only `adr.md` + `changelog.md` exist of the ~17 planned)
-- [ ] Add `gui-build-loop` + `package-desktop-app` skills (referenced by gui.md)
-- [x] Verify archive pagination scheme (`?page=N` vs `/page/N/`) on live site
+  - [ ] Write the rest of the templates layer (only `adr.md` + `changelog.md` exist of the ~17 planned)
+  - [x] Add `gui-build-loop` + `package-desktop-app` skills (referenced by gui.md)
+  - [x] Verify archive pagination scheme (`?page=N` vs `/page/N/`) on live site
 
 ### Content-provider layer (Phase 2 engine)
 
-- [x] Implement content-provider contract, registry, and providers (SteamGridDB, VNDB, IGDB, itch.io, Steam, IndieDB) + `game_external`/`artwork_cache` schema
-- [x] LewdZone scraped data is the default metadata source; external providers fill missing/enhanced fields only
-- [x] Proper genre support: `external_genres` distinct from LewdZone tags
-- [ ] Implement `enrich-game-and-art` skill + `content-provider` template
-- [ ] `rule-03`/`rule-10` — fold content-provider keys/secrets wording (verify coverage)
+  - [x] Implement content-provider contract, registry, and providers (SteamGridDB, VNDB, IGDB, itch.io, Steam, IndieDB) + `game_external`/`artwork_cache` schema
+  - [x] LewdZone scraped data is the default metadata source; external providers fill missing/enhanced fields only
+  - [x] Proper genre support: `external_genres` distinct from LewdZone tags
+  - [ ] Implement `enrich-game-and-art` skill + `content-provider` template
+  - [x] `rule-03`/`rule-10` — fold content-provider keys/secrets wording (verify coverage)
 
 ### Core / GUI features
 

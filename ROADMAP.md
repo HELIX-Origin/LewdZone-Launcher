@@ -55,7 +55,7 @@ flowchart TD
 
 ## Now 🚧 (Phase 2 — Storefront + Core)
 
-- [ ] Fix any remaining verification gaps (final svelte-check pass, clippy/fmt clean)
+- [x] Fix any remaining verification gaps (final svelte-check pass, clippy/fmt clean)
 - [x] **GUI relayout** to the dark cyberpunk spec: left icon sidebar (Store/Favorites/Library/Settings; Downloads pending its page) + top header (rounded search + profile avatar), deep cyan/charcoal gradient, neon accents, glassmorphism, thin scrollbar. **Home is not a separate tab** — it is the Store.
 - [x] **Storefront**: top search, left genre/category rail, hero + media-grid rows (~9 poster tiles 2:3/3:4), tile → game detail. Live search (`?s=`), genre pages, platform/sort filters (`/games/` + `/game-genre/`). Backed by the full site filter surface (q/platform/engine/state/sort/tags[]/tags-exclude[]) and no ads / no redirect exposure (downloads resolve via in-app stream or OS-native dispatch).
 - [x] **Library = downloaded games**: list installed titles from `lzapps/<slug>/app.json`; launch support from the Library view.
@@ -71,7 +71,8 @@ flowchart TD
 - [x] Proper genre support: `external_genres` from providers, distinct from LewdZone tags.
 - [x] App icons: regenerate from `assets/appicon.png` via `tauri icon`, wire into `tauri.conf.json` bundle icons, and fix the non-rendering sidebar logo image.
 - [x] Favorites: SQLite-backed heart toggle on Library tiles + Favorites page.
-- [ ] Router recreation of store pages (ripped UI mirrored into local HTML)
+- [x] `.agents/` rule-03/rule-10 content-provider wording + `gui-build-loop` + `package-desktop-app` skills.
+- [x] Live archive pagination verification (`/games/page/N/`).
 
 ## Later ⏳
 
@@ -87,7 +88,7 @@ flowchart TD
 
 ### Phase 5 — Verification & Release
 - Release gate (cargo test/clippy/fmt, vitest, svelte-check, security, build smoke)
-- Docs sync → wiki, release notes, tag `v0.2.0`
+- Docs sync → wiki, release notes, tag `v0.1.0`
 
 ## ✅ Acceptance Criteria
 
