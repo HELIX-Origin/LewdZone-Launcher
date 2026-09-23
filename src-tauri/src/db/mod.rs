@@ -121,6 +121,7 @@ mod tests {
             "download_entry",
             "download_job",
             "sync_state",
+            "secret",
         ] {
             let n: i64 = conn
                 .query_row(

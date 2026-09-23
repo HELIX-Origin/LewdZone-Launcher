@@ -44,7 +44,6 @@ roadmap when they're scoped.
 - [ ] Library view = downloaded games: list installed titles from app manifests, with extract + launch support.
 - [ ] Multi-format installs: the site ships games as web HTML, `.exe`, and other formats; use the site's engine/tag taxonomy to infer the actual game binary for launch (engine → binary discovery).
 - [ ] App icons: regenerate from `assets/appicon.png` via `tauri icon`, wire the outputs into `tauri.conf.json` (`bundle.icon`) and fix the non-rendering sidebar logo image.
-- [ ] CLI-only npm package on GitHub Packages: publish the standalone CLI as an npm package (no GUI bundled), so releases ship a `lewdzone` binary via the GitHub package registry.
 
 ## 🗄️ Backlog (unscoped)
 

@@ -1,4 +1,8 @@
 //! Settings: read/write the local JSON config file (Rule 10 secrets stay out).
+//!
+//! Secret keys (API keys) live in the SQLite DB's `secret` table, never here.
+//! `set(.., secret: true)` / `apply(.., secret: true)` route to the DB and are
+//! never echoed — `get` prints presence only ("(set)"/"(not set)").
 
 use std::collections::BTreeMap;
 use std::fs;
@@ -133,7 +137,17 @@ const KNOWN_KEYS: &[&str] = &[
     "home-page",
 ];
 
+/// Keys whose values are secrets: stored in the SQLite `secret` table, never
+/// in the JSON config, and never echoed back (Rule 10).
+pub const SECRET_KEYS: &[&str] = &["sgdb-api-key", "igdb-client-id", "igdb-client-secret"];
+
+/// Is this key a secret (API key)? Secrets bypass the JSON config entirely.
+pub fn is_secret_key(key: &str) -> bool {
+    SECRET_KEYS.contains(&key)
+}
+
 /// All known + extra settings as a JSON object (data form for GUI bridge).
+/// Secrets are omitted here — the bridge reads their presence separately.
 pub fn snapshot(s: &Settings) -> serde_json::Value {
     let mut all = serde_json::Map::new();
     for k in KNOWN_KEYS {
@@ -147,16 +161,44 @@ pub fn snapshot(s: &Settings) -> serde_json::Value {
     serde_json::Value::Object(all)
 }
 
-/// Load settings at `ctx.config_path` and return the snapshot map.
+/// Load settings at `ctx.config_path` and return the snapshot map augmented
+/// with secret-key presence markers ("(set)"/"(not set)") for the UI.
 pub fn load_snapshot(ctx: &Context) -> Result<serde_json::Value, Error> {
     let s = Settings::load(&ctx.config_path)?;
-    Ok(snapshot(&s))
+    let mut all = snapshot(&s);
+    if let serde_json::Value::Object(map) = &mut all {
+        for k in SECRET_KEYS {
+            let present = secret_present(ctx, k)?;
+            map.insert(
+                (*k).to_string(),
+                serde_json::Value::String(if present {
+                    "(set)".into()
+                } else {
+                    "(not set)".into()
+                }),
+            );
+        }
+    }
+    Ok(all)
+}
+
+/// Read a secret's presence (never its value) from the SQLite DB.
+pub fn secret_present(ctx: &Context, key: &str) -> Result<bool, Error> {
+    let conn = crate::db::open(&ctx.db_path)?;
+    crate::db::migrate(&conn)?;
+    Ok(crate::db::repo::secret_get(&conn, key)?.is_some())
 }
 
 /// `settings get [key]` — prints one value or the whole map (JSON if `--json`).
+/// Secret keys print presence only, never the stored value.
 pub fn get(ctx: &Context, key: Option<&str>) -> Result<crate::cli::ExitCode, Error> {
     let s = Settings::load(&ctx.config_path)?;
     match key {
+        Some(k) if is_secret_key(k) => {
+            let present = secret_present(ctx, k)?;
+            println!("{k} = {}", if present { "(set)" } else { "(not set)" });
+            Ok(crate::cli::ExitCode::Ok)
+        }
         Some(k) if !KNOWN_KEYS.contains(&k) && !s.extra.contains_key(k) => {
             Err(Error::Usage(format!("unknown setting '{k}'")))
         }
@@ -167,21 +209,58 @@ pub fn get(ctx: &Context, key: Option<&str>) -> Result<crate::cli::ExitCode, Err
             Ok(crate::cli::ExitCode::Ok)
         }
         None => {
-            println!("{}", serde_json::to_string_pretty(&snapshot(&s))?);
+            println!("{}", serde_json::to_string_pretty(&load_snapshot(ctx)?)?);
             Ok(crate::cli::ExitCode::Ok)
         }
     }
 }
 
-/// `settings set <key> <value>` — persists a value; secrets validated only.
-pub fn set(ctx: &Context, key: &str, value: &str) -> Result<crate::cli::ExitCode, Error> {
-    let parsed = apply(ctx, key, value)?;
+/// `settings set <key> <value> [--secret]` — persists a value; secrets are
+/// written to the SQLite DB and never echoed.
+pub fn set(
+    ctx: &Context,
+    key: &str,
+    value: &str,
+    secret: bool,
+) -> Result<crate::cli::ExitCode, Error> {
+    if secret || is_secret_key(key) {
+        let conn = crate::db::open(&ctx.db_path)?;
+        crate::db::migrate(&conn)?;
+        crate::db::repo::secret_set(&conn, key, value)?;
+        println!(
+            "{key} = {}",
+            if value.is_empty() {
+                "(cleared)"
+            } else {
+                "(set)"
+            }
+        );
+        return Ok(crate::cli::ExitCode::Ok);
+    }
+    let parsed = apply(ctx, key, value, false)?;
     println!("{key} = {parsed}");
     Ok(crate::cli::ExitCode::Ok)
 }
 
 /// Persist a setting and return the new value (data form for the GUI bridge).
-pub fn apply(ctx: &Context, key: &str, value: &str) -> Result<serde_json::Value, Error> {
+/// With `secret: true` the value goes to the SQLite `secret` table and the
+/// returned value is a presence marker, never the raw secret.
+pub fn apply(
+    ctx: &Context,
+    key: &str,
+    value: &str,
+    secret: bool,
+) -> Result<serde_json::Value, Error> {
+    if secret || is_secret_key(key) {
+        let conn = crate::db::open(&ctx.db_path)?;
+        crate::db::migrate(&conn)?;
+        crate::db::repo::secret_set(&conn, key, value)?;
+        return Ok(serde_json::Value::String(if value.is_empty() {
+            "(cleared)".into()
+        } else {
+            "(set)".into()
+        }));
+    }
     let mut s = Settings::load(&ctx.config_path)?;
     let parsed: serde_json::Value = if value == "true" || value == "false" {
         serde_json::Value::Bool(value == "true")
@@ -218,7 +297,7 @@ mod tests {
     fn apply_empty_value_parses_as_string_not_number() {
         let ctx = tmp_ctx("empty");
         // Regression: "" is all-()digits vacuously; it must not panic on parse.
-        let parsed = apply(&ctx, "source-priority", "").expect("empty value applies");
+        let parsed = apply(&ctx, "source-priority", "", false).expect("empty value applies");
         assert_eq!(parsed, serde_json::Value::String(String::new()));
         let saved = Settings::load(&ctx.config_path).expect("load");
         assert_eq!(saved.source_priority.as_deref(), Some(""));
@@ -229,22 +308,53 @@ mod tests {
     fn apply_parses_digits_booleans_and_strings() {
         let ctx = tmp_ctx("kinds");
         assert_eq!(
-            apply(&ctx, "download-grace-seconds", "30").expect("number"),
+            apply(&ctx, "download-grace-seconds", "30", false).expect("number"),
             serde_json::Value::Number(serde_json::Number::from(30u64))
         );
         assert_eq!(
-            apply(&ctx, "capture-aware", "true").expect("bool"),
+            apply(&ctx, "capture-aware", "true", false).expect("bool"),
             serde_json::Value::Bool(true)
         );
         assert_eq!(
-            apply(&ctx, "theme", "Nord").expect("string"),
+            apply(&ctx, "theme", "Nord", false).expect("string"),
             serde_json::Value::String("Nord".into())
         );
         // Non-numeric strings must not be rejected as numbers.
         assert!(matches!(
-            apply(&ctx, "download-grace-seconds", "abc"),
+            apply(&ctx, "download-grace-seconds", "abc", false),
             Err(Error::Usage(_))
         ));
+        let _ = fs::remove_dir_all(ctx.config_path.parent().expect("dir"));
+    }
+
+    #[test]
+    fn secrets_go_to_sqlite_and_are_never_echoed() {
+        let ctx = tmp_ctx("secrets");
+        assert_eq!(
+            apply(&ctx, "sgdb-api-key", "super-secret", false).expect("auto-secret route"),
+            serde_json::Value::String("(set)".into())
+        );
+        assert_eq!(
+            apply(&ctx, "igdb-client-secret", "client-secret", true).expect("secret flag"),
+            serde_json::Value::String("(set)".into())
+        );
+        // The JSON config must not contain the secret value.
+        let saved = Settings::load(&ctx.config_path).expect("load");
+        assert!(!saved.extra.contains_key("sgdb-api-key"));
+        assert!(!saved.extra.contains_key("igdb-client-secret"));
+
+        // get() prints presence only, not the value.
+        assert!(secret_present(&ctx, "sgdb-api-key").unwrap());
+        assert!(secret_present(&ctx, "igdb-client-secret").unwrap());
+        assert!(!secret_present(&ctx, "igdb-client-id").unwrap());
+
+        // Clearing returns a marker and removes the row.
+        assert_eq!(
+            apply(&ctx, "sgdb-api-key", "", false).expect("clear secret"),
+            serde_json::Value::String("(cleared)".into())
+        );
+        assert!(!secret_present(&ctx, "sgdb-api-key").unwrap());
+
         let _ = fs::remove_dir_all(ctx.config_path.parent().expect("dir"));
     }
 }

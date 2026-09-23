@@ -1,85 +1,80 @@
 ---
-name: download-manager-integration
+name: download-dispatch
 rule_number: 07
-scope: download dispatch, download-manager adapters, cross-platform spawn, folder folding
-enforcement: dm family agents; mocked DM tests; offline-safe suites
+scope: download dispatch, in-app streaming, OS-default-handler pass-through, folder folding
+enforcement: dm family agents; stream-seam tests; offline-safe suites
 ---
 
-# Rule 07: Download Manager Integration
+# Rule 07: Download Dispatch
 
-Downloads are handed to an **installed download manager** through a pluggable
-**adapter layer**. lewdzone-launcher never downloads the file itself, never drives a
-manager's UI, never guesses a binary path, and always hands the manager the
-**resolved real URL** (never a `#fragment` go-link).
+Downloads are dispatched by **host class**, not by a pluggable download-manager
+adapter. lewdzone-launcher streams **direct-file hosts** in-app with live byte
+progress and hands every other **resolved real URL** to the OS default handler
+(the installed cloud app for that service, or the browser). There is no
+download-manager detection, no adapter layer, and nothing is ever handed a
+`#fragment` go-link.
 
-## Adapter contract
+## Dispatch model
 
 ```mermaid
 flowchart LR
-    A["controller dispatch"] --> B["dm-detector select active"]
-    B --> C{"torrent link?"}
-    C -- yes --> D["torrent-adapter"]
-    C -- no --> E["fdm or idm adapter"]
-    D --> F["DownloadJob dispatched"]
-    E --> F
-    F --> G["folder-organizer on completion"]
+    A["controller dispatch"] --> B{"direct-file host?"}
+    B -- yes --> C["in-app stream to job.target"]
+    B -- no --> D["OS default handler (open_url)"]
+    C --> E["bytes progress on queue job"]
+    D --> E
+    E --> F["folder-organizer on completion"]
 ```
 
-## Per-manager invocation
-
-| Manager | Platform | Invocation |
-| --- | --- | --- |
-| FDM | Windows | `fdm.exe -fs "<url>"` |
-| IDM | Windows | `IDMan.exe /d <url> /n /p <target_dir>` |
-| uTorrent/BitTorrent | Windows/Linux/macOS | `<client> <magnet or .torrent>` |
-
-Every adapter implements `name`, `platforms`, `handles_kind`,
-`detect() -> Option<PathBuf>`, `launch(url, target_dir, filename)`. Register
-adapters in a registry in the `dm` core module; dispatch is
-`registry[settings.active_manager]`.
+`DIRECT_STREAM_HOSTS` lists the hosts that return the file directly
+(`fileknot` today); every other allowlisted host opens via the OS default
+handler (cloud app or browser).
 
 ## Hard rules
 
-1. **Resolve first.** Never pass a `#fragment` go-link to any manager. Resolve
-   via `api.php` (Rule 05) and strip the trailing literal `\r`.
-2. **Silent always.** FDM `-fs`; IDM `/n`; torrent clients take the link as a
-   positional argument. No interactive dialogs.
-3. **Never spawn via a shell.** Build an argv array with
-   `std::process::Command`; URLs are data.
-4. **Cross-platform spawn.** Windows `CREATE_NO_WINDOW`; POSIX detached
-   session (setsid). Never interpolate a command-string from user input.
-5. **Detach.** Schedule async on the manager's side; never wait for the full
-   download lifetime. Job row → `status=dispatched` before spawn.
-6. **Tolerate absent managers.** A manager missing on the current platform is
-   normal (FDM/IDM are Windows-only). Report what IS installed; exit code 4
-   (Rule 12) with an actionable message, never a hang.
-7. **Torrents route to torrent clients only.** `.torrent`/magnet never reach
-   http adapters.
-8. **Fold after completion** via folder-organizer:
+1. **Resolve first.** Never dispatch a `#fragment` go-link. Resolve via
+   `api.php` (Rule 05) and strip the trailing literal `\r`.
+2. **Direct-file hosts stream in-app.** GET the resolved URL and write to
+   `job.target` in 128 KiB chunks, reporting `(bytes_done, bytes_total)` into
+   the queue job (Rule 11 seam for offline tests).
+3. **Redirects stay same-owner.** A stream redirect must remain on the same
+   host or a dot-boundary subdomain; a cross-domain detour is refused
+   (`Error::Network`). Max 3 redirect hops.
+4. **Everything else opens via the OS default handler.** `core::native::open_url`
+   uses `rundll32 url.dll,FileProtocolHandler` (Windows), `open` (macOS),
+   `xdg-open` (Linux) with no shell and no window.
+5. **Never spawn a download manager.** No adapter registry, no `active_manager`
+   setting, no per-manager CLI flags. Delete stale manager references.
+6. **No body-read timeouts on streams.** The download agent may set connect and
+   response-header timeouts but must not impose a per-body-read budget that
+   would abort a multi-GB stream. `max_redirects(0)` + manual hop validation.
+7. **Fold after completion** via folder-organizer:
    `<DownloadRoot>/Games/<Title>/<Title> - <Version> - <Platform>[- <Variant>].<ext>`;
    sanitize `\ / : * ? " < > |`; never overwrite (suffix ` (1)`, ` (2)`, ...).
 
 ## Errors
 
-- **Manager missing** → error code 4 (`DM_MISSING`, see Rule 12) listing
-  discovered alternatives.
-- **Resolve failed/timeout** → do NOT hand any manager the token fragment;
-  report the resolve error (code 3).
-- **Spawn failed** → mark job `status=failed`; surface the OS error, not a
+- **Redirect refused** → error code 3 (`NETWORK`, Rule 12) with the refused
+  target; the file is never partially written from a foreign host.
+- **Resolve failed/timeout** → do NOT dispatch the token fragment; report the
+  resolve error (code 3).
+- **Stream failed** → mark the job `status=failed`; surface the OS error, not a
   crash.
 
 ## Testing
 
-- Mock `fdm.exe` / `IDMan.exe` / torrent-client shims as Rust test helper
-  modules (under `src-tauri/tests/support/`) that record argv; assert
-  invocation shapes per adapter.
-- Detection + spawn suites run on the platform seam (see `architect`) — the
-  fake never talks to a real manager.
-- Live smoke (opt-in, tagged `#[ignore]`) may launch a real manager with a
-  harmless URL; CI never does.
+- The stream seam takes `(url) -> (total_bytes, Box<dyn Read>)` (see
+  `download::StreamFn`); tests inject a stub reader and assert
+  `bytes_done`/`bytes_total` propagate into the queue job.
+- Redirect helpers (`origin_of`, `redirect_target`, `download_stream`) have
+  unit tests pinning same-owner acceptance and cross-domain refusal.
+- Live smoke (opt-in, tagged `#[ignore]`) may stream a harmless direct file;
+  CI never does.
 
 ## Definition of done
 
-- Adapter registry + per-manager argv shapes are unit-tested and pinned.
-- Missing manager yields a typed error with an alternatives list, fast.
+- Direct-file hosts stream in-app with byte progress; all other hosts open via
+  the OS default handler — both paths unit-tested and pinned.
+- Cross-domain redirect detours are refused with a typed error, fast.
 - The folder-folding and naming behavior is cross-platform-verified.
+- No download-manager references remain in code, settings, or docs.

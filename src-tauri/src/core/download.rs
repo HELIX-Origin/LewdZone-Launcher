@@ -6,12 +6,15 @@
 //! either stream the file into a canonical target (hosts whose reveal is a
 //! direct file URL — see `DIRECT_STREAM_HOSTS`, folder-organizer) or pass the
 //! URL to the OS default handler (installed cloud app / browser; zero config).
+//! Streamed `.zip` archives are extracted into `<lzapps_root>/<slug>/` and
+//! tracked with an itch.io-style `app.json` manifest.
 //! The game fetch, the resolver, and the stream are injectable so every path
 //! is covered offline with fixtures (Rule 11).
 
 use std::io::{Read, Write};
 use std::path::PathBuf;
 
+use crate::core::extract;
 use crate::core::folder;
 use crate::core::models::{DownloadEntry, Game};
 use crate::core::{Context, Error};
@@ -22,11 +25,15 @@ use crate::scraper;
 #[derive(Debug, Clone, serde::Serialize)]
 pub struct Job {
     pub game: String,
+    pub title: String,
+    pub post_id: Option<i64>,
+    pub engine: Option<String>,
     pub version: String,
     pub platform: String,
     pub tab: String,
     pub url: String,
     pub target: Option<PathBuf>,
+    pub install_dir: Option<PathBuf>,
 }
 
 /// The user-facing selection of what to fetch and grab from a game page.
@@ -208,6 +215,7 @@ pub fn job_for(
     game: &Game,
     entry: &DownloadEntry,
     root: &std::path::Path,
+    lzapps_root: &std::path::Path,
     resolve: &mut dyn FnMut(&str) -> Result<resolver::ResolvedUrl, Error>,
 ) -> Result<Job, Error> {
     crate::resolver::validate_host(&entry.host)?;
@@ -231,13 +239,18 @@ pub fn job_for(
         &target_name,
         false,
     );
+    let install_dir = folder::install_dir(lzapps_root, &game.slug);
     Ok(Job {
         game: game.slug.clone(),
+        title: game.title.clone(),
+        post_id: game.post_id,
+        engine: game.engine.clone(),
         version: entry_label(entry),
         platform,
         tab: entry.host.clone(),
         url: resolved.url,
         target: Some(final_path),
+        install_dir: Some(install_dir),
     })
 }
 
@@ -331,6 +344,8 @@ pub fn dispatch_with(
 
 /// Stream `download(url)` into `job.target`, reporting `(bytes done, total)`.
 /// Fails without touching the network when the job has no computed target.
+/// After a `.zip` finishes, it is extracted into `job.install_dir` and an
+/// `app.json` manifest is written.
 pub fn stream_target(
     job: &Job,
     download: StreamFn<'_>,
@@ -356,6 +371,23 @@ pub fn stream_target(
         done += n as u64;
         progress(done, total);
     }
+
+    if folder::file_ext(&target.to_string_lossy()) == "zip" {
+        if let Some(install_dir) = &job.install_dir {
+            let meta = extract::InstallMeta {
+                slug: &job.game,
+                post_id: job.post_id,
+                title: &job.title,
+                version: &job.version,
+                platform: &job.platform,
+                tab: &job.tab,
+                engine: job.engine.as_deref(),
+                download_url: &job.url,
+            };
+            extract::install_from_archive(target, install_dir, &meta)?;
+        }
+    }
+
     Ok(())
 }
 
@@ -394,6 +426,11 @@ pub fn jobs_for(
     if sel.game.trim().is_empty() {
         return Err(Error::Usage("game slug required".to_string()));
     }
+    if crate::core::models::normalize_platform(sel.platform) == "android" {
+        return Err(Error::Usage(
+            "Android game downloads are not supported by the desktop app".to_string(),
+        ));
+    }
     // Canonical game URL (slug may itself be a full URL; normalize).
     let slug = crate::core::game_arg_slug(sel.game);
     let url = format!("https://lewdzone.com/game/{slug}/");
@@ -410,10 +447,11 @@ pub fn jobs_for(
         sel.source,
     )?;
     let root = folder::download_root(ctx)?;
+    let lzapps_root = folder::lzapps_root(ctx)?;
 
     let mut jobs: Vec<Job> = Vec::new();
     for entry in entries {
-        let job = job_for(&parsed, entry, &root, resolve)?;
+        let job = job_for(&parsed, entry, &root, &lzapps_root, resolve)?;
         jobs.push(job);
     }
     Ok(jobs)
@@ -554,12 +592,89 @@ mod tests {
     fn job_for_builds_canonical_target() {
         let game = sample_game();
         let entry = sample_entry(&game);
-        let root = std::path::Path::new("D:/Downloads");
-        let job = job_for(&game, entry, root, &mut stub_resolve).unwrap();
+        let root = std::path::Path::new("test-downloads-root");
+        let lzapps = std::path::Path::new("test-lzapps-root");
+        let job = job_for(&game, entry, root, lzapps, &mut stub_resolve).unwrap();
         assert!(job.url.starts_with("https://fileknot.io/"));
         let target = job.target.unwrap();
         assert!(target.starts_with(root));
         assert!(target.extension().is_some());
+        let install = job.install_dir.unwrap();
+        assert!(install.starts_with(lzapps));
+        assert!(install.to_string_lossy().contains("treasure-of-nadia"));
+    }
+
+    #[test]
+    fn jobs_for_rejects_android_platform() {
+        let ctx = Context::new(
+            std::env::temp_dir().join("lz-dl-android.db"),
+            std::env::temp_dir().join("lz-dl-android-config.json"),
+        );
+        std::fs::write(&ctx.config_path, b"{}").unwrap();
+        let sel = Select {
+            game: "treasure-of-nadia",
+            version: "latest",
+            platform: "Android",
+            tab: "official",
+            source: None,
+        };
+        let err = jobs_for(
+            &ctx,
+            &sel,
+            &mut |_| Ok(GAME_FIXTURE.to_string()),
+            &mut stub_resolve,
+        )
+        .unwrap_err();
+        assert!(matches!(err, Error::Usage(_)));
+        assert!(err.to_string().contains("Android"));
+    }
+
+    fn write_zip(path: &std::path::Path, files: &[(&str, &[u8])]) {
+        use std::io::Write;
+        let file = std::fs::File::create(path).unwrap();
+        let mut zip = zip::write::ZipWriter::new(file);
+        let options = zip::write::SimpleFileOptions::default()
+            .compression_method(zip::CompressionMethod::Stored);
+        for (name, data) in files {
+            zip.start_file(*name, options).unwrap();
+            zip.write_all(data).unwrap();
+        }
+        zip.finish().unwrap();
+    }
+
+    #[test]
+    fn stream_target_extracts_zip_to_install_dir() {
+        let tmp = std::env::temp_dir().join(format!("lz-stream-test-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&tmp);
+        std::fs::create_dir_all(&tmp).unwrap();
+        let source = tmp.join("source.zip");
+        write_zip(&source, &[("game.exe", b"fake exe")]);
+        let target = tmp.join("game.zip");
+        let install = tmp.join("treasure-of-nadia");
+
+        let job = Job {
+            game: "treasure-of-nadia".into(),
+            title: "Treasure of Nadia".into(),
+            post_id: Some(1),
+            engine: None,
+            version: "1.0".into(),
+            platform: "pc".into(),
+            tab: "fileknot".into(),
+            url: "https://fileknot.io/dl/abc".into(),
+            target: Some(target.clone()),
+            install_dir: Some(install.clone()),
+        };
+
+        let mut download = |_: &str| {
+            let file = std::fs::File::open(&source)?;
+            let total = file.metadata()?.len();
+            Ok((total, Box::new(file) as Box<dyn Read>))
+        };
+
+        stream_target(&job, &mut download, &mut |_, _| {}).unwrap();
+        assert!(!target.exists(), "archive removed after extraction");
+        assert!(install.join("game.exe").exists());
+        assert!(install.join("app.json").exists());
     }
 
     #[test]

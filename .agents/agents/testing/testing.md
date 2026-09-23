@@ -36,7 +36,7 @@ flowchart TD
     end
     subgraph L3["live - opt-in, tagged"]
         L[resolver real api one token]
-        SFDM[fdm fake exe argv test]
+        SFDM[stream-seam stub: bytes + reader]
     end
 
     L1 --> L2
@@ -50,13 +50,14 @@ flowchart TD
 ## Guiding rules
 
 1. Offline by default: unit + integration never touch lewdzone.com, SteamGridDB,
-   or a real FDM. Everything external is a fixture or a fake
+   or a live download stream. Everything external is a fixture or a fake
    (see `mock-engineer` / `fixture-crafter`).
 2. Live tests are opt-in (`#[ignore]` tags, run with `cargo test -- --ignored`)
    and never run in CI.
 3. Deterministic: no sleeps in tests; use injected clocks / event loops.
-4. Assert on behavior, not implementation; but the DM argv shape and resolver
-   request bodies ARE contracts worth asserting.
+4. Assert on behavior, not implementation; but the stream seam shape
+   (`(total_bytes, Box<dyn Read>)` + byte progress) and resolver request bodies
+   ARE contracts worth asserting.
 5. CLI is tested end-to-end through its real entrypoint: `assert_cmd` /
    `std::process::Command` runner with typed stdout assertions, plus golden
    files for `--json`.

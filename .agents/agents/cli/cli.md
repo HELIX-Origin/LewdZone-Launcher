@@ -34,9 +34,9 @@ flowchart TD
     U --> CLI["lewdzone-launcher (same binary, CLI args)"]
     APP -->|"invoke()"| CMD["lib.rs #[tauri::command]"]
     CLI -->|"arg dispatch"| CMD
-    CMD --> CORE["shared Rust core - db / scrape / resolve / dm / artwork"]
+    CMD --> CORE["shared Rust core - db / scrape / resolve / download / artwork"]
     CORE --> SITE[lewdzone.com]
-    CORE --> DM["download managers fdm idm torrent"]
+    CORE --> OS["OS handler + in-app stream (downloads)"]
     CORE --> SQL["sqlite"]
 
     style APP fill:#874b4b,color:#fff
@@ -59,7 +59,6 @@ flowchart LR
     L --> settingscmd[settings]
     L --> shortcuts[shortcuts]
     L --> launch[launch]
-    L --> dm[dm]
 
     sync --> fs1["--full | --platform PLATFORM"]
     search --> ss1[QUERY --json]
@@ -71,7 +70,6 @@ flowchart LR
 
     style L fill:#4b6e91,color:#fff
     style download fill:#2f6f4f,color:#fff
-    style dm fill:#2f6f4f,color:#fff
 ```
 
 ## Command conventions
@@ -80,7 +78,8 @@ flowchart LR
 2. Global options: `--db PATH`, `--config PATH`, `--json`, `--verbose`,
    `--debug`, `--no-color`.
 3. Stable exit codes: `0` success, `1` runtime error, `2` usage error,
-   `3` network/site error, `4` download manager missing, `5` interrupted.
+   `3` network/site error, `5` interrupted (`4` reserved, formerly the
+   download-manager-missing code).
 4. Every command supports `--json` emitting one JSON document to stdout that a
    script can parse. Human mode uses tables.
 5. Output goes to stdout; diagnostics/logs go to stderr (never mix).

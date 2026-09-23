@@ -14,7 +14,7 @@ description: Index of every rule (00-13) in the lewdzone-launcher ecosystem, map
 | `04` | Remote Issue Protocol | [review](../agents/review/review.md) + HELIX-derived | GitHub issues, sub-issues, PRs, roadmap-first |
 | `05` | Network Etiquette | [scraper](../agents/scraper/scraper.md), [resolver](../agents/resolver/resolver.md), [shortcuts](../agents/shortcuts/shortcuts.md) | all HTTP traffic, rate, headers, UA |
 | `06` | SQLite Conventions | [database](../agents/database/database.md), [schema-designer](../agents/database/schema-designer/schema-designer.md) | schema, WAL, FK, transactions, migrations |
-| `07` | Download Manager Integration | [dm](../agents/dm/dm.md), [dm-detector](../agents/dm/dm-detector/dm-detector.md), [fdm-adapter](../agents/dm/fdm-adapter/fdm-adapter.md), [idm-adapter](../agents/dm/idm-adapter/idm-adapter.md), [torrent-adapter](../agents/dm/torrent-adapter/torrent-adapter.md), [folder-organizer](../agents/dm/folder-organizer/folder-organizer.md) | process spawn, adapters, CLI flags, download folding |
+| `07` | Download Dispatch | [dm](../agents/dm/dm.md), [folder-organizer](../agents/dm/folder-organizer/folder-organizer.md) | in-app streaming, OS-default-handler pass-through, download folding |
 | `08` | Release Standards | [review](../agents/review/review.md) + HELIX-derived | version strings, tags, changelogs, publish |
 | `09` | Mermaid Standards | **every agent with a diagram** + HELIX-derived | every ```` ```mermaid ```` block |
 | `10` | Security & Secrets | [review](../agents/review/security-auditor/security-auditor.md) | secrets, URLs, SQL injection, process spawn |
@@ -35,7 +35,7 @@ flowchart TD
     subgraph D["data plane"]
         R05["Rule 05 - network"]
         R06["Rule 06 - sqlite"]
-        R07["Rule 07 - download manager"]
+        R07["Rule 07 - download dispatch"]
     end
     subgraph Q["quality plane"]
         R10["Rule 10 - security"]

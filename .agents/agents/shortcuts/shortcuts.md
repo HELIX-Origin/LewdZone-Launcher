@@ -8,7 +8,8 @@ model: default
 # Shortcuts (Primary Agent)
 
 Owns the "make your downloads feel like real games" layer: after the download
-finishes and the folder-organizer archives it, this family creates a
+finishes and the folder-organizer folds it into the library, this family
+creates a
 double-clickable native shortcut (Windows `.lnk`, Linux `.desktop`, macOS
 `.app`/Finder alias) in the Start Menu / Applications and/or Desktop, gives it
 a proper icon from **SteamGridDB**, and keeps the whole thing re-runnable.

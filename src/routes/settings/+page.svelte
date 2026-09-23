@@ -36,12 +36,13 @@
 
   onMount(load);
 
-  async function save(key: string, value: unknown) {
+  async function save(key: string, value: unknown, secret = false) {
     busy = true;
     try {
       const view = await invoke<{ key: string; value: never }>("settings_set", {
         key,
         value: String(value),
+        secret,
       });
       snapshot = { ...snapshot, [view.key]: view.value };
       toast = `${view.key} saved`;
@@ -50,6 +51,17 @@
     } finally {
       busy = false;
     }
+  }
+
+  const SECRET_KEYS = [
+    ["sgdb-api-key", "SteamGridDB API key", "Used to fetch artwork (https://www.steamgriddb.com/profile/preferences/api)."],
+    ["igdb-client-id", "IGDB client ID", "Twitch/IGDB OAuth client ID."],
+    ["igdb-client-secret", "IGDB client secret", "Twitch/IGDB OAuth client secret."],
+  ] as const;
+
+  function secretPresence(key: string) {
+    const v = snapshot[key];
+    return typeof v === "string" && v === "(set)" ? "(set)" : "(not set)";
   }
 
   async function applyTheme(name: string) {
@@ -141,6 +153,29 @@
       <span class="field-hint">Nord, Dracula, and Material ship with the app. Custom skins go in the user skins folder (one subfolder per theme) — next to the app on Windows, in the app data folder on macOS/Linux. Built-in default stays; skins apply at runtime — no restart needed.</span>
     </fieldset>
 
+    <fieldset class="field">
+      <legend class="field-label">API keys</legend>
+      <p class="field-hint">
+        Stored in the local database — never in the readable config file. Leave blank and press Enter to clear a key.
+      </p>
+      {#each SECRET_KEYS as [key, label, hint] (key)}
+        <label class="field">
+          <span class="field-label">{label}</span>
+          <input
+            type="password"
+            value=""
+            placeholder={secretPresence(key)}
+            aria-label={label}
+            onchange={(e) => save(key, (e.currentTarget as HTMLInputElement).value, true)}
+            onkeydown={(e) => {
+              if (e.key === "Enter") (e.currentTarget as HTMLInputElement).blur();
+            }}
+          />
+          <span class="field-hint">{hint}</span>
+        </label>
+      {/each}
+    </fieldset>
+
     {#if toast}<p class="toast" aria-live="polite">{toast}</p>{/if}
   </div>
 {/if}
@@ -172,6 +207,7 @@
   }
 
   input[type="text"],
+  input[type="password"],
   select {
     background: var(--lz-surface-2);
     border: 1px solid var(--lz-surface-2);

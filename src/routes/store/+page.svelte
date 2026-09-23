@@ -47,7 +47,7 @@
     count: number | null;
   }
 
-  const PLATFORMS = ["", "PC", "Mac", "Linux", "Android"];
+  const PLATFORMS = ["", "PC", "Mac", "Linux"];
   const ENGINES = [
     "",
     "RenPy",
@@ -71,7 +71,6 @@
 
   const platformLabel: Record<string, string> = {
     pc: "PC",
-    android: "Android",
     mac: "Mac",
     linux: "Linux",
   };

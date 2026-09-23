@@ -286,7 +286,7 @@ describe("store game detail page", () => {
 describe("library page", () => {
   it("shows the empty state when nothing is installed", async () => {
     mockInvoke(async (cmd: string) => {
-      if (cmd === "library_list") return { root: "D:/lewdzone/library", games: [] };
+      if (cmd === "library_list") return { root: "/fake/library", games: [] };
       return [];
     });
     render(LibraryPage);
@@ -298,7 +298,7 @@ describe("library page", () => {
     mockInvoke(async (cmd: string) => {
       if (cmd === "library_list") {
         return {
-          root: "D:/lewdzone/library",
+          root: "/fake/library",
           games: [
             { post_id: 54321, size: 5_368_709_120, folder: "Wild Life" },
             { post_id: 111, size: 214_748_3648, folder: "Treasure of Nadia" },
@@ -373,10 +373,13 @@ describe("settings page", () => {
       switch (cmd) {
         case "settings_get":
           return {
-            "library-root": "D:/Games",
+            "library-root": "/fake/games",
             "capture-aware": false,
             "source-priority": "mega,google",
             theme: "",
+            "sgdb-api-key": "(set)",
+            "igdb-client-id": "(not set)",
+            "igdb-client-secret": "(not set)",
           };
         case "themes_list":
           return ["midnight", "candy"];
@@ -391,20 +394,20 @@ describe("settings page", () => {
   it("loads snapshot + theme list into the page", async () => {
     render(SettingsPage);
     expect(await screen.findByText("Settings")).toBeInTheDocument();
-    expect(await screen.findByDisplayValue("D:/Games")).toBeInTheDocument();
+    expect(await screen.findByDisplayValue("/fake/games")).toBeInTheDocument();
     expect(await screen.findByRole("option", { name: "midnight" })).toBeInTheDocument();
   });
 
   it("saves a text setting through settings_set", async () => {
     const user = userEvent.setup();
     render(SettingsPage);
-    const list = await screen.findByDisplayValue("D:/Games");
+    const list = await screen.findByDisplayValue("/fake/games");
     await user.type(list, "/SteamLibrary");
     await user.keyboard("{Enter}");
 
     expect(invoke).toHaveBeenCalledWith(
       "settings_set",
-      expect.objectContaining({ key: "library-root", value: "D:/Games/SteamLibrary" }),
+      expect.objectContaining({ key: "library-root", value: "/fake/games/SteamLibrary" }),
     );
     expect(await screen.findByText("library-root saved")).toBeInTheDocument();
   });
@@ -441,5 +444,29 @@ describe("settings page", () => {
       expect.objectContaining({ key: "home-page", value: "favorites" }),
     );
     expect(await screen.findByText("home-page saved")).toBeInTheDocument();
+  });
+
+  it("shows secret API keys as set or not set without revealing values", async () => {
+    render(SettingsPage);
+    expect(await screen.findByLabelText("SteamGridDB API key")).toBeInTheDocument();
+    const sgdb = (await screen.findByLabelText("SteamGridDB API key")) as HTMLInputElement;
+    expect(sgdb.placeholder).toBe("(set)");
+    const igdbId = (await screen.findByLabelText("IGDB client ID")) as HTMLInputElement;
+    expect(igdbId.placeholder).toBe("(not set)");
+    expect(sgdb.value).toBe("");
+  });
+
+  it("saves an API key via settings_set with secret=true", async () => {
+    const user = userEvent.setup();
+    render(SettingsPage);
+    const input = (await screen.findByLabelText("IGDB client secret")) as HTMLInputElement;
+    await user.type(input, "my-secret-value");
+    await user.keyboard("{Enter}");
+
+    expect(invoke).toHaveBeenCalledWith(
+      "settings_set",
+      expect.objectContaining({ key: "igdb-client-secret", value: "my-secret-value", secret: true }),
+    );
+    expect(await screen.findByText("igdb-client-secret saved")).toBeInTheDocument();
   });
 });

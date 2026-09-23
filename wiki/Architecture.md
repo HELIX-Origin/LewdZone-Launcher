@@ -84,6 +84,15 @@ and per-game saves, mirroring the shape of modern desktop launchers:
     downloading/<post_id>/              # in-progress downloads
     artwork/<post_id>_<kind>.png        # hero / logo / p / bare grid art
   userdata/<local_user_id>/             # per-user config + shortcuts
+<downloads>/                            # per-OS user-accessible downloads folder:
+                                        #   Windows: <install dir>/downloads
+                                        #   macOS/Linux: <data_root>/downloads
+  Games/<Game Title>/<Title> - <Version> - <Platform>.zip
+<lzapps>/                               # per-OS user-accessible installed apps folder:
+                                        #   Windows: <install dir>/lzapps
+                                        #   macOS/Linux: <data_root>/lzapps
+  <slug>/app.json                       # itch.io-style install manifest
+  <slug>/<extracted game files>
 <cache_root>/lewdzone/         # %LOCALAPPDATA% / ~/Library/Caches / $XDG_CACHE_HOME
   htmlcache/                            # webview/tile cache
 <documents>/My Games/<Game Title>/      # per-game saves (Documents\My Games analog)
@@ -142,7 +151,11 @@ listing or download. See [Agents](Agents) for the `content` family.
    handler (installed cloud app or browser). Redirects during a stream must
    stay on the same host (or a subdomain) — anything else is refused.
 4. `core/folder` folds the result into
-   `<DownloadRoot>/Games/<Title>/<Title> - <Version> - <Platform>[- <Variant>].<ext>`.
+   `<downloads>/Games/<Title>/<Title> - <Version> - <Platform>[- <Variant>].<ext>`.
+   If the downloaded file is a `.zip`, `core/extract` removes any existing
+   `<lzapps>/<slug>/` folder, extracts the archive there, deletes the archive,
+   and writes an `app.json` manifest with install metadata and executable
+   candidates (including a user-editable `launch_exe` override).
 
 See [Downloads & In-App Streaming](Download-Managers).
 
@@ -163,7 +176,8 @@ provides the `lewdzone` command, so no sidecar artifact is bundled.
 
 - Config dirs: `%APPDATA%` (Windows), `~/.config` or `$XDG_CONFIG_HOME` (Linux),
   `~/Library/Application Support` (macOS).
-- Spawn flags (when invoking download managers or shortcuts): `CREATE_NO_WINDOW`
-  (Windows) vs detached POSIX session; never launch with a shell.
+- Spawn flags (when invoking shortcuts or the OS default handler):
+  `CREATE_NO_WINDOW` (Windows) vs detached POSIX session; never launch with a
+  shell.
 - Shortcuts: `.lnk`, `.desktop` (xdg), `.app`/aliases (macOS).
 - All paths via `std::path::PathBuf`; no hardcoded separators.

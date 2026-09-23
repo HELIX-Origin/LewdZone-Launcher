@@ -188,6 +188,42 @@ pub fn skin_dir(name: &str) -> Option<PathBuf> {
     skins_dir().map(|dir| dir.join(sanitize_dir_name(name)))
 }
 
+/// Raw download staging folder (ADR-0005):
+/// `<downloads>/<Game>/<archive>` before extraction.
+///
+/// Same per-OS accessibility choice as `skins_dir()` so users can reach it:
+/// - Windows: next to the executable — `<app>/downloads`
+/// - macOS:   the user data dir
+/// - Linux:   the local-share data dir
+pub fn downloads_dir() -> Option<PathBuf> {
+    #[cfg(target_os = "windows")]
+    {
+        app_dir().map(|root| root.join("downloads"))
+    }
+    #[cfg(not(target_os = "windows"))]
+    {
+        data_root().map(|root| root.join("downloads"))
+    }
+}
+
+/// Installed / extracted app folder (ADR-0005):
+/// `<lzapps>/<Game>/` with an itch.io-style `app.json` manifest.
+///
+/// Same per-OS accessibility choice as `skins_dir()`:
+/// - Windows: next to the executable — `<app>/lzapps`
+/// - macOS:   the user data dir
+/// - Linux:   the local-share data dir
+pub fn lzapps_dir() -> Option<PathBuf> {
+    #[cfg(target_os = "windows")]
+    {
+        app_dir().map(|root| root.join("lzapps"))
+    }
+    #[cfg(not(target_os = "windows"))]
+    {
+        data_root().map(|root| root.join("lzapps"))
+    }
+}
+
 /// Strip characters unsafe in folder names while keeping the readable title.
 fn sanitize_dir_name(title: &str) -> String {
     let bad = ['<', '>', ':', '"', '/', '\\', '|', '?', '*'];
@@ -351,5 +387,45 @@ mod tests {
             dir.join("Pink Neon"),
             "one subfolder per theme"
         );
+    }
+
+    #[test]
+    fn downloads_live_in_a_user_accessible_folder() {
+        let dir = downloads_dir().expect("downloads");
+        assert!(
+            dir.ends_with("downloads"),
+            "downloads dir ends with /downloads: {dir:?}"
+        );
+        assert!(dir.is_absolute(), "downloads dir is an absolute path");
+        #[cfg(target_os = "windows")]
+        {
+            let app = app_dir().expect("executable resolves");
+            assert_eq!(dir, app.join("downloads"), "windows: <app>/downloads");
+        }
+        #[cfg(not(target_os = "windows"))]
+        {
+            let root = data_root().expect("data root");
+            assert!(dir.starts_with(&root), "data-root downloads dir: {dir:?}");
+        }
+    }
+
+    #[test]
+    fn lzapps_live_in_a_user_accessible_folder() {
+        let dir = lzapps_dir().expect("lzapps");
+        assert!(
+            dir.ends_with("lzapps"),
+            "lzapps dir ends with /lzapps: {dir:?}"
+        );
+        assert!(dir.is_absolute(), "lzapps dir is an absolute path");
+        #[cfg(target_os = "windows")]
+        {
+            let app = app_dir().expect("executable resolves");
+            assert_eq!(dir, app.join("lzapps"), "windows: <app>/lzapps");
+        }
+        #[cfg(not(target_os = "windows"))]
+        {
+            let root = data_root().expect("data root");
+            assert!(dir.starts_with(&root), "data-root lzapps dir: {dir:?}");
+        }
     }
 }

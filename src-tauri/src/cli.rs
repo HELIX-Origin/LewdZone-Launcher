@@ -173,6 +173,9 @@ struct SetArgs {
     key: String,
     /// Value.
     value: String,
+    /// Store the value as a secret (API key) in the SQLite DB — never echoed.
+    #[arg(long)]
+    secret: bool,
 }
 
 #[derive(clap::Args, Debug, Default)]
@@ -242,7 +245,7 @@ fn dispatch(cli: Cli) -> Result<ExitCode, crate::core::Error> {
         Command::List(args) => core::list::run(&ctx, args.library, args.jobs),
         Command::Settings(args) => match args.command {
             Some(SettingsCmd::Get(g)) => core::settings::get(&ctx, g.key.as_deref()),
-            Some(SettingsCmd::Set(s)) => core::settings::set(&ctx, &s.key, &s.value),
+            Some(SettingsCmd::Set(s)) => core::settings::set(&ctx, &s.key, &s.value, s.secret),
             None => core::settings::get(&ctx, None),
         },
         Command::Shortcuts(args) => {

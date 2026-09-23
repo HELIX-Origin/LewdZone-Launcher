@@ -76,7 +76,6 @@
 
   const platformLabel: Record<string, string> = {
     pc: "PC",
-    android: "Android",
     mac: "Mac",
     linux: "Linux",
   };
@@ -202,7 +201,7 @@
         <label>
           Platform
           <select bind:value={platform} onchange={onSelectionChange}>
-            {#each ["PC", "Android", "Mac", "Linux"] as p (p)}
+            {#each ["PC", "Mac", "Linux"] as p (p)}
               <option value={p}>{p}</option>
             {/each}
           </select>

@@ -9,9 +9,10 @@ model: default
 
 Owns turning an in-page go-link
 (`https://lewdzone.com/go/#t=v1.<payload>.<sig>`)
-into a **real, actionable download URL** that a download manager can fetch.
-This is the heart of the tool: download managers cannot resolve these links
-themselves (the `#fragment` is never sent to any server), so the app must.
+into a **real, actionable download URL** that the launcher can stream in-app or
+hand to the OS default handler. This is the heart of the tool: the
+`#fragment` is never sent to any server, so the token MUST be resolved through
+the API first.
 
 ## Mission
 
@@ -38,7 +39,7 @@ sequenceDiagram
     alt ok
         API-->>App: {ok:true, url:"https://...zip\r"}
         App->>App: strip trailing \r from url
-        App-->>LZ: (user then downloads real file via a download manager)
+        App-->>LZ: (user then streams / opens the real file)
     else needs-retry
         API-->>App: {retry_in: K}
         App->>App: sleep(K); retry reveal (max 4x)
@@ -60,8 +61,8 @@ sequenceDiagram
 
 ## Non-negotiables
 
-1. NEVER hand a download manager a `#t=...` go-link. Only a resolved real URL
-   (or magnet / torrent) may be passed. See
+1. NEVER hand a `#t=...` go-link to a dispatch path. Only a resolved real URL
+   may be streamed or passed to the OS handler. See
    `.agents/rules/rule-07-download-manager-integration.md`.
 2. Rate-limit and retry politely. Verify against known host slugs (from go.js
    ICONS list) before returning a URL.

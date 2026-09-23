@@ -18,7 +18,7 @@ error contract so parity holds (Rule 03, Rule 13).
 | `1` | runtime error |
 | `2` | usage error |
 | `3` | network error |
-| `4` | download manager missing / not found |
+| `4` | *(unused — was the download-manager-missing code)* |
 | `5` | interrupted (Ctrl+C / user cancel) |
 
 ## Typed errors
@@ -30,7 +30,6 @@ pub enum LewdzoneError {                 // exposes a stable exit code
     Runtime(String),                     // code 1
     Usage(String),                       // code 2
     Network { retry_in: u64 },           // code 3
-    DmMissing { alternatives: Vec<String> }, // code 4
     Interrupted,                         // code 5
 }
 ```
@@ -75,3 +74,10 @@ flowchart TD
 - Swallowing resolve errors (`.ok()` with no handling) to keep a download
   "queued".
 - Printing tracebacks to stdout in `--json` mode.
+
+## Exit code gap at 4
+
+`4` was the download-manager-missing code. The manager layer is removed, and
+the gap is kept intentionally so existing scripts that read `$?` keep
+distinguishing "no such exit" from the codes above/below it. No new error may
+reuse `4`.

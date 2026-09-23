@@ -61,7 +61,7 @@ canonical models (see [module-contractor](../agents/architect/module-contractor/
 - Magic numbers where a `post_id`/`game_id` should be used.
 - File names that survive no path sanitization (`: * ? " < > |` on Windows;
   `/` and `\` separators on all; see
-  [folder-organizer](../agents/dm/folder-organizer/folder-organizer.md)).
+  [folder-title folding](../agents/dm/folder-organizer/folder-organizer.md)).
 
 ```mermaid
 flowchart TD

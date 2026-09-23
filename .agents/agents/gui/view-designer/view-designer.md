@@ -156,13 +156,13 @@ flowchart LR
 ## Settings page
 
 The Settings page (Svelte) lets users configure the launcher. Providers:
-`download-root`, active download manager (`dm`), artwork-cache, API keys for
-the content-provider layer.
+`download-root`, stream progress / dispatch behavior, artwork-cache, API keys
+for the content-provider layer.
 
 ```mermaid
 flowchart LR
     SET[SETTINGS page] --> DR[download root]
-    SET --> DM[active download manager]
+    SET --> DD["download dispatch (stream vs OS handler)"]
     SET --> CK["API keys section"]
     CK --> K1[SteamGridDB key]
     CK --> K2[IGDB client id + secret]

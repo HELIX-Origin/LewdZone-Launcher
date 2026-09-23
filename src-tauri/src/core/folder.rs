@@ -1,14 +1,15 @@
 //! Folder organizer — canonical game-folder layout and filename
 //! sanitization (dm.md, folder-organizer.md; ADR-0005).
 //!
-//! Layout: `<DownloadRoot>/Games/<Title>/<Title> - <Version> - <Platform>
-//! [- <Variant>].<ext>`. Multi-part downloads merge into `<Title>/_parts/`.
-//! All name logic here is pure and unit-tested; file moves belong to the
-//! download pipeline.
+//! Download layout: `<DownloadRoot>/Games/<Title>/<Title> - <Version> -
+//! <Platform>[- <Variant>].<ext>`. Multi-part downloads merge into
+//! `<Title>/_parts/`. Installed apps are extracted to `<LzappsRoot>/<slug>/`
+//! and tracked with an itch.io-style `app.json` manifest.
 //!
-//! Also owns the **download root** resolution now that the download-manager
-//! layer is gone: in-app downloads land under `download-root` (defaulting to
-//! the app's library dir).
+//! Also owns the **download root** and **lzapps root** resolution now that the
+//! download-manager layer is gone: in-app downloads land under `download-root`
+//! (defaulting to the per-OS `downloads/` folder), and installed apps land
+//! under `library-root/lzapps` (or the per-OS `lzapps/` folder).
 
 use std::path::{Component, Path, PathBuf};
 
@@ -69,6 +70,12 @@ pub fn game_dir(root: &Path, title: &str) -> PathBuf {
 /// `_parts/` subfolder inside a game dir for multi-part downloads.
 pub fn parts_dir(root: &Path, title: &str) -> PathBuf {
     game_dir(root, title).join("_parts")
+}
+
+/// Installed app folder: `<lzapps_root>/<slug>/`. One folder per game slug;
+/// updates replace the contents of this folder.
+pub fn install_dir(lzapps_root: &Path, slug: &str) -> PathBuf {
+    lzapps_root.join(sanitize_segment(slug))
 }
 
 /// Pick a non-colliding filename for `target` by appending ` (N)` before the
@@ -134,15 +141,29 @@ pub fn within_root(root: &Path, out: &Path) -> bool {
     })
 }
 
-/// Resolve where in-app downloads land: the `download-root` setting when set,
-/// otherwise the app's library dir.
+/// Resolve where in-app downloads land: `download-root` when set, then
+/// `library-root/downloads`, then the per-OS `downloads/` folder.
 pub fn download_root(ctx: &Context) -> Result<PathBuf, Error> {
     let settings = crate::core::settings::Settings::load(&ctx.config_path)?;
-    match settings.download_root {
-        Some(root) if !root.trim().is_empty() => Ok(PathBuf::from(root)),
-        _ => crate::core::paths::library_dir()
-            .ok_or_else(|| Error::Runtime("cannot resolve download root (no app data dir)".into())),
+    if let Some(root) = settings.download_root.filter(|r| !r.trim().is_empty()) {
+        return Ok(PathBuf::from(root));
     }
+    if let Some(root) = settings.library_root.filter(|r| !r.trim().is_empty()) {
+        return Ok(PathBuf::from(root).join("downloads"));
+    }
+    crate::core::paths::downloads_dir()
+        .ok_or_else(|| Error::Runtime("cannot resolve download root (no app data dir)".into()))
+}
+
+/// Resolve where installed / extracted apps land: `library-root/lzapps` when
+/// set, otherwise the per-OS `lzapps/` folder.
+pub fn lzapps_root(ctx: &Context) -> Result<PathBuf, Error> {
+    let settings = crate::core::settings::Settings::load(&ctx.config_path)?;
+    if let Some(root) = settings.library_root.filter(|r| !r.trim().is_empty()) {
+        return Ok(PathBuf::from(root).join("lzapps"));
+    }
+    crate::core::paths::lzapps_dir()
+        .ok_or_else(|| Error::Runtime("cannot resolve lzapps root (no app data dir)".into()))
 }
 
 #[cfg(test)]
@@ -185,14 +206,14 @@ mod tests {
 
     #[test]
     fn game_dir_layout_matches_adr() {
-        let root = Path::new("D:/Games");
+        let root = Path::new("/tmp/lewdzone-test/games");
         assert_eq!(
             game_dir(root, "Treasure of Nadia"),
-            Path::new("D:/Games/Games/Treasure of Nadia")
+            Path::new("/tmp/lewdzone-test/games/Games/Treasure of Nadia")
         );
         assert_eq!(
             parts_dir(root, "Treasure of Nadia"),
-            Path::new("D:/Games/Games/Treasure of Nadia/_parts")
+            Path::new("/tmp/lewdzone-test/games/Games/Treasure of Nadia/_parts")
         );
     }
 
@@ -212,7 +233,7 @@ mod tests {
 
     #[test]
     fn multi_part_target_lands_in_parts_dir() {
-        let root = Path::new("D:/Games");
+        let root = Path::new("test-root");
         let t = download_target(
             root,
             "Wild Life",
@@ -228,11 +249,11 @@ mod tests {
 
     #[test]
     fn within_root_rejects_traversal() {
-        let root = Path::new("D:/Games");
+        let root = Path::new("test-root");
         assert!(within_root(root, &root.join("Games/T/ok.zip")));
         assert!(!within_root(root, &root.join("..")).to_owned_assert_false());
         assert!(!within_root(root, &root.join("../evil.zip")));
-        assert!(!within_root(root, Path::new("C:/x.zip")));
+        assert!(!within_root(root, Path::new("foreign/x.zip")));
     }
 
     trait ToOwnedAssertFalse {
@@ -242,5 +263,78 @@ mod tests {
         fn to_owned_assert_false(&self) -> bool {
             *self
         }
+    }
+
+    #[test]
+    fn install_dir_is_slug_based() {
+        let root = Path::new("test-lzapps-root");
+        assert_eq!(
+            install_dir(root, "treasure-of-nadia"),
+            Path::new("test-lzapps-root").join("treasure-of-nadia")
+        );
+        assert_eq!(
+            install_dir(root, "bad/slug?"),
+            Path::new("test-lzapps-root").join("badslug")
+        );
+    }
+
+    fn tmp_ctx(tag: &str) -> Context {
+        let tmp = std::env::temp_dir().join(format!(
+            "lewdzone-folder-test-{}-{}",
+            tag,
+            std::process::id()
+        ));
+        let _ = std::fs::remove_dir_all(&tmp);
+        std::fs::create_dir_all(&tmp).unwrap();
+        let db = tmp.join(format!("{tag}.db"));
+        let cfg = tmp.join(format!("{tag}.json"));
+        std::fs::write(&cfg, b"{}").unwrap();
+        Context::new(db, cfg)
+    }
+
+    #[test]
+    fn download_root_prefers_download_root_setting() {
+        let ctx = tmp_ctx("dl-root");
+        std::fs::write(&ctx.config_path, br#"{"download_root":"custom-raw-root"}"#).unwrap();
+        assert_eq!(download_root(&ctx).unwrap(), Path::new("custom-raw-root"));
+    }
+
+    #[test]
+    fn download_root_falls_back_to_library_root_downloads() {
+        let ctx = tmp_ctx("lib-dl");
+        std::fs::write(
+            &ctx.config_path,
+            br#"{"library_root":"custom-library-root"}"#,
+        )
+        .unwrap();
+        assert_eq!(
+            download_root(&ctx).unwrap(),
+            Path::new("custom-library-root").join("downloads")
+        );
+    }
+
+    #[test]
+    fn lzapps_root_prefers_library_root_lzapps() {
+        let ctx = tmp_ctx("lib-lz");
+        std::fs::write(
+            &ctx.config_path,
+            br#"{"library_root":"custom-library-root"}"#,
+        )
+        .unwrap();
+        assert_eq!(
+            lzapps_root(&ctx).unwrap(),
+            Path::new("custom-library-root").join("lzapps")
+        );
+    }
+
+    #[test]
+    fn roots_default_to_per_os_folders() {
+        let ctx = tmp_ctx("roots-default");
+        let dl = download_root(&ctx).unwrap();
+        let lz = lzapps_root(&ctx).unwrap();
+        assert!(dl.ends_with("downloads"), "downloads default: {dl:?}");
+        assert!(lz.ends_with("lzapps"), "lzapps default: {lz:?}");
+        assert!(dl.is_absolute());
+        assert!(lz.is_absolute());
     }
 }

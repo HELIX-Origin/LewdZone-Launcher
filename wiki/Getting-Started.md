@@ -56,10 +56,12 @@ launch:
 
 - Catalog + download jobs: SQLite database in the data dir per OS
   (e.g. `%APPDATA%\lewdzone\lewdzone.db`; see [Configuration](Configuration)).
-- Download files: `<DownloadRoot>/Games/<Title>/`.
-- Installed library: `<data_root>/library/` with
-  `common/<Title>/`, `downloads`, and `artwork/` (see
+- Download files: `<downloads>/Games/<Title>/` (`.zip` files are extracted and
+  removed automatically).
+- Installed apps: `<lzapps>/<slug>/` with an `app.json` manifest (see
   [Downloads & Streaming](Download-Managers)).
+- Steam-style library metadata: `<data_root>/library/` with `common/<Title>/`,
+  `downloading/`, and `artwork/`.
 - Start-menu / desktop shortcuts: `lewdzone` group (per OS).
 
 ## 🔄 First sync

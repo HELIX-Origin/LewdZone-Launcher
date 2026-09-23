@@ -11,7 +11,7 @@ model: default
 
 Bridges what the *user picked* (game, version, platform label like `Windows` /
 `Android APK`, host, official/community) to the *token that must be resolved*
-and then to the *download job handed to the FDM family*.
+and then to the *download job dispatched by the download family*.
 
 ```mermaid
 flowchart LR
@@ -19,7 +19,7 @@ flowchart LR
     B --> C[extract go-link href]
     C --> D["resolver resolves<br/>token -> real URL"]
     D --> E["build DownloadJob<br/>url + label + dest folder"]
-    E --> F[fdm family]
+    E --> F[dm family - stream or open]
     B --> G[validate host in allowlist]
     G --> D
 ```
@@ -29,7 +29,7 @@ flowchart LR
 - Maintain an index from `(version_label, platform_label, tab, host)` to the
   exact go-link, so user selection is unambiguous.
 - Produce a **DisplayLabel** per job (e.g. `Treasure of Nadia v1.0117 - Windows
-  (Compressed)`), which the FDM/Folder organizer uses for file naming.
+  (Compressed)`), which the download/folder family uses for file naming.
 - Handle multi-part entries (`(Part 1 Compressed)`, `(Part 2 Compressed)`):
   each part is its own download job, grouped under one game+version.
 - Decode the go payload's *header fields* only via start-response meta —
@@ -39,7 +39,7 @@ flowchart LR
 
 - Every job is idempotent: same selection → same `DownloadJob` key.
 - Never fabricate a platform; unknown labels surface as warnings, not crashes.
-- Hooks into `fdm/folder-organizer` only through the agreed job schema.
+- Hooks into `dm/folder-organizer` only through the agreed job schema.
 
 ## Definition of done
 

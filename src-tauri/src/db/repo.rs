@@ -313,6 +313,39 @@ pub fn sync_state_set(tx: &Connection, key: &str, value: &str) -> Result<(), Err
     Ok(())
 }
 
+/// Secret helpers (API keys + similar, Rule 10). Secrets live in the SQLite DB
+/// — never in the JSON config — and are read/written by key only; values are
+/// surfaced as presence, never echoed.
+pub fn secret_get(tx: &Connection, key: &str) -> Result<Option<String>, Error> {
+    tx.query_row("SELECT value FROM secret WHERE key = ?1", [key], |row| {
+        row.get::<_, String>(0)
+    })
+    .optional()
+    .map_err(Into::into)
+}
+
+pub fn secret_set(tx: &Connection, key: &str, value: &str) -> Result<(), Error> {
+    if value.is_empty() {
+        tx.execute("DELETE FROM secret WHERE key = ?1", [key])?;
+    } else {
+        tx.execute(
+            "INSERT INTO secret (key, value) VALUES (?1, ?2)
+             ON CONFLICT(key) DO UPDATE SET value = excluded.value,
+                                             updated_at = excluded.updated_at",
+            params![key, value],
+        )?;
+    }
+    Ok(())
+}
+
+pub fn secret_keys(tx: &Connection) -> Result<Vec<String>, Error> {
+    let mut stmt = tx.prepare("SELECT key FROM secret ORDER BY key")?;
+    let keys = stmt
+        .query_map([], |row| row.get::<_, String>(0))?
+        .collect::<Result<Vec<_>, _>>()?;
+    Ok(keys)
+}
+
 /// Prune games whose slug no longer appears in a fresh full sync, returning
 /// the number removed. Only run after a clean full sync (sync-orchestrator 6).
 /// Parameterized placeholders — slugs are never string-interpolated.
@@ -595,5 +628,36 @@ mod tests {
             sync_state_get(&conn, "last_page").unwrap().as_deref(),
             Some("8")
         );
+    }
+
+    #[test]
+    fn secret_roundtrips_and_clears() {
+        let conn = mem();
+        let tx = conn.unchecked_transaction().unwrap();
+        secret_set(&tx, "sgdb-api-key", "sekret").unwrap();
+        tx.commit().unwrap();
+        assert_eq!(
+            secret_get(&conn, "sgdb-api-key").unwrap().as_deref(),
+            Some("sekret")
+        );
+        assert_eq!(
+            secret_keys(&conn).unwrap(),
+            vec!["sgdb-api-key".to_string()]
+        );
+
+        let tx = conn.unchecked_transaction().unwrap();
+        secret_set(&tx, "sgdb-api-key", "rotated").unwrap();
+        tx.commit().unwrap();
+        assert_eq!(
+            secret_get(&conn, "sgdb-api-key").unwrap().as_deref(),
+            Some("rotated")
+        );
+
+        // Empty value clears the secret (a "remove" by convention).
+        let tx = conn.unchecked_transaction().unwrap();
+        secret_set(&tx, "sgdb-api-key", "").unwrap();
+        tx.commit().unwrap();
+        assert_eq!(secret_get(&conn, "sgdb-api-key").unwrap(), None);
+        assert!(secret_keys(&conn).unwrap().is_empty());
     }
 }

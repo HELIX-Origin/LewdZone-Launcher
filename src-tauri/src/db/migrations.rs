@@ -7,9 +7,13 @@
 /// 001_initial: base catalog schema from schema-designer's erDiagram and
 /// Rule 06's target schema — games, genres, versions, download entries
 /// (tokens only, ADR-0003), hosts, jobs, genres join, sync_state.
-pub const MIGRATIONS: &[(&str, &str)] = &[(
-    "001_initial",
-    r#"
+/// 002_secrets: API keys and other secrets live in SQLite (Rule 10) — the
+/// JSON config never holds them, so no plaintext key can sit in a readable
+/// file. Presence is surfaced to the UI; values are never echoed.
+pub const MIGRATIONS: &[(&str, &str)] = &[
+    (
+        "001_initial",
+        r#"
 CREATE TABLE IF NOT EXISTS game (
     post_id         INTEGER PRIMARY KEY,
     slug            TEXT    NOT NULL UNIQUE,
@@ -83,4 +87,15 @@ CREATE TABLE IF NOT EXISTS sync_state (
     value   TEXT NOT NULL
 );
 "#,
-)];
+    ),
+    (
+        "002_secrets",
+        r#"
+CREATE TABLE IF NOT EXISTS secret (
+    key         TEXT PRIMARY KEY,
+    value       TEXT NOT NULL,
+    updated_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now'))
+);
+"#,
+    ),
+];

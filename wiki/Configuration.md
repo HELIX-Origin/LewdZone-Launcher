@@ -18,7 +18,7 @@ see [Architecture](Architecture) → Folder structure):
 
 ```jsonc
 {
-  "download-root": "D:/Games",          // where downloaded games land (ADR-0005)
+  "download-root": "D:/Games",          // where raw downloaded files land (default: per-OS downloads folder)
   "download-grace-seconds": 20,         // pause between download starts (cloud free-tier throttle protection)
   "content-priority": "steamgriddb, vndb, igdb, itch, steam, indiedb", // dispatch order
   "capture-aware": true,                // installer capture heuristics
@@ -117,13 +117,17 @@ the CLI, and are never displayed back:
 | VNDB / itch.io / IndieDB / Steam | — | no keys required (scrape or keyless) |
 
 ```sh
-lewdzone settings set sgdb-api-key <key>
+lewdzone settings set sgdb-api-key <key> --secret
+lewdzone settings set igdb-client-id <id> --secret
+lewdzone settings set igdb-client-secret <secret> --secret
 lewdzone settings set content-priority "vndb,igdb,steamgriddb"
 ```
 
-Keys live in the per-OS config dir (never in the repo; redacted from logs —
-see [Security](Security)). Providers that are disabled or missing a key simply
-don't enrich — downloads are never affected.
+Keys live in the SQLite database's `secret` table (never in `config.json`,
+never in the repo; redacted from logs — see [Security](Security)).
+`settings get <key>` prints only `(set)` or `(not set)` — never the value.
+Providers that are disabled or missing a key simply don't enrich — downloads
+are never affected.
 
 ## 🛠️ Changing settings via CLI
 
@@ -134,11 +138,26 @@ lewdzone settings set <key> <value>
 
 ## 🗂️ Library root
 
-ADR-0005 defines the multi-root library: the active library root is chosen
-by the `library-root` setting (default `<data_root>/library`, i.e.
-`%APPDATA%\lewdzone\library` on Windows).
-Per-game manifests (`appmanifest_<post_id>.json`) are the source of truth for
-installed games; see [Architecture](Architecture) → Folder structure.
+The `library-root` setting relocates both the downloads folder and the installed
+apps folder. When set, the launcher uses:
+
+- `<library-root>/downloads/` — raw downloaded files
+- `<library-root>/lzapps/` — extracted/installed games
+
+When unset, defaults are per-OS and user-accessible:
+
+| OS | Default downloads | Default lzapps |
+| --- | --- | --- |
+| Windows | `<install dir>/downloads` | `<install dir>/lzapps` |
+| Linux | `<data_root>/downloads` | `<data_root>/lzapps` |
+| macOS | `~/Library/Application Support/lewdzone/downloads` | `~/Library/Application Support/lewdzone/lzapps` |
+
+This mirrors the skin-folder pattern: Windows keeps folders next to the
+executable; macOS/Linux keep them in the app data directory.
+
+ADR-0005's Steam-style `library/` folder still holds per-game manifests
+(`appmanifest_<post_id>.json`), common assets, and artwork; see
+[Architecture](Architecture) → Folder structure.
 
 ## 🗄️ Database
 

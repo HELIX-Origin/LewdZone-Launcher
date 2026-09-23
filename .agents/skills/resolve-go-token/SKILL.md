@@ -5,14 +5,13 @@ description: Resolve a lewdzone.com go-link (#t=v1... token) into a real downloa
 
 # Resolve Go Token
 
-Turn `https://lewdzone.com/go/#t=v1.<payload>.<sig>` into a real URL so FDM
-can download the file.
+Turn `https://lewdzone.com/go/#t=v1.<payload>.<sig>` into a real URL so the
+launcher can stream or open the file.
 
 ## Why this is needed
 
-FDM cannot use the go-link directly: the `#fragment` never reaches any server,
-and feeding it to FDM would download a redirect artifact. The token MUST be
-resolved here first.
+The `#fragment` never reaches any server, and dispatching it would act on a
+redirect artifact. The token MUST be resolved here first.
 
 ## Flow (verified working)
 
@@ -55,7 +54,7 @@ sequenceDiagram
 
 ## Rules
 
-- Never hand a `#t=` href to a download manager (see the `dm` family).
+- Never hand a `#t=` href to any dispatch path (see the `dm` family).
 - Request headers are mandatory on both calls.
 - The `u` payload field is obfuscated — never attempt to decode it; rely on
   start-response meta.

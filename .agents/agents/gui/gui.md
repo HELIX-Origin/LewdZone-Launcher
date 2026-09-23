@@ -41,7 +41,7 @@ flowchart TD
     SH --> CTL[controllers]
     CTL --> SQL["sqlite db"]
     CTL --> SITE["lewdzone.com"]
-    CTL --> DM["download manager"]
+    CTL --> DL["in-app stream + OS handler"]
     CLI["native CLI (same binary)"] --> CTL
 
     style APP fill:#4b6e91,color:#fff
@@ -51,7 +51,7 @@ flowchart TD
 
 Every GUI action maps 1:1 to a CLI subcommand; both call the same Rust core
 functions. The webview never parses the CLI's output stream and never touches
-the site, DB, or download managers directly (Rule 03 inward imports).
+the site, DB, or network directly (Rule 03 inward imports).
 
 ## CLI machine contract (for scripting)
 
@@ -74,7 +74,7 @@ flowchart TD
     W[MainWindow] --> ST[STORE - search + browse + download]
     W --> LB["LIBRARY - owned / installed games"]
     W --> DL[DOWNLOADS - active jobs + queue]
-    W --> SE[SETTINGS - dm, folders, keys, authors]
+    W --> SE[SETTINGS - folders, keys, download dispatch, authors]
     ST --> GR[Steam-style grid]
     GR --> SD[LauncherDetailView]
     SD --> T1[Overview - hero art + meta]
@@ -117,7 +117,7 @@ The app is a **steam-like game launcher**, not a productivity tool:
 | Store page | Search + browse all games (Steam-style grid), entry to game detail + download | core `catalog list`, `search` |
 | Library page | **Installed/downloaded games**: icon + cover art + description, launch/shortcut | core `list --library`, `shortcuts`, artwork |
 | Downloads page | Active/past jobs + queue + progress | core `list --jobs` + progress events |
-| Settings page | Download root, active DM, API keys, mover mode, theme | core `settings get/set` |
+| Settings page | Download root, keys, mover mode, theme | core `settings get/set` |
 | GameDetailView | Launcher-style detail: hero art band, meta, versions, download table | core `game info <id>` |
 | VersionPicker | Dropdown + Official/Community tabs | parsed DownloadEntries |
 | QueuePanel | Active/past jobs + progress | core `list --jobs` + progress events |

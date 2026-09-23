@@ -215,18 +215,22 @@ fn settings_get(
     }
 }
 
-/// `settings.set(key, value)` — persist and return the new value.
+/// `settings.set(key, value, secret?)` — persist and return the new value.
+/// Secret keys (or `secret: true`) are stored in the SQLite `secret` table and
+/// the returned value is a presence marker, never the raw secret.
 #[tauri::command]
 fn settings_set(
     state: tauri::State<'_, AppState>,
     key: String,
     value: String,
+    secret: Option<bool>,
 ) -> Result<SettingView, String> {
     let ctx = state
         .context
         .lock()
         .map_err(|_| "state lock poisoned".to_string())?;
-    let value = crate::core::settings::apply(&ctx, &key, &value).map_err(|e| e.to_string())?;
+    let value = crate::core::settings::apply(&ctx, &key, &value, secret.unwrap_or(false))
+        .map_err(|e| e.to_string())?;
     Ok(SettingView { key, value })
 }
 
@@ -265,7 +269,7 @@ fn themes_apply(
         Some("") | None => "",
         Some(n) => n,
     };
-    crate::core::settings::apply(&ctx, "theme", effective)?;
+    crate::core::settings::apply(&ctx, "theme", effective, false)?;
     let tokens = crate::core::skins::resolve(Some(effective))?;
     Ok(tokens.into_iter().collect())
 }

@@ -53,11 +53,15 @@ mod tests {
     fn job(n: usize, url: &str) -> Job {
         Job {
             game: "wild-life".to_string(),
+            title: "Wild Life".to_string(),
+            post_id: Some(n as i64),
+            engine: None,
             version: "v1.0".to_string(),
             platform: "pc".to_string(),
             tab: "official".to_string(),
             url: url.to_string(),
-            target: Some(PathBuf::from(format!("D:/dl/{n}.zip"))),
+            target: Some(PathBuf::from(format!("test-dl/{n}.zip"))),
+            install_dir: Some(PathBuf::from(format!("test-lzapps/wild-life-{n}"))),
         }
     }
 

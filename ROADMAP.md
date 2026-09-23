@@ -81,8 +81,7 @@ flowchart TD
 ### Phase 4 — Packaging & Shortcuts
 - Native shortcuts (.lnk / .desktop / .app) + SteamGridDB artwork
 - Packaging: MSI+NSIS, .app+DMG, AppImage+deb+rpm, updater
-- **Releases page:** prebuilt installers per OS+arch
-- **GitHub Packages (npm):** CLI-only package for headless/no-GUI users
+- **Releases page:** prebuilt installers per OS+arch (no npm/GitHub Packages publishing — the CLI ships inside the app bundle)
 
 ### Phase 5 — Verification & Release
 - Release gate (cargo test/clippy/fmt, vitest, svelte-check, security, build smoke)

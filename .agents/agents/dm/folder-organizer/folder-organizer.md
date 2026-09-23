@@ -9,16 +9,17 @@ model: default
 
 ## Boundary of responsibility
 
-Convert the active download manager's raw output downloads into the user's
-organized, browsable library on disk. This is the physical mirror of the
-SQLite catalog. Platform-agnostic: paths always use `std::path::PathBuf`; the
-root default comes from the platform-aware settings key.
+Convert finished downloads (from the in-app stream or an OS-handler download
+that lands in the user's download dir) into the organized, browsable library on
+disk. This is the physical mirror of the SQLite catalog. Platform-agnostic:
+paths always use `std::path::PathBuf`; the root default comes from the
+platform-aware settings key.
 
 ## When a download completes
 
 ```mermaid
 flowchart TD
-    A[file finished in DM download dir] --> B{game folder exists?}
+    A[file finished in stream/OS-download dir] --> B{game folder exists?}
     B -- no --> C["create <Root>/Games/<Title>/"]
     B -- yes --> D[reuse folder]
     C --> D
@@ -53,7 +54,7 @@ flowchart TD
 2. File moves must be atomic where possible (same volume), else copy+delete.
 3. Optionally hardlink/symlink the file into the game folder instead of moving
    if the user sets `mover_mode = copy|move|link` — default `move`.
-4. If the DM output filename lacks version/platform (common when a manager
+4. If the download filename lacks version/platform (common when an OS handler
    strips it), reconstruct the name from the `DownloadJob` metadata, not by
    guessing the file content.
 5. Record the final canonical path in the DB immediately after a successful

@@ -52,8 +52,8 @@ lewdzone-launcher/
 - **GUI/CLI parity (Rule 13):** a workflow implemented only in the GUI and not
   reachable from the CLI — or only in the CLI and not in the GUI — is a
   violation. Both must hit the same core functions.
-- The webview never talks to the network, SQLite, download managers, or the
-  site directly. Everything goes through Tauri `invoke()` → Rust commands.
+- The webview never talks to the network, SQLite, or the site directly.
+  Everything goes through Tauri `invoke()` → Rust commands.
 
 ## Contracts & ADRs
 
@@ -71,9 +71,9 @@ lewdzone-launcher/
 
 | Layer | Contains | May import |
 | --- | --- | --- |
-| `src-tauri/src/` | `lib.rs` (commands), `cli.rs` (CLI), core modules (db, scrape, resolve, dm, artwork…) | each other + crate deps |
+| `src-tauri/src/` | `lib.rs` (commands), `cli.rs` (CLI), core modules (db, scrape, resolve, download, queue, folder, native, artwork…) | each other + crate deps |
 | `src/` (Svelte) | webview views | Tauri `invoke()` only — never Rust internals directly |
-| external | lewdzone.com, download managers, sqlite, SteamGridDB/VNDB/IGDB | — |
+| external | lewdzone.com, sqlite, SteamGridDB/VNDB/IGDB | — |
 
 - Keep the Rust core deps small and well-justified; prefer `tokio` (Tauri
   default) + platform crates over heavy frameworks.

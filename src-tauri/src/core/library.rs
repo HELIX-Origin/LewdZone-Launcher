@@ -315,13 +315,13 @@ mod tests {
         let dir = unique_dir();
         let cfg = dir.join("config.json");
         let settings = Settings {
-            library_root: Some("D:/MyLewdzoneLibrary".to_string()),
+            library_root: Some("test-library-root".to_string()),
             ..Default::default()
         };
         settings.save(&cfg).expect("settings saved");
 
         let root = resolved_library_root(Some(&cfg)).expect("resolves override");
-        assert_eq!(root, PathBuf::from("D:/MyLewdzoneLibrary"));
+        assert_eq!(root, PathBuf::from("test-library-root"));
 
         assert_eq!(
             resolved_libraryfolders_path(Some(&cfg)).expect("folders path"),
