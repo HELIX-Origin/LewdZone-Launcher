@@ -14,11 +14,13 @@
 //! queue — both entry points share the same `core::download` pipeline, which is
 //! what Rule 13 requires (one core, two entry points).
 
+use std::path::PathBuf;
 use std::sync::{Arc, Condvar, Mutex};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use crate::core::download::{self, Job, Select};
 use crate::core::{Context, Error};
+use crate::db;
 use crate::resolver;
 
 /// Maximum number of queued requests kept in memory (newest-first view).
@@ -42,16 +44,38 @@ pub enum Status {
     Failed,
 }
 
+impl Status {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Self::Queued => "queued",
+            Self::Resolving => "resolving",
+            Self::Dispatching => "dispatching",
+            Self::Downloading => "downloading",
+            Self::Dispatched => "dispatched",
+            Self::Failed => "failed",
+        }
+    }
+}
+
+impl std::str::FromStr for Status {
+    type Err = Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "queued" => Ok(Self::Queued),
+            "resolving" => Ok(Self::Resolving),
+            "dispatching" => Ok(Self::Dispatching),
+            "downloading" => Ok(Self::Downloading),
+            "dispatched" => Ok(Self::Dispatched),
+            "failed" => Ok(Self::Failed),
+            other => Err(Error::Runtime(format!("unknown queue status: {other}"))),
+        }
+    }
+}
+
 impl std::fmt::Display for Status {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Queued => write!(f, "queued"),
-            Self::Resolving => write!(f, "resolving"),
-            Self::Dispatching => write!(f, "dispatching"),
-            Self::Downloading => write!(f, "downloading"),
-            Self::Dispatched => write!(f, "dispatched"),
-            Self::Failed => write!(f, "failed"),
-        }
+        write!(f, "{}", self.as_str())
     }
 }
 
@@ -86,6 +110,9 @@ struct Inner {
 pub struct Queue {
     inner: Mutex<Inner>,
     wake: Condvar,
+    /// When set, every enqueue/update is mirrored to the SQLite `queue_job`
+    /// table so queued jobs survive restarts.
+    db_path: Option<PathBuf>,
 }
 
 fn now_secs() -> u64 {
@@ -96,6 +123,7 @@ fn now_secs() -> u64 {
 }
 
 impl Queue {
+    /// In-memory queue for tests and CLI one-shots.
     pub fn new() -> Self {
         Self {
             inner: Mutex::new(Inner {
@@ -103,7 +131,65 @@ impl Queue {
                 next_id: 1,
             }),
             wake: Condvar::new(),
+            db_path: None,
         }
+    }
+
+    /// Load persisted queued jobs from the database and resume the worker.
+    /// This is the queue the GUI uses across restarts.
+    pub fn load(ctx: &Context) -> Result<Self, Error> {
+        let conn = db::open(&ctx.db_path)?;
+        db::migrate(&conn)?;
+        let rows = crate::db::repo::queue_load_all(&conn)?;
+        let mut next_id = rows.iter().map(|r| r.id).max().unwrap_or(0);
+        next_id += 1;
+        let jobs: Vec<QueueJob> = rows
+            .into_iter()
+            .map(|r| QueueJob {
+                id: r.id,
+                slug: r.slug,
+                version: r.version,
+                platform: r.platform,
+                tab: r.tab,
+                source: r.source,
+                status: r.status.parse().unwrap_or(Status::Queued),
+                message: r.message,
+                bytes_done: r.bytes_done,
+                bytes_total: r.bytes_total,
+                created_at: r.created_at,
+                updated_at: r.updated_at,
+            })
+            .collect();
+        Ok(Self {
+            inner: Mutex::new(Inner { jobs, next_id }),
+            wake: Condvar::new(),
+            db_path: Some(ctx.db_path.clone()),
+        })
+    }
+
+    fn persist(&self, job: &QueueJob) -> Result<(), Error> {
+        let Some(path) = &self.db_path else {
+            return Ok(());
+        };
+        let conn = db::open(path)?;
+        let tx = conn.unchecked_transaction()?;
+        let row = crate::db::repo::QueueJobRow {
+            id: job.id,
+            slug: job.slug.clone(),
+            version: job.version.clone(),
+            platform: job.platform.clone(),
+            tab: job.tab.clone(),
+            source: job.source.clone(),
+            status: job.status.as_str().to_string(),
+            message: job.message.clone(),
+            bytes_done: job.bytes_done,
+            bytes_total: job.bytes_total,
+            created_at: job.created_at,
+            updated_at: job.updated_at,
+        };
+        crate::db::repo::queue_upsert(&tx, &row)?;
+        tx.commit()?;
+        Ok(())
     }
 
     /// Add a request to the back of the queue and wake the worker.
@@ -140,6 +226,8 @@ impl Queue {
             updated_at: now,
         };
         g.jobs.push(job.clone());
+        drop(g);
+        self.persist(&job)?;
         self.wake.notify_one();
         Ok(job)
     }
@@ -158,12 +246,16 @@ impl Queue {
         g.jobs.iter().find(|j| j.id == id).cloned()
     }
 
-    /// Mutate one job under the lock and bump its `updated_at`.
+    /// Mutate one job under the lock, bump its `updated_at`, and mirror the
+    /// change to SQLite when persistence is enabled.
     pub fn update(&self, id: u64, f: impl FnOnce(&mut QueueJob)) {
         let mut g = self.inner.lock().unwrap_or_else(|p| p.into_inner());
         if let Some(job) = g.jobs.iter_mut().find(|j| j.id == id) {
             f(job);
             job.updated_at = now_secs();
+            let job = job.clone();
+            drop(g);
+            let _ = self.persist(&job);
         }
     }
 
@@ -533,5 +625,40 @@ mod tests {
         assert_eq!(job.bytes_done, 10);
         assert_eq!(job.bytes_total, 10);
         assert!(job.message.unwrap().contains("bytes"));
+    }
+
+    #[test]
+    fn queue_persists_queued_jobs_and_resumes_them() {
+        let ctx = mem_ctx();
+        let q = Queue::load(&ctx).unwrap();
+        let id = q
+            .enqueue(
+                "treasure-of-nadia".into(),
+                "latest".into(),
+                "PC".into(),
+                "official".into(),
+                Some("fileknot".into()),
+            )
+            .unwrap()
+            .id;
+        assert_eq!(id, 1);
+
+        // Simulate a restart: load a fresh Queue from the same DB.
+        let q2 = Queue::load(&ctx).unwrap();
+        let jobs = q2.snapshot();
+        assert_eq!(jobs.len(), 1);
+        let job = &jobs[0];
+        assert_eq!(job.slug, "treasure-of-nadia");
+        assert_eq!(job.version, "latest");
+        assert_eq!(job.platform, "PC");
+        assert_eq!(job.tab, "official");
+        assert_eq!(job.source.as_deref(), Some("fileknot"));
+        assert_eq!(job.status, Status::Queued);
+        assert_eq!(job.id, 1);
+
+        // State updates must also persist.
+        q2.update(id, |j| j.status = Status::Resolving);
+        let q3 = Queue::load(&ctx).unwrap();
+        assert_eq!(q3.get(id).unwrap().status, Status::Resolving);
     }
 }

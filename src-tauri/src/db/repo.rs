@@ -368,6 +368,101 @@ pub fn game_count(tx: &Connection) -> Result<i64, Error> {
         .map_err(Into::into)
 }
 
+/// Raw row returned by [`queue_load_queued`].
+#[derive(Debug)]
+pub struct QueueJobRow {
+    pub id: u64,
+    pub slug: String,
+    pub version: String,
+    pub platform: String,
+    pub tab: String,
+    pub source: Option<String>,
+    pub status: String,
+    pub message: Option<String>,
+    pub bytes_done: u64,
+    pub bytes_total: u64,
+    pub created_at: u64,
+    pub updated_at: u64,
+}
+
+/// Persist one queue job. Used on enqueue and on every state update so the
+/// Downloads view can survive restarts (Rule 13 / GUI-CLI parity).
+pub fn queue_upsert(tx: &Connection, job: &QueueJobRow) -> Result<(), Error> {
+    tx.execute(
+        r#"
+        INSERT INTO queue_job (id, slug, version, platform, tab, source, status,
+                               message, bytes_done, bytes_total, created_at, updated_at)
+        VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)
+        ON CONFLICT(id) DO UPDATE SET
+            slug = excluded.slug,
+            version = excluded.version,
+            platform = excluded.platform,
+            tab = excluded.tab,
+            source = excluded.source,
+            status = excluded.status,
+            message = excluded.message,
+            bytes_done = excluded.bytes_done,
+            bytes_total = excluded.bytes_total,
+            created_at = excluded.created_at,
+            updated_at = excluded.updated_at
+        "#,
+        params![
+            job.id,
+            job.slug,
+            job.version,
+            job.platform,
+            job.tab,
+            job.source,
+            job.status,
+            job.message,
+            job.bytes_done,
+            job.bytes_total,
+            job.created_at,
+            job.updated_at,
+        ],
+    )?;
+    Ok(())
+}
+
+/// Load all jobs from the database on startup so the Downloads view shows
+/// history and the worker can resume anything that was `queued` before the app
+/// was closed. Completed/failed rows are pruned separately.
+pub fn queue_load_all(conn: &Connection) -> Result<Vec<QueueJobRow>, Error> {
+    let mut stmt = conn.prepare(
+        "SELECT id, slug, version, platform, tab, source, status, message,
+                bytes_done, bytes_total, created_at, updated_at
+         FROM queue_job
+         ORDER BY id",
+    )?;
+    let rows = stmt.query_map([], |row| {
+        Ok(QueueJobRow {
+            id: row.get(0)?,
+            slug: row.get(1)?,
+            version: row.get(2)?,
+            platform: row.get(3)?,
+            tab: row.get(4)?,
+            source: row.get(5)?,
+            status: row.get(6)?,
+            message: row.get(7)?,
+            bytes_done: row.get(8)?,
+            bytes_total: row.get(9)?,
+            created_at: row.get(10)?,
+            updated_at: row.get(11)?,
+        })
+    })?;
+    rows.collect::<Result<Vec<_>, _>>().map_err(Into::into)
+}
+
+/// Prune completed/failed jobs older than the cutoff (seconds since epoch),
+/// keeping the Downloads view from growing forever.
+pub fn queue_prune_finished(tx: &Connection, before: u64) -> Result<usize, Error> {
+    let removed = tx.execute(
+        "DELETE FROM queue_job WHERE status IN ('dispatched', 'failed') AND updated_at < ?1",
+        [before],
+    )?;
+    Ok(removed)
+}
+
 /// Resolve a stable post id to its current permalink slug (inverse of the
 /// slug UNIQUE index). Used by `info`/`download` when the user passes an id.
 pub fn slug_by_post_id(tx: &Connection, post_id: i64) -> Result<Option<String>, Error> {

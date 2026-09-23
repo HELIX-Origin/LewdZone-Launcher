@@ -307,11 +307,13 @@ pub fn cli_main() -> std::process::ExitCode {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let (db, config) = default_context();
-    let queue = Arc::new(crate::core::queue::Queue::new());
+    let ctx = Context::new(db.clone(), config.clone());
+    let queue = Arc::new(
+        crate::core::queue::Queue::load(&ctx).expect("queue should load from the local database"),
+    );
     // Background download worker: owns its Context clone so it never touches the
     // state lock; the webview enqueues via `game_download` and stays responsive.
-    let _worker =
-        crate::core::queue::spawn_worker(queue.clone(), Context::new(db.clone(), config.clone()));
+    let _worker = crate::core::queue::spawn_worker(queue.clone(), ctx);
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .manage(AppState {

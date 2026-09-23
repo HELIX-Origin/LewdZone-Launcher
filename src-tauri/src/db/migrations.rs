@@ -98,4 +98,24 @@ CREATE TABLE IF NOT EXISTS secret (
 );
 "#,
     ),
+    (
+        "003_queue_jobs",
+        r#"
+CREATE TABLE IF NOT EXISTS queue_job (
+    id          INTEGER PRIMARY KEY,
+    slug        TEXT    NOT NULL,
+    version     TEXT    NOT NULL,
+    platform    TEXT    NOT NULL,
+    tab         TEXT    NOT NULL,
+    source      TEXT,
+    status      TEXT    NOT NULL,
+    message     TEXT,
+    bytes_done  INTEGER NOT NULL DEFAULT 0,
+    bytes_total INTEGER NOT NULL DEFAULT 0,
+    created_at  INTEGER NOT NULL,
+    updated_at  INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_queue_job_status ON queue_job(status);
+"#,
+    ),
 ];
