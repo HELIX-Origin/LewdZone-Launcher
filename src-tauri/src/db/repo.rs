@@ -628,7 +628,7 @@ pub fn favorite_list(conn: &Connection) -> Result<Vec<crate::core::models::GameC
     let mut stmt = conn.prepare(
         r#"
         SELECT g.post_id, g.slug, g.title, g.developer, g.engine,
-               g.thumbnail_url, g.updated_at, g.views
+               g.thumbnail_url, g.updated_at
         FROM favorite f
         JOIN game g ON g.post_id = f.post_id
         ORDER BY f.created_at DESC
@@ -643,12 +643,11 @@ pub fn favorite_list(conn: &Connection) -> Result<Vec<crate::core::models::GameC
             row.get::<_, Option<String>>(4)?,
             row.get::<_, Option<String>>(5)?,
             row.get::<_, Option<String>>(6)?,
-            row.get::<_, Option<String>>(7)?,
         ))
     })?;
     let mut out = Vec::new();
     for row in rows {
-        let (post_id, slug, title, developer, engine, thumbnail_url, updated_at, views) = row?;
+        let (post_id, slug, title, developer, engine, thumbnail_url, updated_at) = row?;
         let genres: Vec<String> = {
             let mut gs = conn.prepare(
                 "SELECT genre.label FROM game_genre JOIN genre ON genre.slug = game_genre.genre_id
@@ -685,7 +684,7 @@ pub fn favorite_list(conn: &Connection) -> Result<Vec<crate::core::models::GameC
             genres,
             genre_slugs,
             updated_at,
-            views,
+            views: None,
         });
     }
     Ok(out)

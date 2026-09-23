@@ -49,6 +49,7 @@ mod tests {
         let pid = std::process::id();
         let dir = std::env::temp_dir().join(format!("lz-fav-{tag}-{pid}"));
         let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
         Context::new(dir.join("lewdzone.db"), dir.join("config.json"))
     }
 
