@@ -37,6 +37,7 @@
     censorship: string | null;
     screenshots: string[];
     description: string | null;
+    rating: number | null;
     versions: Version[];
     download_entries: DownloadEntry[];
   }
@@ -127,11 +128,21 @@
           external_genres: [],
         },
       });
-      if (game && enrichment.genres.length > 0) {
+      if (!game) return;
+      if (enrichment.genres.length > 0 && game.external_genres.length === 0) {
         game.external_genres = enrichment.genres;
       }
+      if (!game.description && enrichment.description) {
+        game.description = enrichment.description;
+      }
+      if (game.screenshots.length === 0 && enrichment.screenshots.length > 0) {
+        game.screenshots = enrichment.screenshots;
+      }
+      if (enrichment.rating != null && enrichment.rating > 0) {
+        game.rating = enrichment.rating;
+      }
     } catch {
-      // Enrichment is best-effort; leave external_genres empty on failure.
+      // Enrichment is best-effort.
     }
   }
 
@@ -210,6 +221,7 @@
           {#if game.engine}<span>{game.engine}</span>{/if}
           {#if game.size_label}<span>{game.size_label}</span>{/if}
           {#if game.censorship}<span>{game.censorship}</span>{/if}
+          {#if game.rating != null}<span>★ {game.rating.toFixed(1)}</span>{/if}
         </div>
         <div class="genre-row">
           {#each game.genres as genre (genre)}

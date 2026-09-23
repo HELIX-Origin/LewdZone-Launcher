@@ -64,6 +64,7 @@ const sampleGameData = {
   platforms: ["pc"],
   genres: ["3d-games", "adventure"],
   external_genres: [],
+  rating: null,
   size_label: "5.0 GB",
   censorship: "Uncensored",
   screenshots: ["https://h1.lzcdn.com/img/wild-life-shot.jpg"],
