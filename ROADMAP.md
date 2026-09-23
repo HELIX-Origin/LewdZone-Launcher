@@ -37,7 +37,7 @@ flowchart TD
 
 ## Done ✅
 
-- [x] `.agents/` ecosystem — 10 families, rules 00–13, skills, wiki, ADRs 0001–0005
+- [x] `.agents/` ecosystem — 10 families, rules 00–13, skills, wiki, ADRs 0001–0006
 - [x] GitHub repo + initial push
 - [x] Root docs: `AGENTS.md`, wiki (16 pages), legal pages (LICENSE/PRIVACY/TOS/SECURITY)
 - [x] Restructure: Python CLI deleted; repo root IS the Tauri 2 app (`src/` + `src-tauri/`)
@@ -52,39 +52,37 @@ flowchart TD
 - [x] SQLite catalog: forward-only migrations, repo layer, resumable sync pipeline + prune (Rule 06, ADR-0003)
 - [x] `list` + `info` CLI commands backed by the synced catalog
 - [x] Docs/CLI drift cleanup: README, wiki, and `.agents` docs now match the real CLI (`download`, `list --library`/`--jobs`, no `--manager`/`--status`)
+- [x] **Memory-first architecture with SQLite persistence**: In-memory caching (`AppState` `game_cache`, `page_cache`, `genres_cache`) for instant 0ms responses; SQLite database fallback; automatic upsert upon network fetch; complete model deserialization in `db::repo::game_by_slug`
+- [x] **Storefront game detail fixes**: Safe Svelte 5 reactive rendering, request deduplication, and single-version game fallback support
+- [x] **Removed external metadata providers (ADR-0006)**: Eliminated external providers (IGDB, VNDB, Steam, SteamGridDB, itch, IndieDB) so store pages load reliably without network stalling
+- [x] **Discontinued desktop shortcuts (ADR-0006)**: Abandoned desktop shortcut creation due to site lacking square icon assets; cleaned up Library UI and CLI handlers
+- [x] **Settings preferred sources toggle grid**: Interactive multi-toggle button grid for all 12 allowlisted cloud hosts in Settings
+- [x] **GUI relayout** to dark cyberpunk spec: left icon sidebar + top header, deep cyan/charcoal gradient, neon accents, glassmorphism, thin scrollbar
+- [x] **Library = downloaded games**: list installed titles from `lzapps/<slug>/app.json`; launch support from the Library view
+- [x] **Multi-format launch**: infer game binary via engine/tag taxonomy so Launch opens the right target
+- [x] Custom macOS-style title bar: frameless window (`decorations: false`) + traffic lights (red/yellow/green) + custom File/View/Help menus + profile button
+- [x] Download scheduler: `download-grace-seconds` pacing between dispatch starts
+- [x] **Non-blocking async download queue** (Rust core): `game_download` enqueues and returns instantly; background worker resolves + dispatches one request at a time
+- [x] **Downloads page**: poll `downloads_list` and render each job's status/message
+- [x] Persist `download_job` rows + resume across restarts
+- [x] Storefront catalog view: real tiles + game-page lookup; clickable tiles navigate to detail
+- [x] App icons: generated from `assets/appicon.png` via `tauri icon` and wired into bundle config
+- [x] Favorites: SQLite-backed heart toggle on Library tiles + Favorites page
+- [x] Live archive pagination verification (`/games/page/N/`)
 
-## Now 🚧 (Phase 2 — Storefront + Core)
+## Now 🚧 (Phase 2 — Download Flow & Source Selection)
 
-- [x] Fix any remaining verification gaps (final svelte-check pass, clippy/fmt clean)
-- [x] **GUI relayout** to the dark cyberpunk spec: left icon sidebar (Store/Favorites/Library/Settings; Downloads pending its page) + top header (rounded search + profile avatar), deep cyan/charcoal gradient, neon accents, glassmorphism, thin scrollbar. **Home is not a separate tab** — it is the Store.
-- [x] **Storefront**: top search, left genre/category rail, hero + media-grid rows (~9 poster tiles 2:3/3:4), tile → game detail. Live search (`?s=`), genre pages, platform/sort filters (`/games/` + `/game-genre/`). Backed by the full site filter surface (q/platform/engine/state/sort/tags[]/tags-exclude[]) and no ads / no redirect exposure (downloads resolve via in-app stream or OS-native dispatch).
-- [x] **Library = downloaded games**: list installed titles from `lzapps/<slug>/app.json`; launch support from the Library view.
-- [x] **Multi-format launch**: games ship as web HTML / `.exe` / other formats; infer the game binary via the site's engine/tag taxonomy so Launch opens the right target.
-- [x] Custom macOS-style title bar: frameless window (`decorations: false`) + traffic lights (red/yellow/green) + custom File/View/Help menus + profile button. 29 frontend tests green.
-- [x] Download-source controls: `source-priority` reordering + per-game `game_sources` panel (preferred default).
-- [x] Download scheduler: `download-grace-seconds` pacing between dispatch starts (free-tier throttle protection). Pixeldrain proxy-cycle "bypass" was implemented then removed — the upstream service is dead.
-- [x] **Non-blocking async download queue** (Rust core): `game_download` enqueues and returns instantly; a background worker resolves + dispatches one request at a time; the Downloads view polls `downloads_list`.
-- [x] **Downloads page**: poll `downloads_list` and render each job's status/message; add Downloads to the icon sidebar nav; store detail `download()` returns `queued` feedback.
-- [x] Persist `download_job` rows + resume across restarts.
-- [x] Storefront catalog view: real tiles + game-page lookup; clickable tiles navigate to detail.
-- [x] Content-provider layer: artwork cache + SteamGridDB, VNDB, IGDB, itch.io, Steam, IndieDB providers; LewdZone scraped data is the default metadata source.
-- [x] Proper genre support: `external_genres` from providers, distinct from LewdZone tags.
-- [x] App icons: regenerate from `assets/appicon.png` via `tauri icon`, wire into `tauri.conf.json` bundle icons, and fix the non-rendering sidebar logo image.
-- [x] Favorites: SQLite-backed heart toggle on Library tiles + Favorites page.
-- [x] `.agents/` rule-03/rule-10 content-provider wording + `gui-build-loop` + `package-desktop-app` skills.
-- [x] Live archive pagination verification (`/games/page/N/`).
-- [x] SteamGridDB artwork end-to-end + enrichment e2e on game detail page (description, screenshots, rating, external_genres).
-- [x] Per-OS native shortcuts (.lnk / .desktop / .app) with Library button + CLI command.
+- [ ] **Child Webview for Downloads**: Implement child webview window setup to allow users to interact with and solve host redirect challenges / human verifications, enabling the launcher app to capture the final direct download URL directly.
+- [ ] **Storefront Download Source Selection**: Implement interactive selection of download sources directly from the game's store detail page.
 
 ## Later ⏳
 
 ### Phase 3 — Test Suite & Regression
-- Frontend unit tests for all four views
+- Frontend unit tests for all views
 - App/CLI parity tests + protocol tests
 - Coverage floors: 85% overall, ~90% core, ~70% gui
 
-### Phase 4 — Packaging & Shortcuts
-- Native shortcuts (.lnk / .desktop / .app) + SteamGridDB artwork
+### Phase 4 — Packaging & Distribution
 - Packaging: MSI+NSIS, .app+DMG, AppImage+deb+rpm, updater
 - **Releases page:** prebuilt installers per OS+arch (no npm/GitHub Packages publishing — the CLI ships inside the app bundle)
 

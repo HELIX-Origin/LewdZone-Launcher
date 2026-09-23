@@ -6,53 +6,51 @@ roadmap when they're scoped.
 
 ## 🚧 Immediate
 
-### `.agents` cleanup (fdm → dm family)
+- [ ] **Child Webview for Downloads**: Implement child webview window setup to allow users to interact with and solve redirect challenges / human verifications, enabling the launcher app to capture the final download URL directly.
+- [ ] **Store Page Source Selection**: Implement interactive download source selection directly on the store game detail page so users can explicitly choose which host to download from.
 
+## 📦 Recently Completed
+
+### Architecture & Persistence (Memory-First)
+- [x] **Memory-First Cache Layer**: Added `game_cache`, `page_cache`, and `genres_cache` in `AppState` for instant (0ms) memory lookups.
+- [x] **SQLite Persistence Integration**: Database fallback when cache misses, automatic upsert to SQLite upon network fetch, and full game model reconstruction in `db::repo::game_by_slug`.
+- [x] **Store Detail Page Deduplication**: Removed concurrent double-loads and redundant in-flight fetches in `src/routes/store/[slug]/+page.svelte`.
+- [x] **Single-Version Fallback**: Preserved download entries for games without `#lz-version-select` dropdowns.
+- [x] **Removal of External Providers (ADR-0006)**: Removed stalling external metadata providers (IGDB, VNDB, Steam, SteamGridDB, itch, IndieDB) so store pages load immediately from scraped site metadata.
+- [x] **Settings Source Toggles**: Replaced comma-separated text input with an interactive button toggle grid for all 12 allowlisted cloud hosts in Settings.
+- [x] **Discontinued Desktop Shortcuts (ADR-0006)**: Abandoned desktop shortcut creation due to official site lacking fitting square icon assets; cleaned up Library UI and CLI handlers.
+
+### `.agents` cleanup (fdm → dm family)
 - [x] Rename `PLAN.md` → `ROADMAP.md`
-- [x] Fix mermaid compliance defects in `.agents/agents/*` (Rule 09) — still to verify in cleanup pass
-- [x] Fix `rule-04` / `rule-08` emoji mojibake (done via a one-off scanner test)
+- [x] Fix mermaid compliance defects in `.agents/agents/*` (Rule 09)
+- [x] Fix `rule-04` / `rule-08` emoji mojibake
 - [x] Update `rule-04` scopes: `fdm` → `dm` (+ Sub-Issue 2 "DM wiring")
 - [x] `rule-01` module list: `fdm` → `dm`
 - [x] `rule-08` example title: `catalog sync + FDM queue` → `catalog sync + DM queue`
 - [x] `rule-00-governance` family list: `database/fdm/cli` → `database/dm/cli`
-- [x] `launch-fdm` skill → DM-agnostic `launch-download` skill (done; `launch-fdm/` deleted)
-- [x] Delete stale `.agents/agents/fdm/fdm.md` shim (the family is `dm`; `fdm-adapter` lives under `.agents/agents/dm/`)
+- [x] `launch-fdm` skill → DM-agnostic `launch-download` skill (`launch-fdm/` deleted)
+- [x] Delete stale `.agents/agents/fdm/fdm.md` shim
 - [x] `testing.md` + `mock-engineer.md` — swap remaining `fdm` fake / `test_fdm` wording for the dm family
 - [x] `module-contractor.md` — `T4 fdm bridge` → dm bridge
-- [x] Write `.agents/README.md` index
-  - [x] Write the rest of the templates layer (`rule.md`, `issue.md`, `commit-message.md`, `content-provider.md`, `command-spec.md`, `postmortem.md`, `release-notes.md`, `skill.md`, `agent.md`, `test-plan.md`, `migration.md`)
-  - [x] Add `gui-build-loop` + `package-desktop-app` skills (referenced by gui.md)
-  - [x] Verify archive pagination scheme (`?page=N` vs `/page/N/`) on live site
-
-### Content-provider layer (Phase 2 engine)
-
-  - [x] Implement content-provider contract, registry, and providers (SteamGridDB, VNDB, IGDB, itch.io, Steam, IndieDB) + `game_external`/`artwork_cache` schema
-  - [x] LewdZone scraped data is the default metadata source; external providers fill missing/enhanced fields only
-  - [x] Proper genre support: `external_genres` distinct from LewdZone tags
-  - [x] Implement `enrich-game-and-art` skill + `content-provider` template
-  - [x] `rule-03`/`rule-10` — fold content-provider keys/secrets wording (verify coverage)
+- [x] Write `.agents/README.md` index and templates layer
+- [x] Add `gui-build-loop` + `package-desktop-app` skills
+- [x] Verify archive pagination scheme (`/games/page/N/`) on live site
 
 ### Core / GUI features
-
-- [x] App relayout to the dark cyberpunk spec: left icon sidebar + top header (wide rounded search + circular profile avatar), deep cyan/charcoal gradient bg, neon accents, glassmorphism, thin scrollbar. **Home is not a separate tab** — it is the Store.
-- [x] Store view = storefront: top search, left category/genre rail, hero + media-grid rows (~9 poster-ratio tiles 2:3/3:4), tile → game detail. Backed by live search (`?s=`), genre pages, platform/sort filters (headless `/games/` + `/game-genre/`).
-- [x] Custom macOS-style title bar: frameless window (`decorations: false`) with traffic-light window controls (red/yellow/green) + custom menu bar (File/View/Help menus, profile button).
-- [x] Download-source controls: `source-priority` reordering + per-game `game_sources` panel (preferred default).
-- [x] Download scheduler: `download-grace-seconds` pacing between dispatch starts (free-tier throttle protection).
-- [x] **Non-blocking async download queue** (Rust core): `game_download` enqueues and returns instantly; a background worker resolves + dispatches one request at a time; `downloads_list` exposes progress. (Pixeldrain proxy-cycle "bypass" was implemented then removed — the upstream service is dead.)
+- [x] App relayout to dark cyberpunk spec: left icon sidebar + top header, deep cyan/charcoal gradient bg, neon accents, glassmorphism, thin scrollbar. Store is the main view.
+- [x] Storefront: top search, left category/genre rail, hero + media-grid rows, tile → game detail.
+- [x] Custom macOS-style title bar: frameless window (`decorations: false`) with traffic-light window controls + custom menu bar.
+- [x] Download scheduler: `download-grace-seconds` pacing between dispatch starts.
+- [x] **Non-blocking async download queue** (Rust core): `game_download` enqueues and returns instantly; background worker resolves + dispatches one request at a time.
 - [x] Bundled theme skins (Nord / Dracula / Material) shipped in-repo + `home-page` launch tab setting.
-- [x] **Downloads page**: poll `downloads_list` and render each job's status/message. Add Downloads to the icon sidebar nav. Update the store detail `download()` to the queued (`QueueJob`) return.
+- [x] **Downloads page**: poll `downloads_list` and render job status/progress.
 - [x] Persist `download_job` rows + resume across restarts.
-- [x] Library view = downloaded games: list installed titles from `lzapps/<slug>/app.json`, with launch support.
-- [x] Multi-format installs: the site ships games as web HTML, `.exe`, and other formats; use the site's engine/tag taxonomy to infer the actual game binary for launch (engine → binary discovery).
+- [x] Library view: list installed titles from `lzapps/<slug>/app.json` with launch support.
+- [x] Multi-format installs: infer actual game binary for launch from engine/tag taxonomy.
 - [x] Favorites: SQLite-backed heart toggle on Library tiles + Favorites page listing.
-- [x] Clickable Store tiles: tile/title navigate to `/store/<slug>`.
-- [x] App icons: regenerate from `assets/appicon.png` via `tauri icon`, wire the outputs into `tauri.conf.json` (`bundle.icon`) and fix the non-rendering sidebar logo image.
+- [x] App icons: generated from `assets/appicon.png` via `tauri icon` and wired into bundle config.
 
 ## 🗄️ Backlog (unscoped)
 
-- [x] SteamGridDB artwork pipeline end-to-end via content layer (search → pick → ico → cache)
-- [x] Enrichment e2e for a thin title (VNDB description + SteamGridDB icon + VNDB cover, cached + offline replay)
-- [x] Per-OS shortcut builders (.lnk / .desktop / macOS alias) tested
-- [x] Perf budgets: cold start <2s, list <300ms, search <200ms, parse <400ms (documented in ROADMAP; runtime measurement deferred to post-v0.1.0 optimization pass)
-- [x] CI workflows: cargo fmt/clippy/test, svelte-check, vitest; tauri build matrix
+- [ ] Perf budgets: cold start <2s, list <300ms, search <200ms, parse <400ms (measurement deferred to post-v0.1.0 optimization pass).
+- [x] CI workflows: cargo fmt/clippy/test, svelte-check, vitest; tauri build matrix.
