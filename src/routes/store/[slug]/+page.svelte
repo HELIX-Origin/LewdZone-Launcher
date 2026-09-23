@@ -1,7 +1,6 @@
 <svelte:options runes={true} />
 
 <script lang="ts">
-  import { onMount } from "svelte";
   import { invoke } from "@tauri-apps/api/core";
   import { page } from "$app/state";
   import { goto } from "$app/navigation";
@@ -32,23 +31,13 @@
     engine: string | null;
     platforms: string[];
     genres: string[];
-    external_genres: string[];
     size_label: string | null;
     censorship: string | null;
     screenshots: string[];
     description: string | null;
-    rating: number | null;
+    rating?: number | null;
     versions: Version[];
     download_entries: DownloadEntry[];
-  }
-
-  interface Enrichment {
-    description: string | null;
-    developer: string | null;
-    rating: number | null;
-    tags: string[];
-    screenshots: string[];
-    genres: string[];
   }
 
   interface Job {
@@ -72,7 +61,11 @@
     preferred: boolean;
   }
 
-  const slug = $derived((page.url.pathname.match(/\/store\/(.+)/) ?? [])[1] ?? "");
+  const slug = $derived(
+    (page.params?.slug ?? (page.url.pathname.match(/\/store\/([^/?#]+)/) ?? [])[1] ?? "")
+      .replace(/\/+$/, "")
+  );
+
   let status: LoadState = $state("loading");
   let error = $state("");
   let game: GameData | null = $state(null);
@@ -91,60 +84,55 @@
     linux: "Linux",
   };
 
-  async function load() {
+  import { onMount } from "svelte";
+
+  let activeSlug = "";
+  let inFlightSlug: string | null = null;
+
+  async function load(targetSlug?: string) {
+    const s = targetSlug !== undefined ? targetSlug : slug;
+    if (activeSlug === s && status === "ready" && game) {
+      return;
+    }
+    if (inFlightSlug === s) {
+      return;
+    }
+    inFlightSlug = s;
+    activeSlug = s;
     status = "loading";
+    error = "";
     try {
-      const data = await invoke<GameData>("game_page", { slug });
-      game = data;
-      if (data.versions.length > 0) {
+      const data = await invoke<GameData>("game_page", { slug: s });
+      if (activeSlug !== s) return;
+      game = {
+        ...data,
+        screenshots: data.screenshots ?? [],
+        genres: data.genres ?? [],
+        versions: data.versions ?? [],
+        download_entries: data.download_entries ?? [],
+      };
+      if (data.versions && data.versions.length > 0) {
         version = data.versions.find((v) => v.is_latest)?.label ?? data.versions[0].label;
+      } else {
+        version = "latest";
       }
-      await refreshSources();
-      await enrichGame(data);
       status = "ready";
+      await refreshSources();
     } catch (err) {
+      if (activeSlug !== s) return;
       status = "error";
       error = String(err);
+    } finally {
+      if (inFlightSlug === s) {
+        inFlightSlug = null;
+      }
     }
   }
 
-  async function enrichGame(data: GameData) {
-    try {
-      const enrichment = await invoke<Enrichment>("content_enrich", {
-        card: {
-          slug: data.slug,
-          post_id: data.post_id,
-          title: data.title,
-          thumb_url: data.screenshots[0] ?? null,
-          platforms: data.platforms,
-          engine: data.engine,
-          state: null,
-          version_tag: data.current_version,
-          developer: data.developer,
-          description: data.description,
-          genres: data.genres,
-          genre_slugs: data.genres,
-          views: null,
-          external_genres: [],
-        },
-      });
-      if (!game) return;
-      if (enrichment.genres.length > 0 && game.external_genres.length === 0) {
-        game.external_genres = enrichment.genres;
-      }
-      if (!game.description && enrichment.description) {
-        game.description = enrichment.description;
-      }
-      if (game.screenshots.length === 0 && enrichment.screenshots.length > 0) {
-        game.screenshots = enrichment.screenshots;
-      }
-      if (enrichment.rating != null && enrichment.rating > 0) {
-        game.rating = enrichment.rating;
-      }
-    } catch {
-      // Enrichment is best-effort.
-    }
-  }
+  $effect(() => {
+    const s = slug;
+    load(s);
+  });
 
   async function refreshSources() {
     if (!game) return;
@@ -171,8 +159,6 @@
   function onSelectionChange() {
     refreshSources();
   }
-
-  onMount(() => load());
 
   async function download() {
     if (!game) return;
@@ -210,9 +196,10 @@
         <img class="hero-img" src={game.screenshots[0]} alt="" aria-hidden="true" />
       {/if}
       <div class="hero-overlay"></div>
-      <button class="back" onclick={back}
-        ><svg class="back-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>Back to Store</button
-      >
+      <button class="back" onclick={back}>
+        <svg class="back-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>
+        Back to Store
+      </button>
       <div class="hero-meta">
         <h1>{game.title}</h1>
         <div class="meta-row">
@@ -221,20 +208,13 @@
           {#if game.engine}<span>{game.engine}</span>{/if}
           {#if game.size_label}<span>{game.size_label}</span>{/if}
           {#if game.censorship}<span>{game.censorship}</span>{/if}
-          {#if game.rating != null}<span>★ {game.rating.toFixed(1)}</span>{/if}
+          {#if typeof game.rating === "number" && game.rating > 0}<span>★ {game.rating.toFixed(1)}</span>{/if}
         </div>
         <div class="genre-row">
           {#each game.genres as genre (genre)}
-            <a class="genre-chip" href={`/store/${genre}`}>{genre}</a>
+            <span class="genre-chip">{genre}</span>
           {/each}
         </div>
-        {#if game.external_genres.length > 0}
-          <div class="external-genre-row">
-            {#each game.external_genres as genre (genre)}
-              <span class="genre-chip external">{genre}</span>
-            {/each}
-          </div>
-        {/if}
       </div>
     </div>
 
@@ -306,7 +286,19 @@
               <span class="entry-plat">
                 {entry.platform ? (platformLabel[entry.platform] ?? entry.platform) : ""}
               </span>
+              <span class="entry-var">{entry.variant ?? ""}</span>
             </div>
+          {/each}
+        </div>
+      </div>
+    {/if}
+
+    {#if game.screenshots.length > 0}
+      <div class="gallery">
+        <h2>Screenshots ({game.screenshots.length})</h2>
+        <div class="shots">
+          {#each game.screenshots as url (url)}
+            <img class="shot" src={url} alt={`${game.title} screenshot`} loading="lazy" />
           {/each}
         </div>
       </div>
@@ -317,7 +309,7 @@
 <style>
   .detail {
     padding: var(--lz-gap);
-    max-width: 980px;
+    max-width: 900px;
     margin: 0 auto;
   }
 
@@ -326,10 +318,10 @@
     border-radius: var(--lz-radius);
     overflow: hidden;
     min-height: 240px;
-    background: var(--lz-surface);
     display: flex;
     flex-direction: column;
-    justify-content: flex-end;
+    justify-content: space-between;
+    background: var(--lz-surface);
   }
 
   .hero-img {
@@ -338,13 +330,13 @@
     width: 100%;
     height: 100%;
     object-fit: cover;
-    opacity: 0.55;
+    filter: brightness(0.65);
   }
 
   .hero-overlay {
     position: absolute;
     inset: 0;
-    background: linear-gradient(180deg, transparent 0%, rgba(10, 17, 24, 0.95) 100%);
+    background: linear-gradient(to top, rgba(15, 17, 23, 0.95), transparent 70%);
   }
 
   .back {
@@ -397,13 +389,6 @@
     margin-top: 8px;
   }
 
-  .external-genre-row {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-    margin-top: 6px;
-  }
-
   .genre-chip {
     color: var(--lz-cyan);
     background: var(--lz-surface-2);
@@ -411,12 +396,6 @@
     padding: 2px 10px;
     font-size: 12px;
     text-decoration: none;
-  }
-
-  .genre-chip.external {
-    color: var(--lz-accent);
-    background: var(--lz-surface);
-    border: 1px solid var(--lz-surface-2);
   }
 
   .desc {
@@ -502,15 +481,40 @@
     font-size: 13px;
   }
 
+  .entry-label {
+    font-weight: 600;
+  }
+
   .entry-host {
-    color: var(--lz-text-dim);
+    color: var(--lz-accent);
   }
 
   .entry-plat {
-    color: var(--lz-cyan);
+    color: var(--lz-text-dim);
+  }
+
+  .gallery h2 {
+    font-size: 15px;
+    margin: var(--lz-gap) 0 10px;
+  }
+
+  .shots {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 10px;
+  }
+
+  .shot {
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    object-fit: cover;
+    border-radius: var(--lz-radius);
+    border: 1px solid var(--lz-surface-2);
+    background: var(--lz-surface);
   }
 
   .note {
+    padding: var(--lz-gap);
     color: var(--lz-text-dim);
   }
 

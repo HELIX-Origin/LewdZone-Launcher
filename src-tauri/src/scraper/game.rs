@@ -59,17 +59,37 @@ pub fn parse_game(html: &str) -> Game {
 
     let mut download_entries = Vec::new();
     let mut versions_out = Vec::new();
-    if let Some(mut first) = versions.first().cloned() {
-        first.official = official;
-        first.community = community;
-        download_entries.extend(first.official.iter().cloned());
-        download_entries.extend(first.community.iter().cloned());
-        versions_out.push(first);
-    }
-    for version in versions.iter().skip(1).cloned() {
-        download_entries.extend(version.official.iter().cloned());
-        download_entries.extend(version.community.iter().cloned());
-        versions_out.push(version);
+    if versions.is_empty() {
+        if !official.is_empty() || !community.is_empty() {
+            let label = current_version
+                .as_deref()
+                .map(|v| v.trim())
+                .filter(|v| !v.is_empty())
+                .unwrap_or("latest")
+                .to_string();
+            let v = Version {
+                label,
+                is_latest: true,
+                official: official.clone(),
+                community: community.clone(),
+            };
+            download_entries.extend(official);
+            download_entries.extend(community);
+            versions_out.push(v);
+        }
+    } else {
+        if let Some(mut first) = versions.first().cloned() {
+            first.official = official;
+            first.community = community;
+            download_entries.extend(first.official.iter().cloned());
+            download_entries.extend(first.community.iter().cloned());
+            versions_out.push(first);
+        }
+        for version in versions.iter().skip(1).cloned() {
+            download_entries.extend(version.official.iter().cloned());
+            download_entries.extend(version.community.iter().cloned());
+            versions_out.push(version);
+        }
     }
 
     Game {
@@ -134,11 +154,49 @@ fn dev_name(document: &Html) -> Option<String> {
 fn post_id(document: &Html) -> Option<i64> {
     let sel = Selector::parse(".wp-postratings [data-post-id], .wp-postratings[data-post-id]")
         .expect("valid rating selector");
-    document
+    if let Some(id) = document
         .select(&sel)
         .next()
         .and_then(|el| el.value().attr("data-post-id"))
         .and_then(|v| v.parse().ok())
+    {
+        return Some(id);
+    }
+
+    // Fallback 1: <link rel="shortlink" href="https://lewdzone.com/?p=18212">
+    if let Ok(shortlink_sel) = Selector::parse("link[rel='shortlink']") {
+        if let Some(href) = document
+            .select(&shortlink_sel)
+            .next()
+            .and_then(|el| el.value().attr("href"))
+        {
+            if let Some((_, p)) = href.split_once("?p=") {
+                let digits: String = p.chars().take_while(|c| c.is_ascii_digit()).collect();
+                if let Ok(id) = digits.parse::<i64>() {
+                    return Some(id);
+                }
+            }
+        }
+    }
+
+    // Fallback 2: <body class="... postid-18212 ...">
+    if let Ok(body_sel) = Selector::parse("body") {
+        if let Some(class_attr) = document
+            .select(&body_sel)
+            .next()
+            .and_then(|el| el.value().attr("class"))
+        {
+            for token in class_attr.split_whitespace() {
+                if let Some(num_str) = token.strip_prefix("postid-") {
+                    if let Ok(id) = num_str.parse::<i64>() {
+                        return Some(id);
+                    }
+                }
+            }
+        }
+    }
+
+    None
 }
 
 fn parse_genres(document: &Html) -> Vec<String> {

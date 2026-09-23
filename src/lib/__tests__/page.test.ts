@@ -452,11 +452,8 @@ describe("library page", () => {
     expect(invocations.some((i) => i.cmd === "favorite_add" && i.args?.slug === "wild-life")).toBe(true);
   });
 
-  it("invokes create_shortcut when the Shortcut button is clicked", async () => {
-    const user = userEvent.setup();
-    const invocations: Array<{ cmd: string; args?: InvokeArgs }> = [];
-    mockInvoke(async (cmd: string, args?: InvokeArgs) => {
-      invocations.push({ cmd, args });
+  it("does not render a desktop shortcut button in the library actions", async () => {
+    mockInvoke(async (cmd: string) => {
       if (cmd === "library_list") {
         return {
           root: "/fake/library",
@@ -479,13 +476,11 @@ describe("library page", () => {
         };
       }
       if (cmd === "favorites_list") return [];
-      if (cmd === "create_shortcut") return "/fake/Desktop/Wild Life.lnk";
       return [];
     });
     render(LibraryPage);
-    const btn = await screen.findByRole("button", { name: /Create shortcut for Wild Life/ });
-    await user.click(btn);
-    expect(invocations.some((i) => i.cmd === "create_shortcut" && i.args?.slug === "wild-life")).toBe(true);
+    expect(await screen.findByRole("button", { name: "Launch Wild Life" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /shortcut/i })).not.toBeInTheDocument();
   });
 });
 
@@ -660,24 +655,25 @@ describe("settings page", () => {
     expect(await screen.findByText("library-root saved")).toBeInTheDocument();
   });
 
-  it("shows the preferred download sources setting with the saved value", async () => {
+  it("shows the preferred download sources toggles with saved values active", async () => {
     render(SettingsPage);
-    const input = (await screen.findByDisplayValue("mega,google")) as HTMLInputElement;
-    expect(input).toBeInTheDocument();
-    expect(input.value).toBe("mega,google");
+    const megaBtn = await screen.findByRole("button", { name: "Toggle MEGA preference" });
+    const googleBtn = await screen.findByRole("button", { name: "Toggle Google Drive preference" });
+    const dropboxBtn = await screen.findByRole("button", { name: "Toggle Dropbox preference" });
+    expect(megaBtn).toHaveAttribute("aria-pressed", "true");
+    expect(googleBtn).toHaveAttribute("aria-pressed", "true");
+    expect(dropboxBtn).toHaveAttribute("aria-pressed", "false");
   });
 
-  it("saves the preferred download sources setting", async () => {
+  it("saves the preferred download sources setting when a toggle is clicked", async () => {
     const user = userEvent.setup();
     render(SettingsPage);
-    const input = (await screen.findByDisplayValue("mega,google")) as HTMLInputElement;
-    await user.clear(input);
-    await user.type(input, "dropbox,mega");
-    await user.keyboard("{Enter}");
+    const dropboxBtn = await screen.findByRole("button", { name: "Toggle Dropbox preference" });
+    await user.click(dropboxBtn);
 
     expect(invoke).toHaveBeenCalledWith(
       "settings_set",
-      expect.objectContaining({ key: "source-priority", value: "dropbox,mega" }),
+      expect.objectContaining({ key: "source-priority", value: "mega,google,dropbox" }),
     );
     expect(await screen.findByText("source-priority saved")).toBeInTheDocument();
   });
@@ -692,29 +688,5 @@ describe("settings page", () => {
       expect.objectContaining({ key: "home-page", value: "favorites" }),
     );
     expect(await screen.findByText("home-page saved")).toBeInTheDocument();
-  });
-
-  it("shows secret API keys as set or not set without revealing values", async () => {
-    render(SettingsPage);
-    expect(await screen.findByLabelText("SteamGridDB API key")).toBeInTheDocument();
-    const sgdb = (await screen.findByLabelText("SteamGridDB API key")) as HTMLInputElement;
-    expect(sgdb.placeholder).toBe("(set)");
-    const igdbId = (await screen.findByLabelText("IGDB client ID")) as HTMLInputElement;
-    expect(igdbId.placeholder).toBe("(not set)");
-    expect(sgdb.value).toBe("");
-  });
-
-  it("saves an API key via settings_set with secret=true", async () => {
-    const user = userEvent.setup();
-    render(SettingsPage);
-    const input = (await screen.findByLabelText("IGDB client secret")) as HTMLInputElement;
-    await user.type(input, "my-secret-value");
-    await user.keyboard("{Enter}");
-
-    expect(invoke).toHaveBeenCalledWith(
-      "settings_set",
-      expect.objectContaining({ key: "igdb-client-secret", value: "my-secret-value", secret: true }),
-    );
-    expect(await screen.findByText("igdb-client-secret saved")).toBeInTheDocument();
   });
 });

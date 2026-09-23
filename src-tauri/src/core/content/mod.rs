@@ -1,15 +1,8 @@
-//! Content-provider layer: enrich games and cache artwork from external
-//! sources (SteamGridDB, IGDB, VNDB, itch.io, Steam, IndieDB).
-//!
-//! LewdZone remains authoritative for downloads; providers only fill missing
-//! presentation fields and are never allowed to overwrite scraped values.
-//!
-//! All API keys are read from the SQLite `secret` table (Rule 10). Providers
-//! that need a key and do not have one are silently skipped.
+//! Content layer: cached artwork and game enrichment models.
+//! External source providers have been removed (ADR-0006); LewdZone scraped
+//! data is the sole authority for presentation and downloads.
 
-use std::collections::BTreeMap;
 use std::fs;
-use std::io::Write;
 use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
@@ -17,13 +10,6 @@ use serde::{Deserialize, Serialize};
 use crate::core::models::GameCard;
 use crate::core::{paths, Context, Error};
 use crate::db;
-
-pub mod igdb;
-pub mod indiedb;
-pub mod itch;
-pub mod steam;
-pub mod steamgriddb;
-pub mod vndb;
 
 /// Kinds of artwork the launcher can cache.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -44,53 +30,15 @@ impl std::fmt::Display for ArtworkKind {
     }
 }
 
-/// Enrichment data returned by a provider for a single game.
+/// Enrichment data for a single game.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct Enrichment {
     pub description: Option<String>,
     pub developer: Option<String>,
     pub rating: Option<f32>,
-    /// External content-provider tags (e.g., VNDB/itch tags).
     pub tags: Vec<String>,
-    /// Actual genres from external providers (e.g., Steam/IGDB genres),
-    /// separate from LewdZone's own tag taxonomy.
     pub genres: Vec<String>,
     pub screenshots: Vec<String>,
-}
-
-/// A content provider.
-pub trait Provider: Send + Sync {
-    fn name(&self) -> &'static str;
-
-    /// Whether this provider can run given the secrets available.
-    fn enabled(&self, secrets: &BTreeMap<String, String>) -> bool;
-
-    /// Try to enrich a game. Returns `Ok(None)` when the provider has nothing.
-    fn enrich(
-        &self,
-        secrets: &BTreeMap<String, String>,
-        card: &GameCard,
-    ) -> Result<Option<Enrichment>, Error>;
-
-    /// Try to fetch artwork bytes. Returns `Ok(None)` when nothing is found.
-    fn artwork(
-        &self,
-        secrets: &BTreeMap<String, String>,
-        card: &GameCard,
-        kind: ArtworkKind,
-    ) -> Result<Option<Vec<u8>>, Error>;
-}
-
-/// All registered providers, in priority order.
-pub fn providers() -> Vec<Box<dyn Provider>> {
-    vec![
-        Box::new(steamgriddb::SteamGridDb),
-        Box::new(vndb::Vndb),
-        Box::new(igdb::Igdb),
-        Box::new(itch::Itch),
-        Box::new(steam::Steam),
-        Box::new(indiedb::IndieDb),
-    ]
 }
 
 /// Stable cache key for a game title. Lowercase, collapsed whitespace.
@@ -102,20 +50,6 @@ pub fn cache_key(title: &str) -> String {
         .join("-")
 }
 
-/// Load all secrets this layer cares about.
-pub fn load_secrets(ctx: &Context) -> Result<BTreeMap<String, String>, Error> {
-    let keys = ["sgdb-api-key", "igdb-client-id", "igdb-client-secret"];
-    let conn = db::open(&ctx.db_path)?;
-    db::migrate(&conn)?;
-    let mut out = BTreeMap::new();
-    for key in keys {
-        if let Some(value) = db::repo::secret_get(&conn, key)? {
-            out.insert(key.to_string(), value);
-        }
-    }
-    Ok(out)
-}
-
 /// Return the directory where artwork files are cached.
 pub fn artwork_dir() -> Result<PathBuf, Error> {
     paths::library_artwork_dir().ok_or_else(|| {
@@ -123,89 +57,17 @@ pub fn artwork_dir() -> Result<PathBuf, Error> {
     })
 }
 
-/// Best-effort enrichment for a game. LewdZone scraped data is the baseline;
-/// each enabled external provider is tried only to fill missing fields.
-/// Records are stored in `game_external`.
-pub fn enrich(ctx: &Context, card: &GameCard) -> Result<Enrichment, Error> {
-    let secrets = load_secrets(ctx)?;
-    let mut merged = Enrichment {
+/// Best-effort enrichment for a game. LewdZone scraped data is the sole baseline;
+/// external network providers have been removed (ADR-0006).
+pub fn enrich(_ctx: &Context, card: &GameCard) -> Result<Enrichment, Error> {
+    Ok(Enrichment {
         description: card.description.clone(),
         developer: card.developer.clone(),
         rating: None,
         tags: Vec::new(),
         genres: card.external_genres.clone(),
         screenshots: Vec::new(),
-    };
-    let mut stored_any = false;
-
-    for provider in providers() {
-        if !provider.enabled(&secrets) {
-            continue;
-        }
-        match provider.enrich(&secrets, card) {
-            Ok(Some(mut data)) => {
-                // Serialize the raw provider payload before we take fields.
-                let raw_json = serde_json::to_string(&data).unwrap_or_default();
-                let external_id = data.external_id_or(card);
-
-                if merged.description.is_none() {
-                    merged.description = data.description.take();
-                }
-                if merged.developer.is_none() {
-                    merged.developer = data.developer.take();
-                }
-                if merged.rating.is_none() {
-                    merged.rating = data.rating.take();
-                }
-                if merged.tags.is_empty() && !data.tags.is_empty() {
-                    merged.tags = data.tags;
-                }
-                if merged.genres.is_empty() && !data.genres.is_empty() {
-                    merged.genres = data.genres;
-                }
-                if merged.screenshots.is_empty() && !data.screenshots.is_empty() {
-                    merged.screenshots = data.screenshots;
-                }
-                if let Some(post_id) = card.post_id {
-                    let conn = db::open(&ctx.db_path)?;
-                    db::repo::game_external_upsert(
-                        &conn,
-                        post_id,
-                        provider.name(),
-                        &external_id,
-                        &raw_json,
-                    )?;
-                    stored_any = true;
-                }
-            }
-            Ok(None) => {}
-            Err(e) => {
-                // Providers are best-effort; log and continue.
-                eprintln!(
-                    "[content] {} enrich failed for {}: {}",
-                    provider.name(),
-                    card.slug,
-                    e
-                );
-            }
-        }
-    }
-
-    if stored_any {
-        if let Some(post_id) = card.post_id {
-            let _ = db::repo::game_external_list(&db::open(&ctx.db_path)?, post_id);
-        }
-    }
-
-    Ok(merged)
-}
-
-impl Enrichment {
-    fn external_id_or(&self, card: &GameCard) -> String {
-        // SteamGridDB and others use the title as the lookup key when no
-        // explicit external id is returned.
-        card.slug.clone()
-    }
+    })
 }
 
 /// Fetch (or return a cached) artwork file for a game. The returned path is
@@ -219,50 +81,12 @@ pub fn artwork(
     let dir = artwork_dir()?;
     fs::create_dir_all(&dir)?;
 
-    // Check the database cache first.
-    {
-        let conn = db::open(&ctx.db_path)?;
-        if let Some(row) = db::repo::artwork_cache_get(&conn, &key, &kind.to_string())? {
-            let path = PathBuf::from(&row.file_path);
-            if path.exists() {
-                return Ok(Some(path));
-            }
-        }
-    }
-
-    let secrets = load_secrets(ctx)?;
-    for provider in providers() {
-        if !provider.enabled(&secrets) {
-            continue;
-        }
-        match provider.artwork(&secrets, card, kind) {
-            Ok(Some(bytes)) if !bytes.is_empty() => {
-                let ext = image_ext(&bytes).unwrap_or("jpg");
-                let file_name = format!("{}-{}.{ext}", key, kind);
-                let path = dir.join(&file_name);
-                let mut file = fs::File::create(&path)?;
-                file.write_all(&bytes)?;
-
-                let conn = db::open(&ctx.db_path)?;
-                db::repo::artwork_cache_upsert(
-                    &conn,
-                    &key,
-                    &kind.to_string(),
-                    provider.name(),
-                    &path.to_string_lossy(),
-                )?;
-                return Ok(Some(path));
-            }
-            Ok(_) => {}
-            Err(e) => {
-                eprintln!(
-                    "[content] {} artwork failed for {} {:?}: {}",
-                    provider.name(),
-                    card.slug,
-                    kind,
-                    e
-                );
-            }
+    // Check the database cache.
+    let conn = db::open(&ctx.db_path)?;
+    if let Some(row) = db::repo::artwork_cache_get(&conn, &key, &kind.to_string())? {
+        let path = PathBuf::from(&row.file_path);
+        if path.exists() {
+            return Ok(Some(path));
         }
     }
 
@@ -270,6 +94,7 @@ pub fn artwork(
 }
 
 /// Guess an image extension from the first bytes.
+#[allow(dead_code)]
 fn image_ext(bytes: &[u8]) -> Option<&'static str> {
     if bytes.starts_with(b"\x89PNG\r\n\x1a\n") {
         Some("png")
@@ -312,5 +137,23 @@ mod tests {
         assert_eq!(image_ext(b"GIF89afoo"), Some("gif"));
         let webp = b"RIFFxxxxWEBP";
         assert_eq!(image_ext(webp), Some("webp"));
+    }
+
+    #[test]
+    fn enrich_returns_baseline_without_external_calls() {
+        let card = GameCard {
+            slug: "wild-life".to_string(),
+            title: "Wild Life".to_string(),
+            description: Some("A wild adventure".to_string()),
+            developer: Some("Adeptus Steve".to_string()),
+            external_genres: vec!["Adventure".to_string()],
+            ..Default::default()
+        };
+        let (db, cfg) = (PathBuf::from(":memory:"), PathBuf::from("config.json"));
+        let ctx = Context::new(db, cfg);
+        let res = enrich(&ctx, &card).expect("enrich should succeed");
+        assert_eq!(res.description.as_deref(), Some("A wild adventure"));
+        assert_eq!(res.developer.as_deref(), Some("Adeptus Steve"));
+        assert_eq!(res.genres, vec!["Adventure"]);
     }
 }

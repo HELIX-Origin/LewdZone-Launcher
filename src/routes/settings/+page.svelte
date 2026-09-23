@@ -16,6 +16,40 @@
   let busy = $state(false);
   let toast = $state("");
 
+  const AVAILABLE_SOURCES = [
+    { id: "mega", label: "MEGA" },
+    { id: "google", label: "Google Drive" },
+    { id: "dropbox", label: "Dropbox" },
+    { id: "mediafire", label: "MediaFire" },
+    { id: "pixeldrain", label: "PixelDrain" },
+    { id: "workupload", label: "Workupload" },
+    { id: "fileknot", label: "Fileknot" },
+    { id: "transfaze", label: "Transfaze" },
+    { id: "uploadhaven", label: "UploadHaven" },
+    { id: "mixdrop", label: "MixDrop" },
+    { id: "racaty", label: "Racaty" },
+    { id: "terminal", label: "Terminal" },
+  ] as const;
+
+  function parsePreferredSources(raw: unknown): string[] {
+    if (typeof raw !== "string" || !raw.trim()) return [];
+    return raw
+      .split(",")
+      .map((s) => s.trim().toLowerCase())
+      .filter((s) => s.length > 0);
+  }
+
+  function toggleSource(sourceId: string) {
+    const current = parsePreferredSources(snapshot["source-priority"]);
+    let updated: string[];
+    if (current.includes(sourceId)) {
+      updated = current.filter((id) => id !== sourceId);
+    } else {
+      updated = [...current, sourceId];
+    }
+    save("source-priority", updated.join(","));
+  }
+
   async function load() {
     status = "loading";
     try {
@@ -53,17 +87,6 @@
     }
   }
 
-  const SECRET_KEYS = [
-    ["sgdb-api-key", "SteamGridDB API key", "Used to fetch artwork (https://www.steamgriddb.com/profile/preferences/api)."],
-    ["igdb-client-id", "IGDB client ID", "Twitch/IGDB OAuth client ID."],
-    ["igdb-client-secret", "IGDB client secret", "Twitch/IGDB OAuth client secret."],
-  ] as const;
-
-  function secretPresence(key: string) {
-    const v = snapshot[key];
-    return typeof v === "string" && v === "(set)" ? "(set)" : "(not set)";
-  }
-
   async function applyTheme(name: string) {
     busy = true;
     try {
@@ -89,29 +112,42 @@
   <div class="settings">
     <h1>Settings</h1>
 
-{#each [
-      ["library-root", "Library root", "Where games are installed (library folders)."],
-      ["content-priority", "Content providers", "Comma-separated provider priority list."],
-      [
-        "source-priority",
-        "Preferred download sources",
-        "Comma-separated cloud hosts (mega, google, dropbox, mediafire, pixeldrain). Preferred sources are listed first and used as the default on a game's download panel.",
-      ],
-    ] as [key, label, hint] (key)}
-      <label class="field">
-        <span class="field-label">{label}</span>
-        <input
-          class:touched={false}
-          type="text"
-          value={String(snapshot[key] ?? "")}
-          onchange={(e) => save(key, (e.currentTarget as HTMLInputElement).value)}
-          onkeydown={(e) => {
-            if (e.key === "Enter") (e.currentTarget as HTMLInputElement).blur();
-          }}
-        />
-        <span class="field-hint">{hint}</span>
-      </label>
-    {/each}
+    <label class="field">
+      <span class="field-label">Library root</span>
+      <input
+        class:touched={false}
+        type="text"
+        value={String(snapshot["library-root"] ?? "")}
+        onchange={(e) => save("library-root", (e.currentTarget as HTMLInputElement).value)}
+        onkeydown={(e) => {
+          if (e.key === "Enter") (e.currentTarget as HTMLInputElement).blur();
+        }}
+      />
+      <span class="field-hint">Where games are installed (library folders).</span>
+    </label>
+
+    <fieldset class="field">
+      <legend class="field-label">Preferred download sources</legend>
+      <div class="source-toggles" role="group" aria-label="Preferred download sources">
+        {#each AVAILABLE_SOURCES as src (src.id)}
+          {@const active = parsePreferredSources(snapshot["source-priority"]).includes(src.id)}
+          <button
+            type="button"
+            class="source-toggle-btn"
+            class:active={active}
+            aria-pressed={active}
+            aria-label={`Toggle ${src.label} preference`}
+            onclick={() => toggleSource(src.id)}
+          >
+            <span class="toggle-indicator">{active ? "✓" : "+"}</span>
+            <span class="source-name">{src.label}</span>
+          </button>
+        {/each}
+      </div>
+      <span class="field-hint">
+        Toggle cloud hosts to mark as preferred. Preferred sources appear first and serve as default on a game's download panel.
+      </span>
+    </fieldset>
 
     <label class="field">
       <span class="field-label">Home page</span>
@@ -153,29 +189,6 @@
       <span class="field-hint">Nord, Dracula, and Material ship with the app. Custom skins go in the user skins folder (one subfolder per theme) — next to the app on Windows, in the app data folder on macOS/Linux. Built-in default stays; skins apply at runtime — no restart needed.</span>
     </fieldset>
 
-    <fieldset class="field">
-      <legend class="field-label">API keys</legend>
-      <p class="field-hint">
-        Stored in the local database — never in the readable config file. Leave blank and press Enter to clear a key.
-      </p>
-      {#each SECRET_KEYS as [key, label, hint] (key)}
-        <label class="field">
-          <span class="field-label">{label}</span>
-          <input
-            type="password"
-            value=""
-            placeholder={secretPresence(key)}
-            aria-label={label}
-            onchange={(e) => save(key, (e.currentTarget as HTMLInputElement).value, true)}
-            onkeydown={(e) => {
-              if (e.key === "Enter") (e.currentTarget as HTMLInputElement).blur();
-            }}
-          />
-          <span class="field-hint">{hint}</span>
-        </label>
-      {/each}
-    </fieldset>
-
     {#if toast}<p class="toast" aria-live="polite">{toast}</p>{/if}
   </div>
 {/if}
@@ -198,6 +211,9 @@
     display: flex;
     flex-direction: column;
     gap: 4px;
+    border: none;
+    padding: 0;
+    margin: 0;
   }
 
   .field-label {
@@ -207,7 +223,6 @@
   }
 
   input[type="text"],
-  input[type="password"],
   select {
     background: var(--lz-surface-2);
     border: 1px solid var(--lz-surface-2);
@@ -221,6 +236,45 @@
   select:focus {
     outline: 1px solid var(--lz-accent);
     border-color: var(--lz-accent);
+  }
+
+  .source-toggles {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 4px;
+  }
+
+  .source-toggle-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: var(--lz-radius);
+    border: 1px solid var(--lz-surface-2);
+    background: var(--lz-surface-2);
+    color: var(--lz-text-dim);
+    font: inherit;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+
+  .source-toggle-btn:hover {
+    color: var(--lz-text);
+    border-color: var(--lz-accent);
+  }
+
+  .source-toggle-btn.active {
+    background: var(--lz-accent);
+    color: #fff;
+    border-color: var(--lz-accent);
+    font-weight: 600;
+  }
+
+  .toggle-indicator {
+    font-size: 11px;
+    font-weight: bold;
   }
 
   .field-hint {

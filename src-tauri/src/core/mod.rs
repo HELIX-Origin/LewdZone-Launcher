@@ -94,6 +94,10 @@ impl Context {
             config_path,
         }
     }
+
+    pub fn open_db(&self) -> Result<rusqlite::Connection, Error> {
+        crate::db::open(&self.db_path)
+    }
 }
 
 /// Marker for domain functions not yet implemented (Phase 2 engine).

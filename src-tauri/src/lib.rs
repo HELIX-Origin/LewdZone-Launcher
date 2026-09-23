@@ -9,7 +9,7 @@ pub mod db;
 pub mod resolver;
 pub mod scraper;
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap};
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
@@ -32,6 +32,12 @@ pub struct AppState {
     /// background so the webview never blocks on network (Rule 05) and users can
     /// schedule more downloads while any are active.
     pub queue: Arc<crate::core::queue::Queue>,
+    /// In-memory cache for game profiles (slug -> Game).
+    pub game_cache: Mutex<HashMap<String, crate::core::models::Game>>,
+    /// In-memory cache for catalog pages (cache_key -> ArchivePage).
+    pub page_cache: Mutex<HashMap<String, crate::scraper::archive::ArchivePage>>,
+    /// In-memory cache for the genre cloud.
+    pub genres_cache: Mutex<Option<Vec<crate::core::models::Genre>>>,
 }
 
 /// Wire format returned to the Settings page (cluster of a single setting).
@@ -50,13 +56,61 @@ fn catalog_page(
     page: Option<u32>,
     filter: Option<crate::core::models::ArchiveFilter>,
 ) -> Result<crate::scraper::archive::ArchivePage, String> {
+    let p = page.unwrap_or(1);
+    let filter = filter.unwrap_or_default();
+    let cache_key = format!(
+        "p:{}:{}:{:?}",
+        p,
+        filter.sort.as_deref().unwrap_or(""),
+        filter
+    );
+
+    // 1. In-memory first
+    if let Ok(cache) = state.page_cache.lock() {
+        if let Some(archive) = cache.get(&cache_key) {
+            return Ok(archive.clone());
+        }
+    }
+
     let ctx = state
         .context
         .lock()
         .map_err(|_| "state lock poisoned".to_string())?;
-    let filter = filter.unwrap_or_default();
-    crate::core::catalog::archive_page_filtered(&ctx, page.unwrap_or(1), &filter)
-        .map_err(|e| e.to_string())
+
+    let archive =
+        crate::core::catalog::archive_page_filtered(&ctx, p, &filter).map_err(|e| e.to_string())?;
+
+    // Persist cards to DB
+    if let Ok(conn) = ctx.open_db() {
+        for card in &archive.games {
+            if let Some(post_id) = card.post_id {
+                let _ = conn.execute(
+                    r#"
+                    INSERT INTO game (post_id, slug, title, thumbnail_url, updated_at)
+                    VALUES (?1, ?2, ?3, ?4, ?5)
+                    ON CONFLICT(slug) DO UPDATE SET
+                        post_id = excluded.post_id,
+                        title = excluded.title,
+                        thumbnail_url = coalesce(excluded.thumbnail_url, game.thumbnail_url),
+                        updated_at = coalesce(excluded.updated_at, game.updated_at)
+                    "#,
+                    rusqlite::params![
+                        post_id,
+                        card.slug,
+                        card.title,
+                        card.thumb_url,
+                        card.updated_at,
+                    ],
+                );
+            }
+        }
+    }
+
+    if let Ok(mut cache) = state.page_cache.lock() {
+        cache.insert(cache_key, archive.clone());
+    }
+
+    Ok(archive)
 }
 
 /// The full `/game-genres/` tag cloud for the Store's left rail.
@@ -64,11 +118,56 @@ fn catalog_page(
 fn catalog_genres(
     state: tauri::State<'_, AppState>,
 ) -> Result<Vec<crate::core::models::Genre>, String> {
+    // 1. In-memory first
+    if let Ok(cache) = state.genres_cache.lock() {
+        if let Some(genres) = &*cache {
+            return Ok(genres.clone());
+        }
+    }
+
     let ctx = state
         .context
         .lock()
         .map_err(|_| "state lock poisoned".to_string())?;
-    crate::core::catalog::genres_page(&ctx).map_err(|e| e.to_string())
+
+    // 2. DB persistence check: if genre table has rows, load from DB
+    if let Ok(conn) = ctx.open_db() {
+        if let Ok(mut stmt) = conn.prepare("SELECT slug, label FROM genre ORDER BY label") {
+            if let Ok(rows) = stmt.query_map([], |row| {
+                Ok(crate::core::models::Genre {
+                    slug: row.get(0)?,
+                    label: row.get(1)?,
+                    count: None,
+                })
+            }) {
+                let genres: Vec<crate::core::models::Genre> = rows.filter_map(Result::ok).collect();
+                if !genres.is_empty() {
+                    if let Ok(mut cache) = state.genres_cache.lock() {
+                        *cache = Some(genres.clone());
+                    }
+                    return Ok(genres);
+                }
+            }
+        }
+    }
+
+    // 3. Fallback: fetch from network, persist to DB, and cache in memory
+    let genres = crate::core::catalog::genres_page(&ctx).map_err(|e| e.to_string())?;
+
+    if let Ok(conn) = ctx.open_db() {
+        for g in &genres {
+            let _ = conn.execute(
+                "INSERT INTO genre (slug, label) VALUES (?1, ?2) ON CONFLICT(slug) DO UPDATE SET label = excluded.label",
+                rusqlite::params![g.slug, g.label],
+            );
+        }
+    }
+
+    if let Ok(mut cache) = state.genres_cache.lock() {
+        *cache = Some(genres.clone());
+    }
+
+    Ok(genres)
 }
 
 /// One genre's archive (`/game-genre/<slug>/page/N/?sort=`).
@@ -79,13 +178,30 @@ fn catalog_genre(
     page: Option<u32>,
     filter: Option<crate::core::models::ArchiveFilter>,
 ) -> Result<crate::scraper::archive::ArchivePage, String> {
+    let p = page.unwrap_or(1);
+    let sort = filter.as_ref().and_then(|f| f.sort.as_deref());
+    let cache_key = format!("genre:{slug}:p:{p}:s:{}", sort.unwrap_or(""));
+
+    // 1. In-memory first
+    if let Ok(cache) = state.page_cache.lock() {
+        if let Some(archive) = cache.get(&cache_key) {
+            return Ok(archive.clone());
+        }
+    }
+
     let ctx = state
         .context
         .lock()
         .map_err(|_| "state lock poisoned".to_string())?;
-    let sort = filter.and_then(|f| f.sort);
-    crate::core::catalog::genre_page(&ctx, &slug, page.unwrap_or(1), sort.as_deref())
-        .map_err(|e| e.to_string())
+
+    let archive =
+        crate::core::catalog::genre_page(&ctx, &slug, p, sort).map_err(|e| e.to_string())?;
+
+    if let Ok(mut cache) = state.page_cache.lock() {
+        cache.insert(cache_key, archive.clone());
+    }
+
+    Ok(archive)
 }
 
 /// WordPress free-text search (`/?s=<query>`), same card shape as the archive.
@@ -109,10 +225,51 @@ fn game_page(
     state: tauri::State<'_, AppState>,
     slug: String,
 ) -> Result<crate::core::models::Game, String> {
-    let _ = state;
-    let url = format!("https://lewdzone.com/game/{}/", slug.trim_end_matches('/'));
+    let clean_slug = slug.trim_end_matches('/').to_string();
+
+    // 1. In-memory first: return instantly if already loaded
+    if let Ok(cache) = state.game_cache.lock() {
+        if let Some(game) = cache.get(&clean_slug) {
+            return Ok(game.clone());
+        }
+    }
+
+    let ctx = state
+        .context
+        .lock()
+        .map_err(|_| "state lock poisoned".to_string())?;
+
+    // 2. DB persistence: if present in SQLite DB with versions or entries, load into memory and return
+    if let Ok(conn) = ctx.open_db() {
+        if let Ok(Some(game)) = crate::db::repo::game_by_slug(&conn, &clean_slug) {
+            if !game.versions.is_empty() || !game.download_entries.is_empty() {
+                if let Ok(mut cache) = state.game_cache.lock() {
+                    cache.insert(clean_slug.clone(), game.clone());
+                }
+                return Ok(game);
+            }
+        }
+    }
+
+    // 3. Fallback: fetch from network, persist to DB, and cache in memory
+    let url = format!("https://lewdzone.com/game/{clean_slug}/");
     let html = crate::scraper::fetch(&url).map_err(|e| e.to_string())?;
-    Ok(crate::scraper::game::parse_game(&html))
+    let mut game = crate::scraper::game::parse_game(&html);
+    if game.slug.is_empty() {
+        game.slug = clean_slug.clone();
+    }
+
+    // Persist to DB
+    if let Ok(conn) = ctx.open_db() {
+        let _ = crate::db::repo::upsert_game(&conn, &game, None, None);
+    }
+
+    // Store in memory cache
+    if let Ok(mut cache) = state.game_cache.lock() {
+        cache.insert(clean_slug, game.clone());
+    }
+
+    Ok(game)
 }
 
 /// The sources available for a game's Download panel, ordered by the user's
@@ -129,8 +286,49 @@ fn game_sources(
         .context
         .lock()
         .map_err(|_| "state lock poisoned".to_string())?;
+    let clean_slug = slug.trim_end_matches('/');
+
+    // 1. In-memory first
+    let cached_game = state
+        .game_cache
+        .lock()
+        .ok()
+        .and_then(|c| c.get(clean_slug).cloned());
+
+    // 2. DB persistence check
+    let game = match cached_game {
+        Some(g) => Some(g),
+        None => {
+            if let Ok(conn) = ctx.open_db() {
+                if let Ok(Some(g)) = crate::db::repo::game_by_slug(&conn, clean_slug) {
+                    if let Ok(mut cache) = state.game_cache.lock() {
+                        cache.insert(clean_slug.to_string(), g.clone());
+                    }
+                    Some(g)
+                } else {
+                    None
+                }
+            } else {
+                None
+            }
+        }
+    };
+
+    if let Some(game) = game {
+        let settings =
+            crate::core::settings::Settings::load(&ctx.config_path).map_err(|e| e.to_string())?;
+        return crate::core::download::sources_for(
+            &game,
+            version.as_deref().unwrap_or("latest"),
+            platform.as_deref().unwrap_or("PC"),
+            tab.as_deref().unwrap_or("official"),
+            settings.source_priority.as_deref(),
+        )
+        .map_err(|e| e.to_string());
+    }
+
     let select = crate::core::download::Select {
-        game: &slug,
+        game: clean_slug,
         version: version.as_deref().unwrap_or("latest"),
         platform: platform.as_deref().unwrap_or("PC"),
         tab: tab.as_deref().unwrap_or("official"),
@@ -398,6 +596,9 @@ pub fn run() {
         .manage(AppState {
             context: Mutex::new(Context::new(db, config)),
             queue,
+            game_cache: Mutex::new(HashMap::new()),
+            page_cache: Mutex::new(HashMap::new()),
+            genres_cache: Mutex::new(None),
         })
         .invoke_handler(tauri::generate_handler![
             greet,

@@ -4,9 +4,12 @@ Only open bugs belong here. Each entry links to its GitHub issue (once filed)
 and is closed by editing this file, not by deleting history. When a bug is fixed,
 move it to the commit that resolved it (`git log`).
 
-## 🎉 None yet
-
-No open bugs tracked.
+## 2026-09-23 — Downloads fail redirect challenge & source selection needed
+- **Status:** Open
+- **Description:**
+  - Downloads currently do not work because automated requests fail to get past the site's redirect challenge on their own.
+  - A proper child webview window setup needs to be implemented to allow users to interact with and click the final download button so the launcher app can pick up the resolved download link directly.
+  - Selecting the download source from the game's store page needs to be supported.
 
 ## ✅ Resolved
 

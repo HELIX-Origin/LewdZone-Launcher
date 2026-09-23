@@ -30,9 +30,19 @@ pub fn upsert_game(
     card_updated_at: Option<&str>,
     card_thumbnail: Option<&str>,
 ) -> Result<(), Error> {
-    // post_id is the stable identity; a card/game without one is not storable.
-    let Some(post_id) = game.post_id else {
-        return Ok(());
+    let post_id = match game.post_id {
+        Some(id) => id,
+        None => {
+            use std::hash::{Hash, Hasher};
+            let mut hasher = std::collections::hash_map::DefaultHasher::new();
+            game.slug.hash(&mut hasher);
+            (hasher.finish() & 0x7FFF_FFFF_FFFF_FFFF) as i64
+        }
+    };
+    let thumbnail = if !game.screenshots.is_empty() {
+        serde_json::to_string(&game.screenshots).ok()
+    } else {
+        card_thumbnail.map(str::to_string)
     };
     tx.execute(
         r#"
@@ -60,7 +70,7 @@ pub fn upsert_game(
             game.censorship,
             game.description,
             card_updated_at,
-            card_thumbnail,
+            thumbnail,
         ],
     )?;
 
@@ -176,10 +186,31 @@ pub fn game_by_slug(tx: &Connection, slug: &str) -> Result<Option<Game>, Error> 
         return Ok(None);
     };
 
-    let title: String = tx.query_row(
-        "SELECT title FROM game WHERE post_id = ?1",
+    struct GameRowMeta {
+        title: String,
+        developer: Option<String>,
+        engine: Option<String>,
+        size_label: Option<String>,
+        censorship: Option<String>,
+        description: Option<String>,
+        thumbnail_url: Option<String>,
+    }
+
+    let meta = tx.query_row(
+        "SELECT title, developer, engine, size_label, censorship, description, thumbnail_url
+         FROM game WHERE post_id = ?1",
         [post_id],
-        |row| row.get(0),
+        |row| {
+            Ok(GameRowMeta {
+                title: row.get(0)?,
+                developer: row.get(1)?,
+                engine: row.get(2)?,
+                size_label: row.get(3)?,
+                censorship: row.get(4)?,
+                description: row.get(5)?,
+                thumbnail_url: row.get(6)?,
+            })
+        },
     )?;
 
     let genres: Vec<String> = {
@@ -229,22 +260,41 @@ pub fn game_by_slug(tx: &Connection, slug: &str) -> Result<Option<Game>, Error> 
         download_entries.extend(v.community.iter().cloned());
     }
 
+    let mut platforms = Vec::new();
+    for entry in &download_entries {
+        if let Some(p) = &entry.platform {
+            if !platforms.contains(p) {
+                platforms.push(p.clone());
+            }
+        }
+    }
+
     let model = Game {
         slug: slug.to_string(),
         post_id: Some(post_id),
-        title,
-        developer: None,
+        title: meta.title,
+        developer: meta.developer,
         current_version: versions
             .iter()
             .find(|v| v.is_latest)
             .map(|v| v.label.clone()),
-        engine: None,
-        platforms: Vec::new(),
+        engine: meta.engine,
+        platforms,
         genres,
-        size_label: None,
-        censorship: None,
-        screenshots: Vec::new(),
-        description: None,
+        size_label: meta.size_label,
+        censorship: meta.censorship,
+        screenshots: meta
+            .thumbnail_url
+            .as_deref()
+            .map(|t| {
+                if t.starts_with('[') && t.ends_with(']') {
+                    serde_json::from_str::<Vec<String>>(t).unwrap_or_else(|_| vec![t.to_string()])
+                } else {
+                    vec![t.to_string()]
+                }
+            })
+            .unwrap_or_default(),
+        description: meta.description,
         versions,
         download_entries,
     };

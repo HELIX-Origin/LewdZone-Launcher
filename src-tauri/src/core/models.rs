@@ -12,7 +12,7 @@ use std::collections::BTreeMap;
 use serde::{Deserialize, Serialize};
 
 /// A game tile in a listing page (archive, genre, search results).
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
 pub struct GameCard {
     /// URL slug, e.g. `wild-life` (the stable public id).
     pub slug: String,
