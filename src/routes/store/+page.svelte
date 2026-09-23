@@ -583,7 +583,7 @@ interface GameCard {
   }
 
   .tile-title {
-    margin-top: 4px;
+    padding: 8px 8px 0;
     font-weight: 600;
     font-size: 12px;
     line-height: 1.2;
@@ -592,6 +592,11 @@ interface GameCard {
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
     overflow: hidden;
+    text-align: left;
+  }
+
+  .tile-btn:hover .tile-title {
+    text-decoration: underline;
   }
 
   .tile-meta {

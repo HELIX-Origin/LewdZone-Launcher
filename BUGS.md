@@ -13,7 +13,7 @@ No open bugs tracked.
 ### 2026-09-23 — `core::favorites` roundtrip test fails on Windows
 - **Root cause:** The test helper removed the temp dir but never recreated it, and `favorite_list` selected a non-existent `game.views` column.
 - **Fix:** `std::fs::create_dir_all` in `core/favorites.rs` test helper; removed `g.views` from `favorite_list` SQL and set `GameCard.views` to `None`.
-- **Resolved in:** commit `TBD`.
+- **Resolved in:** commit `a08ca6a`.
 
 ## 📝 Filing a bug
 
