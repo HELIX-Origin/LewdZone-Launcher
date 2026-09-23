@@ -69,18 +69,18 @@ flowchart TD
 - [x] App icons: generated from `assets/appicon.png` via `tauri icon` and wired into bundle config
 - [x] Favorites: SQLite-backed heart toggle on Library tiles + Favorites page
 - [x] Live archive pagination verification (`/games/page/N/`)
+- [x] **Ad-Free Custom Child Window Resolver**: Dedicated child window loading an in-app redirect page (`/resolver`) with animated countdown timer, token resolution, direct browser launch, and verified link event notification (`download-url-resolved`).
+- [x] **Storefront Download Source Selection**: LewdZone-style per-source download buttons directly on the game page, grouped by platform and variant, importing sources directly from the site and filtering out only unsupported hosts (like Gofile).
+- [x] **Download Queue Cancellation & Deletion**: Cancel in-flight/queued jobs and Delete (`✕`)/Clear Finished on the Downloads page.
+- [x] **Game Attached Image Preview Carousel**: Full-resolution screenshot and gallery image parsing with interactive carousel, thumbnail strip, and fullscreen lightbox modal.
 
-## Now 🚧 (Phase 2 — Download Flow & Source Selection)
+## Now 🚧 (Phase 3 — Test Suite & Regression)
 
-- [ ] **Child Webview for Downloads**: Implement child webview window setup to allow users to interact with and solve host redirect challenges / human verifications, enabling the launcher app to capture the final direct download URL directly.
-- [ ] **Storefront Download Source Selection**: Implement interactive selection of download sources directly from the game's store detail page.
+- [ ] Frontend unit tests for all views
+- [ ] App/CLI parity tests + protocol tests
+- [ ] Coverage floors: 85% overall, ~90% core, ~70% gui
 
 ## Later ⏳
-
-### Phase 3 — Test Suite & Regression
-- Frontend unit tests for all views
-- App/CLI parity tests + protocol tests
-- Coverage floors: 85% overall, ~90% core, ~70% gui
 
 ### Phase 4 — Packaging & Distribution
 - Packaging: MSI+NSIS, .app+DMG, AppImage+deb+rpm, updater

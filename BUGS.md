@@ -4,21 +4,20 @@ Only open bugs belong here. Each entry links to its GitHub issue (once filed)
 and is closed by editing this file, not by deleting history. When a bug is fixed,
 move it to the commit that resolved it (`git log`).
 
-## 2026-09-23 — Downloads fail redirect challenge & source selection needed
-- **Status:** Open
-- **Description:**
-  - Downloads currently do not work because automated requests fail to get past the site's redirect challenge on their own.
-  - A proper child webview window setup needs to be implemented to allow users to interact with and click the final download button so the launcher app can pick up the resolved download link directly.
-  - Selecting the download source directly from the game's store page needs to be supported.
-- **Steps to reproduce:**
-  1. Open the Store page and select any game (e.g. `treasure-of-nadia`).
-  2. Attempt to resolve tokens or queue a download through the background queue.
-  3. Automated requests fail to bypass the host redirect challenge.
-- **Planned fix:**
-  - Launch a child webview window to allow completing any human verification / redirect clicks, and capture the final direct file or host URL from navigation/download events.
-  - Enable explicit download source selection directly on the store game detail page.
-
 ## ✅ Resolved
+
+### 2026-09-23 — Downloads redirect challenge failure & invalid Zip archive (missing EOCD)
+- **Root cause:**
+  1. LewdZone go-links rely on a two-step `api.php` protocol with human countdowns. Direct requests or visiting external redirect URLs exposed users to aggressive third-party ads and popup injection.
+  2. Cloud hosts returning 200 OK HTML landing pages were streamed into `.zip` files by direct downloaders; extraction then crashed with `invalid Zip archive: Could not find EOCD`.
+  3. Game storefront lacked direct source selection and per-row download triggers.
+- **Fix:**
+  - Implemented custom in-app child resolver window (`/resolver`) with isolated ad-free countdown and token resolution flow.
+  - Added `Content-Type` header inspection in `scraper::fetch::download_stream` to reject HTML payloads.
+  - Added zip magic byte inspection (`PK\x03\x04`) in `core::extract::extract_zip` to surface clear errors on non-binary files.
+  - Mimicked LewdZone's authentic per-source download layout on the store game page, using branded provider icons for all supported hosts.
+  - Added queue cancellation, single-job deletion, and "Clear Finished" capabilities.
+- **Resolved in:** commit pending.
 
 ### 2026-09-23 — Store game pages failing to load & hanging on external providers
 - **Root cause:**

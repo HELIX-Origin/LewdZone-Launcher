@@ -485,6 +485,75 @@ fn artwork_url(
         .map_err(|e| e.to_string())
 }
 
+/// Cancel a queued or active download job.
+#[tauri::command]
+fn download_cancel(state: tauri::State<'_, AppState>, id: u64) -> Result<(), String> {
+    state.queue.cancel(id).map_err(|e| e.to_string())
+}
+
+/// Delete a finished or failed download job from queue.
+#[tauri::command]
+fn download_delete(state: tauri::State<'_, AppState>, id: u64) -> Result<(), String> {
+    state.queue.delete(id).map_err(|e| e.to_string())
+}
+
+/// Clear all completed or failed jobs from the queue.
+#[tauri::command]
+fn downloads_clear(state: tauri::State<'_, AppState>) -> Result<usize, String> {
+    state.queue.clear_finished().map_err(|e| e.to_string())
+}
+
+/// Resolve a go-link using the backend resolver.
+#[tauri::command]
+fn resolve_go_link(go_link: String) -> Result<crate::resolver::ResolvedUrl, String> {
+    crate::resolver::resolve(&go_link).map_err(|e| e.to_string())
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ResolvedDownloadPayload {
+    pub slug: String,
+    pub url: String,
+}
+
+/// Open a child webview window running our own custom in-app redirect page,
+/// ensuring no third-party malicious ads, popups, or tracking scripts run.
+#[tauri::command]
+async fn open_resolver_window(
+    app: tauri::AppHandle,
+    slug: String,
+    url: String,
+    host: Option<String>,
+    title: Option<String>,
+) -> Result<(), String> {
+    use tauri::{Manager, WebviewUrl, WebviewWindowBuilder};
+
+    if let Some(win) = app.get_webview_window("download-resolver") {
+        let _ = win.close();
+    }
+
+    let enc_url: String = url::form_urlencoded::byte_serialize(url.as_bytes()).collect();
+    let enc_slug: String = url::form_urlencoded::byte_serialize(slug.as_bytes()).collect();
+    let host_val = host.as_deref().unwrap_or("");
+    let enc_host: String = url::form_urlencoded::byte_serialize(host_val.as_bytes()).collect();
+    let title_val = title.as_deref().unwrap_or(&slug);
+    let enc_title: String = url::form_urlencoded::byte_serialize(title_val.as_bytes()).collect();
+
+    let path = format!("resolver?slug={enc_slug}&url={enc_url}&host={enc_host}&title={enc_title}");
+
+    let builder =
+        WebviewWindowBuilder::new(&app, "download-resolver", WebviewUrl::App(path.into()))
+            .title(format!(
+                "Download Verification - {}",
+                title.as_deref().unwrap_or(&slug)
+            ))
+            .inner_size(700.0, 560.0)
+            .min_inner_size(520.0, 420.0)
+            .center();
+
+    builder.build().map_err(|e| e.to_string())?;
+    Ok(())
+}
+
 /// `settings.get()` — one value or the whole snapshot as JSON for the page.
 #[tauri::command]
 fn settings_get(
@@ -622,7 +691,12 @@ pub fn run() {
             create_shortcut,
             game_launch,
             content_enrich,
-            artwork_url
+            artwork_url,
+            open_resolver_window,
+            download_cancel,
+            download_delete,
+            downloads_clear,
+            resolve_go_link
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

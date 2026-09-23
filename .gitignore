@@ -43,6 +43,7 @@ htmlcov/
 # development and build processes.
 # --------------------------------------------------
 scratch/
+PROGRESS.md
 
 # --------------------------------------------------
 # Editor / IDE

@@ -16,40 +16,6 @@
   let busy = $state(false);
   let toast = $state("");
 
-  const AVAILABLE_SOURCES = [
-    { id: "mega", label: "MEGA" },
-    { id: "google", label: "Google Drive" },
-    { id: "dropbox", label: "Dropbox" },
-    { id: "mediafire", label: "MediaFire" },
-    { id: "pixeldrain", label: "PixelDrain" },
-    { id: "workupload", label: "Workupload" },
-    { id: "fileknot", label: "Fileknot" },
-    { id: "transfaze", label: "Transfaze" },
-    { id: "uploadhaven", label: "UploadHaven" },
-    { id: "mixdrop", label: "MixDrop" },
-    { id: "racaty", label: "Racaty" },
-    { id: "terminal", label: "Terminal" },
-  ] as const;
-
-  function parsePreferredSources(raw: unknown): string[] {
-    if (typeof raw !== "string" || !raw.trim()) return [];
-    return raw
-      .split(",")
-      .map((s) => s.trim().toLowerCase())
-      .filter((s) => s.length > 0);
-  }
-
-  function toggleSource(sourceId: string) {
-    const current = parsePreferredSources(snapshot["source-priority"]);
-    let updated: string[];
-    if (current.includes(sourceId)) {
-      updated = current.filter((id) => id !== sourceId);
-    } else {
-      updated = [...current, sourceId];
-    }
-    save("source-priority", updated.join(","));
-  }
-
   async function load() {
     status = "loading";
     try {
@@ -125,29 +91,6 @@
       />
       <span class="field-hint">Where games are installed (library folders).</span>
     </label>
-
-    <fieldset class="field">
-      <legend class="field-label">Preferred download sources</legend>
-      <div class="source-toggles" role="group" aria-label="Preferred download sources">
-        {#each AVAILABLE_SOURCES as src (src.id)}
-          {@const active = parsePreferredSources(snapshot["source-priority"]).includes(src.id)}
-          <button
-            type="button"
-            class="source-toggle-btn"
-            class:active={active}
-            aria-pressed={active}
-            aria-label={`Toggle ${src.label} preference`}
-            onclick={() => toggleSource(src.id)}
-          >
-            <span class="toggle-indicator">{active ? "✓" : "+"}</span>
-            <span class="source-name">{src.label}</span>
-          </button>
-        {/each}
-      </div>
-      <span class="field-hint">
-        Toggle cloud hosts to mark as preferred. Preferred sources appear first and serve as default on a game's download panel.
-      </span>
-    </fieldset>
 
     <label class="field">
       <span class="field-label">Home page</span>
@@ -236,45 +179,6 @@
   select:focus {
     outline: 1px solid var(--lz-accent);
     border-color: var(--lz-accent);
-  }
-
-  .source-toggles {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    margin-top: 4px;
-  }
-
-  .source-toggle-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 6px 12px;
-    border-radius: var(--lz-radius);
-    border: 1px solid var(--lz-surface-2);
-    background: var(--lz-surface-2);
-    color: var(--lz-text-dim);
-    font: inherit;
-    font-size: 13px;
-    cursor: pointer;
-    transition: all 0.15s ease;
-  }
-
-  .source-toggle-btn:hover {
-    color: var(--lz-text);
-    border-color: var(--lz-accent);
-  }
-
-  .source-toggle-btn.active {
-    background: var(--lz-accent);
-    color: #fff;
-    border-color: var(--lz-accent);
-    font-weight: 600;
-  }
-
-  .toggle-indicator {
-    font-size: 11px;
-    font-weight: bold;
   }
 
   .field-hint {

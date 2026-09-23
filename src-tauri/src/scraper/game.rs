@@ -215,19 +215,65 @@ fn parse_genres(document: &Html) -> Vec<String> {
 }
 
 fn parse_screenshots(document: &Html) -> Vec<String> {
-    let sel = Selector::parse("div.gallery figure.gallery-item .gallery-icon a[href]")
-        .expect("valid screenshot selector");
-    document
-        .select(&sel)
-        .filter_map(|a| {
-            let href = a.value().attr("href").map(str::to_string)?;
-            if href.contains("wp-content/uploads") {
-                Some(href)
-            } else {
-                None
+    let mut urls = Vec::new();
+
+    // 1. Primary gallery thumbnail anchor links (points to full-res original)
+    if let Ok(sel) = Selector::parse("div.gallery figure.gallery-item .gallery-icon a[href]") {
+        for a in document.select(&sel) {
+            if let Some(href) = a.value().attr("href") {
+                if href.contains("wp-content/uploads") {
+                    urls.push(href.to_string());
+                }
             }
-        })
-        .collect()
+        }
+    }
+
+    // 2. Carousel, slider, and content preview images (when gallery anchor links are absent)
+    if urls.is_empty() {
+        let img_selectors = [
+            ".carousel img",
+            ".swiper-slide img",
+            "div.gallery figure.gallery-item img",
+            "div.main-content img",
+            "div.entry-content img",
+        ];
+        for sel_str in img_selectors {
+            if let Ok(sel) = Selector::parse(sel_str) {
+                for img in document.select(&sel) {
+                    let src = img
+                        .value()
+                        .attr("data-full-url")
+                        .or_else(|| img.value().attr("data-src"))
+                        .or_else(|| img.value().attr("src"));
+                    if let Some(s) = src {
+                        let s_lower = s.to_ascii_lowercase();
+                        if s_lower.contains("wp-content/uploads")
+                            && !s_lower.contains("favicon")
+                            && !s_lower.contains("logo")
+                            && !s_lower.contains("avatar")
+                            && !s_lower.contains("adzone")
+                            && (s_lower.contains(".jpg")
+                                || s_lower.contains(".jpeg")
+                                || s_lower.contains(".png")
+                                || s_lower.contains(".webp")
+                                || s_lower.contains(".gif"))
+                        {
+                            urls.push(s.to_string());
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Deduplicate preserving order
+    let mut deduped = Vec::new();
+    for u in urls {
+        if !deduped.contains(&u) {
+            deduped.push(u);
+        }
+    }
+    deduped
 }
 
 /// Versions from the `#lz-version-select` dropdown. First non-empty option is

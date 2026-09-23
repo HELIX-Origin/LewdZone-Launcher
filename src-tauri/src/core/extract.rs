@@ -6,7 +6,7 @@
 //! the previous install folder entirely.
 
 use std::fs::{self, File};
-use std::io::{self, BufReader};
+use std::io::{self, BufReader, Read, Seek};
 use std::path::Path;
 
 use serde::{Deserialize, Serialize};
@@ -117,8 +117,32 @@ pub fn install_from_archive(
 }
 
 fn extract_zip(archive: &Path, install_dir: &Path) -> Result<(), Error> {
-    let file = File::open(archive)
+    let mut file = File::open(archive)
         .map_err(|e| Error::Runtime(format!("cannot open archive {}: {e}", archive.display())))?;
+
+    let mut magic = [0u8; 4];
+    let bytes_read = file.read(&mut magic).unwrap_or(0);
+    if bytes_read >= 4
+        && &magic != b"PK\x03\x04"
+        && &magic != b"PK\x05\x06"
+        && &magic != b"PK\x07\x08"
+    {
+        let mut sample = vec![0u8; 512];
+        sample[..4].copy_from_slice(&magic);
+        let extra = file.read(&mut sample[4..]).unwrap_or(0);
+        let sample_str = String::from_utf8_lossy(&sample[..4 + extra]).to_lowercase();
+        if sample_str.contains("<!doctype")
+            || sample_str.contains("<html")
+            || sample_str.contains("<head")
+        {
+            return Err(Error::Runtime(
+                "downloaded archive is an HTML webpage rather than a valid zip file (host requires interactive browser download)".to_string(),
+            ));
+        }
+    }
+    file.seek(std::io::SeekFrom::Start(0))
+        .map_err(|e| Error::Runtime(format!("cannot seek archive {}: {e}", archive.display())))?;
+
     let reader = BufReader::new(file);
     let mut zip = zip::ZipArchive::new(reader)
         .map_err(|e| Error::Runtime(format!("cannot read zip {}: {e}", archive.display())))?;

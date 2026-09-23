@@ -513,6 +513,21 @@ pub fn queue_prune_finished(tx: &Connection, before: u64) -> Result<usize, Error
     Ok(removed)
 }
 
+/// Delete one job by id from the queue table.
+pub fn queue_delete(conn: &Connection, id: u64) -> Result<usize, Error> {
+    let removed = conn.execute("DELETE FROM queue_job WHERE id = ?1", [id])?;
+    Ok(removed)
+}
+
+/// Delete all completed or failed jobs from the queue table.
+pub fn queue_delete_finished(conn: &Connection) -> Result<usize, Error> {
+    let removed = conn.execute(
+        "DELETE FROM queue_job WHERE status IN ('dispatched', 'failed')",
+        [],
+    )?;
+    Ok(removed)
+}
+
 /// External enrichment record for a game (content-provider layer).
 #[derive(Debug)]
 pub struct GameExternalRow {

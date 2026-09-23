@@ -233,6 +233,17 @@ pub fn download_stream(url: &str) -> Result<(u64, Box<dyn std::io::Read>), Error
         if !(200..300).contains(&code) {
             return Err(Error::Network(format!("{current}: HTTP {}", resp.status())));
         }
+        if let Some(ct) = resp
+            .headers()
+            .get("content-type")
+            .and_then(|v| v.to_str().ok())
+        {
+            if ct.starts_with("text/html") {
+                return Err(Error::Network(format!(
+                    "{current}: server returned an HTML webpage instead of a binary file (the host requires interactive download)"
+                )));
+            }
+        }
         let total = resp.body().content_length().unwrap_or(0);
         let reader: Box<dyn std::io::Read> = Box::new(resp.into_body().into_reader());
         return Ok((total, reader));

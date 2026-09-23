@@ -117,6 +117,7 @@ pub fn pick_entries_with<'a>(
         .filter(|e| crate::resolver::validate_host(&e.host).is_ok())
         .filter(|e| source.is_none_or(|s| e.host.eq_ignore_ascii_case(s)))
         .collect();
+
     if entries.is_empty() {
         let have: Vec<&str> = pool
             .iter()

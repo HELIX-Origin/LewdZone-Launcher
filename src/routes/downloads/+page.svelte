@@ -52,6 +52,37 @@
     }
   }
 
+  async function cancelJob(id: number) {
+    try {
+      await invoke("download_cancel", { id });
+      await refresh();
+    } catch (err) {
+      error = String(err);
+    }
+  }
+
+  async function deleteJob(id: number) {
+    try {
+      await invoke("download_delete", { id });
+      await refresh();
+    } catch (err) {
+      error = String(err);
+    }
+  }
+
+  async function clearFinished() {
+    try {
+      await invoke("downloads_clear");
+      await refresh();
+    } catch (err) {
+      error = String(err);
+    }
+  }
+
+  const hasFinishedJobs = $derived(
+    jobs.some((j) => j.status === "dispatched" || j.status === "failed")
+  );
+
   let timer: ReturnType<typeof setInterval> | undefined;
   onMount(() => {
     refresh();
@@ -100,6 +131,11 @@
         ><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m6 11 6 6 6-6"/><path d="M4 21h16"/></svg></span
       >Downloads
     </h1>
+    {#if hasFinishedJobs}
+      <button class="clear-btn" onclick={clearFinished}>
+        Clear Finished
+      </button>
+    {/if}
   </div>
 
   {#if status === "loading"}
@@ -116,7 +152,28 @@
         <div class="item" role="listitem">
           <div class="item-top">
             <span class="item-name">{job.slug}</span>
-            <span class="badge {job.status}">{statusLabel[job.status]}</span>
+            <div class="item-actions">
+              <span class="badge {job.status}">{statusLabel[job.status]}</span>
+              {#if job.status === "queued" || job.status === "resolving" || job.status === "downloading" || job.status === "dispatching"}
+                <button
+                  class="action-btn cancel"
+                  onclick={() => cancelJob(job.id)}
+                  title="Cancel download"
+                  aria-label={`Cancel download for ${job.slug}`}
+                >
+                  Cancel
+                </button>
+              {:else if job.status === "dispatched" || job.status === "failed"}
+                <button
+                  class="action-btn delete"
+                  onclick={() => deleteJob(job.id)}
+                  title="Remove from queue"
+                  aria-label={`Remove ${job.slug} from downloads`}
+                >
+                  ✕
+                </button>
+              {/if}
+            </div>
           </div>
           <div class="item-meta">
             <span>#{job.id}</span>
@@ -178,6 +235,7 @@
   .head {
     display: flex;
     align-items: center;
+    justify-content: space-between;
     gap: 12px;
     margin-bottom: var(--lz-gap);
   }
@@ -188,6 +246,26 @@
     display: flex;
     align-items: center;
     gap: 8px;
+  }
+
+  .clear-btn {
+    appearance: none;
+    border: 1px solid var(--lz-surface-2);
+    background: var(--lz-surface-2);
+    color: var(--lz-text-dim);
+    font: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 5px 12px;
+    border-radius: var(--lz-radius);
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+
+  .clear-btn:hover {
+    color: #fff;
+    background: rgba(255, 75, 75, 0.2);
+    border-color: rgba(255, 75, 75, 0.4);
   }
 
   .head-icon :global(svg) {
@@ -223,6 +301,47 @@
     align-items: center;
     justify-content: space-between;
     gap: 10px;
+  }
+
+  .item-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .action-btn {
+    appearance: none;
+    border: none;
+    font: inherit;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 3px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+
+  .action-btn.cancel {
+    background: rgba(255, 120, 0, 0.15);
+    color: #ffaa44;
+    border: 1px solid rgba(255, 120, 0, 0.3);
+  }
+
+  .action-btn.cancel:hover {
+    background: #ff8800;
+    color: #0f1117;
+  }
+
+  .action-btn.delete {
+    background: rgba(255, 75, 75, 0.15);
+    color: #ff6b6b;
+    border: 1px solid rgba(255, 75, 75, 0.3);
+    padding: 2px 6px;
+  }
+
+  .action-btn.delete:hover {
+    background: #ff4b4b;
+    color: #fff;
   }
 
   .item-name {

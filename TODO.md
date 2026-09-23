@@ -6,10 +6,18 @@ roadmap when they're scoped.
 
 ## 🚧 Immediate
 
-- [ ] **Child Webview for Downloads**: Implement child webview window setup to allow users to interact with and solve redirect challenges / human verifications, enabling the launcher app to capture the final download URL directly.
-- [ ] **Store Page Source Selection**: Implement interactive download source selection directly on the store game detail page so users can explicitly choose which host to download from.
+(No open blockers. All core download, resolver, storefront, and queue features implemented and tested.)
 
 ## 📦 Recently Completed
+
+### Downloads, Resolver & Storefront Enhancements
+- [x] **Ad-Free Child Resolver Window**: Built custom in-app redirect page (`/resolver`) with clean countdown and API negotiation, completely preventing third-party ad injection/click hijacking.
+- [x] **Corrupted Zip / Missing EOCD Fix**: Reject `text/html` in `download_stream` and inspect zip magic bytes (`PK\x03\x04`) in `extract_zip` with clear error diagnostics.
+- [x] **LewdZone Per-Source Download Layout**: Replaced 4-dropdown selector with authentic LewdZone version selection, official/community tabs, and platform/variant groupings.
+- [x] **Download Provider Brand Icons**: Added authentic branded provider icons for all supported cloud hosts on download buttons.
+- [x] **Download Queue Management**: Added cancellation for in-flight jobs, individual deletion (`✕`) for completed/failed jobs, and "Clear Finished" header action.
+- [x] **Game Page Image Preview Carousel**: Enhanced screenshot extraction for full-res and carousel images, with previous/next controls, thumbnail navigation, and fullscreen lightbox.
+- [x] **Settings Cleanup**: Removed redundant preferred sources setting since users choose directly from per-source buttons.
 
 ### Architecture & Persistence (Memory-First)
 - [x] **Memory-First Cache Layer**: Added `game_cache`, `page_cache`, and `genres_cache` in `AppState` for instant (0ms) memory lookups.
@@ -17,7 +25,6 @@ roadmap when they're scoped.
 - [x] **Store Detail Page Deduplication**: Removed concurrent double-loads and redundant in-flight fetches in `src/routes/store/[slug]/+page.svelte`.
 - [x] **Single-Version Fallback**: Preserved download entries for games without `#lz-version-select` dropdowns.
 - [x] **Removal of External Providers (ADR-0006)**: Removed stalling external metadata providers (IGDB, VNDB, Steam, SteamGridDB, itch, IndieDB) so store pages load immediately from scraped site metadata.
-- [x] **Settings Source Toggles**: Replaced comma-separated text input with an interactive button toggle grid for all 12 allowlisted cloud hosts in Settings.
 - [x] **Discontinued Desktop Shortcuts (ADR-0006)**: Abandoned desktop shortcut creation due to official site lacking fitting square icon assets; cleaned up Library UI and CLI handlers.
 
 ### `.agents` cleanup (fdm → dm family)

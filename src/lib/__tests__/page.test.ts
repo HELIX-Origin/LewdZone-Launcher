@@ -241,6 +241,7 @@ describe("store game detail page", () => {
       if (cmd === "game_page") return sampleGameData;
       if (cmd === "game_sources") return sampleSources;
       if (cmd === "game_download") return sampleJob;
+      if (cmd === "open_resolver_window") return;
       if (cmd === "content_enrich") {
         return { description: null, developer: null, rating: null, tags: [], screenshots: [], genres: [] };
       }
@@ -253,43 +254,59 @@ describe("store game detail page", () => {
     expect(await screen.findByText("Wild Life")).toBeInTheDocument();
     expect(screen.getByText("by Adeptus Steve")).toBeInTheDocument();
     expect(screen.getByText("5.0 GB")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Download Wild Life" })).toBeInTheDocument();
-    expect(screen.getByLabelText("Source")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Download via Fileknot" })).toBeInTheDocument();
   });
 
-  it("defaults the source dropdown to the preferred source", async () => {
+  it("filters out unsupported hosts and keeps supported hosts", async () => {
+    const gameWithBoth = {
+      ...sampleGameData,
+      versions: [
+        {
+          label: "v1.0",
+          is_latest: true,
+          official: [
+            {
+              label: "Gofile Link",
+              variant: null,
+              host: "gofile",
+              platform: "pc",
+              go_link: "https://lewdzone.com/go/#t=v1.gofile",
+            },
+            {
+              label: "Mega Link",
+              variant: null,
+              host: "mega",
+              platform: "pc",
+              go_link: "https://lewdzone.com/go/#t=v1.mega",
+            },
+          ],
+          community: [],
+        },
+      ],
+    };
     mockInvoke(async (cmd: string) => {
-      if (cmd === "game_page") return sampleGameData;
-      if (cmd === "game_sources") return [...sampleSources, { host: "mega", label: "MEGA", preferred: true }];
-      if (cmd === "content_enrich") {
-        return { description: null, developer: null, rating: null, tags: [], screenshots: [], genres: [] };
-      }
+      if (cmd === "game_page") return gameWithBoth;
       return [];
     });
     render(GamePage);
     await screen.findByText("Wild Life");
-    const select = await screen.findByLabelText("Source");
-    expect((select as HTMLSelectElement).value).toBe("mega");
+    expect(screen.getByRole("button", { name: "Download via Mega" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /gofile/i })).not.toBeInTheDocument();
   });
 
-  it("queues a download through game_download", async () => {
+  it("opens the secure resolver window when a source button is clicked", async () => {
     const user = userEvent.setup();
     render(GamePage);
-    const btn = await screen.findByRole("button", { name: "Download Wild Life" });
+    const btn = await screen.findByRole("button", { name: "Download via Fileknot" });
     await user.click(btn);
     expect(invoke).toHaveBeenCalledWith(
-      "game_download",
+      "open_resolver_window",
       expect.objectContaining({
         slug: "wild-life",
-        version: "v2026-06-15 Full",
-        platform: "PC",
-        tab: "official",
-        source: "fileknot",
+        host: "fileknot",
+        url: "https://lewdzone.com/go/#t=v1.a.b",
       }),
     );
-    expect(
-      await screen.findByText("Queued download #1. Watch the Downloads page for progress."),
-    ).toBeInTheDocument();
   });
 });
 
@@ -608,6 +625,29 @@ describe("downloads page", () => {
     expect(screen.getByRole("progressbar", { name: /Download progress for wild-life/ })).toBeInTheDocument();
     expect(screen.getByText("no matching download entries found")).toBeInTheDocument();
   });
+
+  it("allows cancelling an active download and deleting a completed download", async () => {
+    const user = userEvent.setup();
+    const invocations: Array<{ cmd: string; args?: InvokeArgs }> = [];
+    mockInvoke(async (cmd: string, args?: InvokeArgs) => {
+      invocations.push({ cmd, args });
+      if (cmd === "downloads_list") {
+        return [
+          sampleJob,
+          { ...sampleJob, id: 3, status: "dispatched" },
+        ];
+      }
+      return [];
+    });
+    render(DownloadsPage);
+    const cancelBtn = await screen.findByRole("button", { name: "Cancel download for wild-life" });
+    await user.click(cancelBtn);
+    expect(invocations.some((i) => i.cmd === "download_cancel" && i.args?.id === 1)).toBe(true);
+
+    const deleteBtn = screen.getByRole("button", { name: "Remove wild-life from downloads" });
+    await user.click(deleteBtn);
+    expect(invocations.some((i) => i.cmd === "download_delete" && i.args?.id === 3)).toBe(true);
+  });
 });
 
 describe("settings page", () => {
@@ -655,27 +695,22 @@ describe("settings page", () => {
     expect(await screen.findByText("library-root saved")).toBeInTheDocument();
   });
 
-  it("shows the preferred download sources toggles with saved values active", async () => {
+  it("does not render preferred download sources toggle controls", async () => {
     render(SettingsPage);
-    const megaBtn = await screen.findByRole("button", { name: "Toggle MEGA preference" });
-    const googleBtn = await screen.findByRole("button", { name: "Toggle Google Drive preference" });
-    const dropboxBtn = await screen.findByRole("button", { name: "Toggle Dropbox preference" });
-    expect(megaBtn).toHaveAttribute("aria-pressed", "true");
-    expect(googleBtn).toHaveAttribute("aria-pressed", "true");
-    expect(dropboxBtn).toHaveAttribute("aria-pressed", "false");
+    await screen.findByDisplayValue("/fake/games");
+    expect(screen.queryByText("Preferred download sources")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Toggle/ })).not.toBeInTheDocument();
   });
 
-  it("saves the preferred download sources setting when a toggle is clicked", async () => {
+  it("saves the capture-aware sync setting when toggled", async () => {
     const user = userEvent.setup();
     render(SettingsPage);
-    const dropboxBtn = await screen.findByRole("button", { name: "Toggle Dropbox preference" });
-    await user.click(dropboxBtn);
-
+    const checkbox = await screen.findByRole("checkbox");
+    await user.click(checkbox);
     expect(invoke).toHaveBeenCalledWith(
       "settings_set",
-      expect.objectContaining({ key: "source-priority", value: "mega,google,dropbox" }),
+      expect.objectContaining({ key: "capture-aware", value: "true" }),
     );
-    expect(await screen.findByText("source-priority saved")).toBeInTheDocument();
   });
 
   it("saves the home page selection", async () => {

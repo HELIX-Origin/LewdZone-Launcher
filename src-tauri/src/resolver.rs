@@ -44,6 +44,11 @@ const KNOWN_HOSTS: &[&str] = &[
     "mixdrop",
     "racaty",
     "terminal",
+    "1fichier",
+    "rapidgator",
+    "qiwi",
+    "bowfile",
+    "hexload",
 ];
 
 /// Result of one successful resolution.
@@ -104,7 +109,7 @@ pub fn extract_token(go_link: &str) -> Option<&str> {
 
 /// Allowlist gate (Rule 10.2): only hosts we have re-verified may be dispatched.
 pub fn validate_host(host: &str) -> Result<(), Error> {
-    if KNOWN_HOSTS.contains(&host) {
+    if KNOWN_HOSTS.iter().any(|k| k.eq_ignore_ascii_case(host)) {
         Ok(())
     } else {
         Err(Error::Network(format!("unknown download host '{host}'")))

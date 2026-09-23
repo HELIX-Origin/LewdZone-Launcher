@@ -259,6 +259,52 @@ impl Queue {
         }
     }
 
+    /// Cancel a job by id. Marks it as Failed with "Cancelled by user".
+    pub fn cancel(&self, id: u64) -> Result<(), Error> {
+        let mut found = false;
+        self.update(id, |j| {
+            found = true;
+            j.status = Status::Failed;
+            j.message = Some("Cancelled by user".to_string());
+        });
+        if !found {
+            return Err(Error::Usage(format!("no download job with id #{id}")));
+        }
+        Ok(())
+    }
+
+    /// Delete a single job from memory and persistence.
+    pub fn delete(&self, id: u64) -> Result<(), Error> {
+        let mut g = self.inner.lock().unwrap_or_else(|p| p.into_inner());
+        let before_len = g.jobs.len();
+        g.jobs.retain(|j| j.id != id);
+        let removed = before_len != g.jobs.len();
+        drop(g);
+        if !removed {
+            return Err(Error::Usage(format!("no download job with id #{id}")));
+        }
+        if let Some(path) = &self.db_path {
+            let conn = db::open(path)?;
+            crate::db::repo::queue_delete(&conn, id)?;
+        }
+        Ok(())
+    }
+
+    /// Delete all completed (dispatched) or failed jobs from memory and persistence.
+    pub fn clear_finished(&self) -> Result<usize, Error> {
+        let mut g = self.inner.lock().unwrap_or_else(|p| p.into_inner());
+        let before_len = g.jobs.len();
+        g.jobs
+            .retain(|j| j.status != Status::Dispatched && j.status != Status::Failed);
+        let count = before_len - g.jobs.len();
+        drop(g);
+        if let Some(path) = &self.db_path {
+            let conn = db::open(path)?;
+            crate::db::repo::queue_delete_finished(&conn)?;
+        }
+        Ok(count)
+    }
+
     /// Block until a request is `Queued`, then return its id (worker loop).
     fn wait_for_queued(&self) -> u64 {
         let mut g = self.inner.lock().unwrap_or_else(|p| p.into_inner());
