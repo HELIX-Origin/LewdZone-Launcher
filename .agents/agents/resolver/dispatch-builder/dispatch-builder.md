@@ -19,7 +19,7 @@ flowchart LR
     B --> C[extract go-link href]
     C --> D["resolver resolves<br/>token -> real URL"]
     D --> E["build DownloadJob<br/>url + label + dest folder"]
-    E --> F[dm family - stream or open]
+    E --> F[download family - stream or open]
     B --> G[validate host in allowlist]
     G --> D
 ```

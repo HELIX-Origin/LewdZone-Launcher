@@ -18,15 +18,17 @@ roadmap when they're scoped.
 - [x] `launch-fdm` skill → DM-agnostic `launch-download` skill (done; `launch-fdm/` deleted)
 - [x] Delete stale `.agents/agents/fdm/fdm.md` shim (the family is `dm`; `fdm-adapter` lives under `.agents/agents/dm/`)
 - [x] `testing.md` + `mock-engineer.md` — swap remaining `fdm` fake / `test_fdm` wording for the dm family
-- [ ] `module-contractor.md` — `T4 fdm bridge` → dm bridge
+- [x] `module-contractor.md` — `T4 fdm bridge` → dm bridge
 - [x] Write `.agents/README.md` index
 - [ ] Write the rest of the templates layer (only `adr.md` + `changelog.md` exist of the ~17 planned)
 - [ ] Add `gui-build-loop` + `package-desktop-app` skills (referenced by gui.md)
-- [ ] Verify archive pagination scheme (`?page=N` vs `/page/N/`) on live site
+- [x] Verify archive pagination scheme (`?page=N` vs `/page/N/`) on live site
 
 ### Content-provider layer (Phase 2 engine)
 
-- [x] Implement `src-tauri/src/content/` (contract, registry, adapter stubs) + `game_external`/`artwork_cache` schema
+- [x] Implement content-provider contract, registry, and providers (SteamGridDB, VNDB, IGDB, itch.io, Steam, IndieDB) + `game_external`/`artwork_cache` schema
+- [x] LewdZone scraped data is the default metadata source; external providers fill missing/enhanced fields only
+- [x] Proper genre support: `external_genres` distinct from LewdZone tags
 - [ ] Implement `enrich-game-and-art` skill + `content-provider` template
 - [ ] `rule-03`/`rule-10` — fold content-provider keys/secrets wording (verify coverage)
 
@@ -35,14 +37,16 @@ roadmap when they're scoped.
 - [x] App relayout to the dark cyberpunk spec: left icon sidebar + top header (wide rounded search + circular profile avatar), deep cyan/charcoal gradient bg, neon accents, glassmorphism, thin scrollbar. **Home is not a separate tab** — it is the Store.
 - [x] Store view = storefront: top search, left category/genre rail, hero + media-grid rows (~9 poster-ratio tiles 2:3/3:4), tile → game detail. Backed by live search (`?s=`), genre pages, platform/sort filters (headless `/games/` + `/game-genre/`).
 - [x] Custom macOS-style title bar: frameless window (`decorations: false`) with traffic-light window controls (red/yellow/green) + custom menu bar (File/View/Help menus, profile button).
-- [x] Download-source controls: `source-priority` reordering + per-game `game_sources` panel (preferred default) + native-cloud pass-through.
+- [x] Download-source controls: `source-priority` reordering + per-game `game_sources` panel (preferred default).
 - [x] Download scheduler: `download-grace-seconds` pacing between dispatch starts (free-tier throttle protection).
 - [x] **Non-blocking async download queue** (Rust core): `game_download` enqueues and returns instantly; a background worker resolves + dispatches one request at a time; `downloads_list` exposes progress. (Pixeldrain proxy-cycle "bypass" was implemented then removed — the upstream service is dead.)
 - [x] Bundled theme skins (Nord / Dracula / Material) shipped in-repo + `home-page` launch tab setting.
 - [x] **Downloads page**: poll `downloads_list` and render each job's status/message. Add Downloads to the icon sidebar nav. Update the store detail `download()` to the queued (`QueueJob`) return.
-- [x] Persist `download_job` rows + resume across restarts (queue is in-memory for now).
-- [x] Library view = downloaded games: list installed titles from app manifests, with launch support.
+- [x] Persist `download_job` rows + resume across restarts.
+- [x] Library view = downloaded games: list installed titles from `lzapps/<slug>/app.json`, with launch support.
 - [x] Multi-format installs: the site ships games as web HTML, `.exe`, and other formats; use the site's engine/tag taxonomy to infer the actual game binary for launch (engine → binary discovery).
+- [x] Favorites: SQLite-backed heart toggle on Library tiles + Favorites page listing.
+- [x] Clickable Store tiles: tile/title navigate to `/store/<slug>`.
 - [x] App icons: regenerate from `assets/appicon.png` via `tauri icon`, wire the outputs into `tauri.conf.json` (`bundle.icon`) and fix the non-rendering sidebar logo image.
 
 ## 🗄️ Backlog (unscoped)

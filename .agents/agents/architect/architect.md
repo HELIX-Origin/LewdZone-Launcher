@@ -18,8 +18,8 @@ Define and maintain the module layout, interface contracts, data model, and
 technical conventions so the project stays modular, testable, and
 cross-platform (Windows, Linux, macOS). The Architect decides *what* each
 module does and *how modules talk to each other* — never the site-specific
-parsing details (Scraper family) or download-manager-specific details
-(download-manager family).
+parsing details (Scraper family) or download-dispatch-specific details
+(download family).
 
 ## Non-negotiables (project pillars)
 
@@ -88,7 +88,7 @@ flowchart TD
     A[architect] --> B[scraper family]
     A --> C[resolver family]
     A --> D[database family]
-    A --> E[dm family]
+    A --> E[download family]
     A --> F[cli family]
     A --> G[gui family]
     A --> H[shortcuts family]

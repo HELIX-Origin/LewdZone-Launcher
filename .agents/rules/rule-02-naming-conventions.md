@@ -22,7 +22,7 @@ canonical models (see [module-contractor](../agents/architect/module-contractor/
 | download variant | `DownloadEntry` | map of official/community + platform + label |
 | file host | `Host` | slug from `go.js` ICONS (`fileknot`, `gofile`, ...) |
 | go-link token | `GoToken` | `v1.<payload>.<sig>` string |
-| download job | `DownloadJob` | queued download-manager task |
+| download job | `DownloadJob` | queued download task |
 | artwork cache | `ArtworkCache` | steamgriddb + platform icon |
 | shortcut | `Shortcut` | native: `.lnk`, `.desktop`, `.app` |
 

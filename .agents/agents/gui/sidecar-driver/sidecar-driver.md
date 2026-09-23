@@ -36,7 +36,7 @@ flowchart TD
 2. **Registry parity.** Every CLI subcommand has a `#[tauri::command]` twin
    (and vice versa); a parity test asserts the mapping.
 3. **Exit-code mapping is authoritative from Rule 12:** 0 ok / 1 runtime /
-   2 usage / 3 network / 4 download-manager-missing / 5 interrupted. The GUI
+   2 usage / 3 network / 4 unused (was download-manager-missing) / 5 interrupted. The GUI
    maps typed errors to the same codes; errors surface in the UI error
    surface.
 4. **Cancellation.** Long operations expose an async cancel path that records
