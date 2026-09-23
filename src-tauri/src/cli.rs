@@ -80,6 +80,8 @@ enum Command {
     Shortcuts(ShortcutsArgs),
     /// Launch an installed game.
     Launch(LaunchArgs),
+    /// Manage favorite games.
+    Favorites(FavoritesArgs),
 }
 
 #[derive(clap::Args, Debug, Default)]
@@ -194,6 +196,23 @@ struct LaunchArgs {
     game: String,
 }
 
+#[derive(clap::Args, Debug, Default)]
+struct FavoritesArgs {
+    #[command(subcommand)]
+    command: FavoritesCmd,
+}
+
+#[derive(Subcommand, Debug, Default)]
+enum FavoritesCmd {
+    /// List favorited games.
+    #[default]
+    List,
+    /// Add a game to favorites.
+    Add { slug: String },
+    /// Remove a game from favorites.
+    Remove { slug: String },
+}
+
 /// Dispatch a parsed CLI invocation, printing results, returning the exit code.
 pub fn run(cli: Cli) -> ExitCode {
     let result = dispatch(cli);
@@ -252,6 +271,38 @@ fn dispatch(cli: Cli) -> Result<ExitCode, crate::core::Error> {
             core::shortcuts::run(&ctx, args.game.as_deref(), args.skip_artwork)
         }
         Command::Launch(args) => core::launch::run(&ctx, &args.game),
+        Command::Favorites(args) => match args.command {
+            FavoritesCmd::List => {
+                let games = core::favorites::list(&ctx)?;
+                if cli.json {
+                    println!("{}", serde_json::to_string_pretty(&games)?);
+                } else {
+                    if games.is_empty() {
+                        println!("No favorites yet.");
+                    } else {
+                        println!("Favorites:");
+                        for g in games {
+                            println!("  {}", g.title);
+                        }
+                    }
+                }
+                Ok(ExitCode::Ok)
+            }
+            FavoritesCmd::Add { slug } => {
+                core::favorites::add(&ctx, &slug)?;
+                if !cli.json {
+                    println!("Added '{}' to favorites.", slug);
+                }
+                Ok(ExitCode::Ok)
+            }
+            FavoritesCmd::Remove { slug } => {
+                core::favorites::remove(&ctx, &slug)?;
+                if !cli.json {
+                    println!("Removed '{}' from favorites.", slug);
+                }
+                Ok(ExitCode::Ok)
+            }
+        },
     }
 }
 
@@ -328,6 +379,28 @@ mod tests {
     #[test]
     fn rejects_unknown_subcommand() {
         assert!(Cli::try_parse_from(["lewdzone", "frobnicate"]).is_err());
+    }
+
+    #[test]
+    fn parses_favorites_subcommands() {
+        let list = Cli::try_parse_from(["lewdzone", "favorites", "list", "--json"]).unwrap();
+        assert!(list.json);
+        match list.command {
+            Command::Favorites(a) => matches!(a.command, FavoritesCmd::List),
+            _ => false,
+        };
+
+        let add = Cli::try_parse_from(["lewdzone", "favorites", "add", "wild-life"]).unwrap();
+        match add.command {
+            Command::Favorites(a) => matches!(a.command, FavoritesCmd::Add { .. }),
+            _ => false,
+        };
+
+        let remove = Cli::try_parse_from(["lewdzone", "favorites", "remove", "wild-life"]).unwrap();
+        match remove.command {
+            Command::Favorites(a) => matches!(a.command, FavoritesCmd::Remove { .. }),
+            _ => false,
+        };
     }
 
     #[test]

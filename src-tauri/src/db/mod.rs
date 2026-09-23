@@ -123,6 +123,7 @@ mod tests {
             "sync_state",
             "secret",
             "queue_job",
+            "favorite",
         ] {
             let n: i64 = conn
                 .query_row(

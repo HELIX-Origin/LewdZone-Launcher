@@ -596,6 +596,101 @@ pub fn slug_by_post_id(tx: &Connection, post_id: i64) -> Result<Option<String>, 
     .map_err(Into::into)
 }
 
+/// Resolve a permalink slug to its stable post id.
+pub fn post_id_by_slug(tx: &Connection, slug: &str) -> Result<Option<i64>, Error> {
+    tx.query_row("SELECT post_id FROM game WHERE slug = ?1", [slug], |row| {
+        row.get::<_, i64>(0)
+    })
+    .optional()
+    .map_err(Into::into)
+}
+
+/// Add or replace a favorite row for a game. `post_id` must already exist in
+/// `game` (foreign-key enforcement, Rule 06).
+pub fn favorite_add(tx: &Connection, post_id: i64) -> Result<(), Error> {
+    tx.execute(
+        "INSERT OR REPLACE INTO favorite (post_id) VALUES (?1)",
+        [post_id],
+    )?;
+    Ok(())
+}
+
+/// Remove a favorite row for a game. Missing rows are silently ignored.
+pub fn favorite_remove(tx: &Connection, post_id: i64) -> Result<(), Error> {
+    tx.execute("DELETE FROM favorite WHERE post_id = ?1", [post_id])?;
+    Ok(())
+}
+
+/// All favorited games as `GameCard`s, newest favorites first.
+pub fn favorite_list(conn: &Connection) -> Result<Vec<crate::core::models::GameCard>, Error> {
+    use crate::core::models::GameCard;
+
+    let mut stmt = conn.prepare(
+        r#"
+        SELECT g.post_id, g.slug, g.title, g.developer, g.engine,
+               g.thumbnail_url, g.updated_at, g.views
+        FROM favorite f
+        JOIN game g ON g.post_id = f.post_id
+        ORDER BY f.created_at DESC
+        "#,
+    )?;
+    let rows = stmt.query_map([], |row| {
+        Ok((
+            row.get::<_, i64>(0)?,
+            row.get::<_, String>(1)?,
+            row.get::<_, String>(2)?,
+            row.get::<_, Option<String>>(3)?,
+            row.get::<_, Option<String>>(4)?,
+            row.get::<_, Option<String>>(5)?,
+            row.get::<_, Option<String>>(6)?,
+            row.get::<_, Option<String>>(7)?,
+        ))
+    })?;
+    let mut out = Vec::new();
+    for row in rows {
+        let (post_id, slug, title, developer, engine, thumbnail_url, updated_at, views) = row?;
+        let genres: Vec<String> = {
+            let mut gs = conn.prepare(
+                "SELECT genre.label FROM game_genre JOIN genre ON genre.slug = game_genre.genre_id
+                 WHERE game_genre.game_id = ?1 ORDER BY genre.label",
+            )?;
+            let gr = gs.query_map([post_id], |g| g.get::<_, String>(0))?;
+            let mut v = Vec::new();
+            for g in gr {
+                v.push(g?);
+            }
+            v
+        };
+        let genre_slugs: Vec<String> = {
+            let mut gs = conn
+                .prepare("SELECT genre_id FROM game_genre WHERE game_id = ?1 ORDER BY genre_id")?;
+            let gr = gs.query_map([post_id], |g| g.get::<_, String>(0))?;
+            let mut v = Vec::new();
+            for g in gr {
+                v.push(g?);
+            }
+            v
+        };
+        out.push(GameCard {
+            slug,
+            post_id: Some(post_id),
+            title,
+            thumb_url: thumbnail_url,
+            platforms: Vec::new(),
+            engine,
+            state: None,
+            version_tag: None,
+            developer,
+            description: None,
+            genres,
+            genre_slugs,
+            updated_at,
+            views,
+        });
+    }
+    Ok(out)
+}
+
 /// Compact catalog rows for `list` / Storefront tiles: each game with its
 /// current version label and genre slugs, ordered by title.
 #[derive(Debug, Clone, serde::Serialize, PartialEq, Eq)]

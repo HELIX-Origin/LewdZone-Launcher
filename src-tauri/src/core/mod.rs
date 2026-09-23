@@ -9,6 +9,7 @@ pub mod catalog;
 pub mod content;
 pub mod download;
 pub mod extract;
+pub mod favorites;
 pub mod folder;
 pub mod info;
 pub mod launch;

@@ -178,11 +178,36 @@ fn downloads_list(
     Ok(state.queue.snapshot())
 }
 
-/// Favorites list (heart-tab). Persistence lands with the library/downloads
-/// milestone; surface an empty list for now.
+/// Favorites list (heart-tab). Returns `Vec<GameCard>` newest-first.
 #[tauri::command]
-fn favorites_list(_state: tauri::State<'_, AppState>) -> Result<Vec<serde_json::Value>, String> {
-    Ok(Vec::new())
+fn favorites_list(
+    state: tauri::State<'_, AppState>,
+) -> Result<Vec<crate::core::models::GameCard>, String> {
+    let ctx = state
+        .context
+        .lock()
+        .map_err(|_| "state lock poisoned".to_string())?;
+    crate::core::favorites::list(&ctx).map_err(|e| e.to_string())
+}
+
+/// Add a game to favorites by slug.
+#[tauri::command]
+fn favorite_add(state: tauri::State<'_, AppState>, slug: String) -> Result<(), String> {
+    let ctx = state
+        .context
+        .lock()
+        .map_err(|_| "state lock poisoned".to_string())?;
+    crate::core::favorites::add(&ctx, &slug).map_err(|e| e.to_string())
+}
+
+/// Remove a game from favorites by slug.
+#[tauri::command]
+fn favorite_remove(state: tauri::State<'_, AppState>, slug: String) -> Result<(), String> {
+    let ctx = state
+        .context
+        .lock()
+        .map_err(|_| "state lock poisoned".to_string())?;
+    crate::core::favorites::remove(&ctx, &slug).map_err(|e| e.to_string())
 }
 
 /// Installed games from the library manifests (ADR-0005).
@@ -371,6 +396,8 @@ pub fn run() {
             game_download,
             downloads_list,
             favorites_list,
+            favorite_add,
+            favorite_remove,
             library_list,
             game_launch,
             content_enrich,

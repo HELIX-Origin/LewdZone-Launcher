@@ -140,4 +140,14 @@ CREATE TABLE IF NOT EXISTS artwork_cache (
 );
 "#,
     ),
+    (
+        "005_favorite",
+        r#"
+CREATE TABLE IF NOT EXISTS favorite (
+    post_id     INTEGER PRIMARY KEY REFERENCES game(post_id) ON DELETE CASCADE,
+    created_at  TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now'))
+);
+CREATE INDEX IF NOT EXISTS idx_favorite_created ON favorite(created_at);
+"#,
+    ),
 ];
