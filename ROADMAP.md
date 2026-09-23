@@ -73,6 +73,8 @@ flowchart TD
 - [x] Favorites: SQLite-backed heart toggle on Library tiles + Favorites page.
 - [x] `.agents/` rule-03/rule-10 content-provider wording + `gui-build-loop` + `package-desktop-app` skills.
 - [x] Live archive pagination verification (`/games/page/N/`).
+- [x] SteamGridDB artwork end-to-end + enrichment e2e on game detail page (description, screenshots, rating, external_genres).
+- [x] Per-OS native shortcuts (.lnk / .desktop / .app) with Library button + CLI command.
 
 ## Later ⏳
 
