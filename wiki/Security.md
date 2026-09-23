@@ -38,6 +38,7 @@ checking. Full rule: [Rule 10](../.agents/rules/rule-10-security).
 ## ✅ Allowlist source
 
 Host slugs come from the site's go.js ICONS list (e.g. `mediafire`, `mega`,
-`gofile`, `drive`, …). The resolved-URL allowlist is derived from that list and
-kept in sync during [Release Process](Release-Process); changes require a
-security review ADR.
+`google`, `pixeldrain`, …). The resolved-URL allowlist is derived from that list
+and kept in sync during [Release Process](Release-Process); changes require a
+security review ADR. Dead services are removed — currently `gofile` is out of
+the allowlist.

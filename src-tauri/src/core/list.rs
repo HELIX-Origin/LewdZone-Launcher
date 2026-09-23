@@ -2,7 +2,7 @@
 //! (Rule 03 / Rule 13: the Storefront webview and the CLI share this core).
 //!
 //! Catalog rows come straight from the SQLite DB written by `sync`
-//! (database family). Library rows come from the Steam-mirror manifests
+//! (database family). Library rows come from the library-folder manifests
 //! (ADR-0005). Jobs come from the `download_job` table.
 
 use crate::cli::ExitCode;
@@ -40,6 +40,24 @@ pub fn run(ctx: &Context, library_flag: bool, jobs: bool) -> Result<ExitCode, Er
     list_catalog(ctx)
 }
 
+/// Read-only library listing for the webview (Rule 13: same core, no prints).
+pub fn library_listing(ctx: &Context) -> Result<LibraryListing, Error> {
+    let root = library::resolved_library_root(Some(&ctx.config_path))?;
+    let folders = library::LibraryFolders::load(&root.join("libraryfolders.vdf"))?;
+    let mut games = Vec::new();
+    for (folder, post_id, size) in folders.iter_games() {
+        games.push(LibraryGame {
+            post_id,
+            size,
+            folder: folder.path.clone(),
+        });
+    }
+    Ok(LibraryListing {
+        root: Some(root),
+        games,
+    })
+}
+
 fn list_catalog(ctx: &Context) -> Result<ExitCode, Error> {
     let conn = db::open(&ctx.db_path)?;
     db::migrate(&conn)?;
@@ -53,23 +71,8 @@ fn list_catalog(ctx: &Context) -> Result<ExitCode, Error> {
 }
 
 fn list_library(ctx: &Context) -> Result<ExitCode, Error> {
-    let root = library::resolved_library_root(Some(&ctx.config_path))?;
-    let folders = library::LibraryFolders::load(&root.join("libraryfolders.vdf"))?;
-    let mut games = Vec::new();
-    for (folder, post_id, size) in folders.iter_games() {
-        games.push(LibraryGame {
-            post_id,
-            size,
-            folder: folder.path.clone(),
-        });
-    }
-    println!(
-        "{}",
-        serde_json::to_string_pretty(&LibraryListing {
-            root: Some(root),
-            games,
-        })?
-    );
+    let listing = library_listing(ctx)?;
+    println!("{}", serde_json::to_string_pretty(&listing)?);
     Ok(ExitCode::Ok)
 }
 

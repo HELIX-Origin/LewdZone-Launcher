@@ -1,8 +1,12 @@
-//! Theme skins (ADR-0005 retained Steam feature): user-installed skin packages
+//! Theme skins (ADR-0005 retained feature): user-installed skin packages
 //! that override the design tokens via CSS custom properties. Skin folders live
-//! at `<config_root>/skins/<Name>/` with a `theme.json` manifest and optional
-//! `assets/`. Skins may only carry tokens + assets — never scripts (Rule 10);
-//! a malformed skin falls back to the built-in default theme.
+//! in a per-OS user-accessible location (Windows: next to the executable;
+//! macOS/Linux: the user data dir) at `<skins>/<Name>/` (each theme owns its
+//! own subfolder) with a `theme.json` manifest and optional `assets/`. Skins
+//! may only carry tokens + assets — never scripts (Rule 10); a malformed skin
+//! falls back to the built-in default theme. The bundled reference themes
+//! (Nord, Dracula, Material) are embedded in the binary and seeded into the
+//! skins folder on first run.
 
 use std::collections::BTreeMap;
 use std::fs;
@@ -13,20 +17,46 @@ use serde::{Deserialize, Serialize};
 use crate::core::paths;
 use crate::core::Error;
 
-/// Built-in default design tokens — the lewdzone.com site palette (design
+/// Bundled reference themes shipped with every build (embedded, so they are
+/// never lost). On first list they are seeded into the user's skins folder as
+/// `<skins>/<Name>/theme.json`, so users see working examples they can copy
+/// and customize. `resolve()` also falls back to the embedded copies, so a
+/// bundled theme always applies even if the seeded folder was removed.
+pub const BUNDLED_THEMES: &[(&str, &str)] = &[
+    ("Nord", include_str!("../../../skins/Nord/theme.json")),
+    ("Dracula", include_str!("../../../skins/Dracula/theme.json")),
+    (
+        "Material",
+        include_str!("../../../skins/Material/theme.json"),
+    ),
+];
+
+/// Built-in default design tokens — the dark cyberpunk palette (design
 /// tokens in view-designer.md). All keys are `--lz-*` CSS custom properties.
+/// MUST stay parity with `src/lib/theme/default.css`.
 pub fn default_tokens() -> BTreeMap<String, String> {
     BTreeMap::from([
-        ("--lz-accent".into(), "#CB3D80".into()), // site magenta accent
-        ("--lz-primary".into(), "#BC2A5E".into()), // hot pink (icon two-tone)
-        ("--lz-cyan".into(), "#32B6CD".into()),   // cyan (icon two-tone)
-        ("--lz-bg".into(), "#14121A".into()),     // near-black purple tint
-        ("--lz-surface".into(), "#1F1B28".into()),
-        ("--lz-surface-2".into(), "#2A2434".into()),
-        ("--lz-text".into(), "#F4F1F6".into()),
-        ("--lz-text-dim".into(), "#BDB3C6".into()),
-        ("--lz-danger".into(), "#E5484D".into()),
-        ("--lz-ok".into(), "#46D88B".into()),
+        ("--lz-accent".into(), "#FF4EC8".into()), // neon pink accent
+        ("--lz-primary".into(), "#FF5FB2".into()), // hot pink primary
+        ("--lz-cyan".into(), "#22D3EE".into()),   // neon cyan
+        ("--lz-bg".into(), "#0A1118".into()),     // deep dark cyan/charcoal
+        ("--lz-surface".into(), "#0E1B26".into()),
+        ("--lz-surface-2".into(), "#122A3A".into()),
+        ("--lz-text".into(), "#E8F1F8".into()),
+        ("--lz-text-dim".into(), "#9AAEC0".into()),
+        ("--lz-danger".into(), "#FF3B6B".into()),
+        ("--lz-ok".into(), "#3DFFA2".into()),
+        ("--lz-radius".into(), "4px".into()),
+        ("--lz-gap".into(), "12px".into()),
+        (
+            "--lz-gradient".into(),
+            "linear-gradient(160deg, #0A1118 0%, #0E1B26 100%)".into(),
+        ),
+        (
+            "--lz-glow".into(),
+            "0 0 14px rgba(34, 211, 238, 0.35)".into(),
+        ),
+        ("--lz-glass".into(), "rgba(14, 27, 38, 0.55)".into()),
     ])
 }
 
@@ -95,26 +125,80 @@ pub fn validate(m: &SkinManifest) -> Result<(), Error> {
 }
 
 /// Resolve effective tokens for a skin by folder name; malformed or missing
-/// skins fall back to the built-in default (`None`/empty = default theme).
+/// skins fall back to the bundled reference theme with that name, then to the
+/// built-in default (`None`/empty = default theme).
 pub fn resolve(skin_name: Option<&str>) -> Result<BTreeMap<String, String>, Error> {
     let Some(name) = skin_name.filter(|n| !n.trim().is_empty()) else {
         return Ok(default_tokens());
     };
     let Some(dir) = paths::skin_dir(name) else {
-        return Ok(default_tokens());
+        return match bundled(name) {
+            Some(json) => bundled_tokens(json),
+            None => Ok(default_tokens()),
+        };
     };
-    match SkinManifest::load(&dir.join("theme.json"))? {
-        None => Ok(default_tokens()),
-        Some(m) => Ok(m.effective_tokens()),
+    let manifest = dir.join("theme.json");
+    match SkinManifest::load(&manifest) {
+        Ok(Some(m)) => Ok(m.effective_tokens()),
+        _ => match bundled(name) {
+            Some(json) => bundled_tokens(json),
+            None => Ok(default_tokens()),
+        },
     }
 }
 
+/// Parse a bundled reference theme by folder name.
+fn bundled(name: &str) -> Option<&'static str> {
+    BUNDLED_THEMES
+        .iter()
+        .find(|(n, _)| *n == name)
+        .map(|(_, json)| *json)
+}
+
+/// Effective tokens for a bundled theme by folder name.
+fn bundled_tokens(json: &str) -> Result<BTreeMap<String, String>, Error> {
+    let m: SkinManifest = serde_json::from_str(json).map_err(Error::from)?;
+    validate(&m)?;
+    Ok(m.effective_tokens())
+}
+
+/// Seed the bundled reference themes into the user's skins folder. Existing
+/// theme folders are never overwritten — this only creates missing ones, so
+/// users who already customized a bundled theme keep their edits.
+pub fn seed_bundled() -> Result<(), Error> {
+    let Some(dir) = paths::skins_dir() else {
+        return Ok(());
+    };
+    seed_into(&dir)
+}
+
+/// Seed bundled reference themes into `dir`; never overwrites existing files.
+fn seed_into(dir: &Path) -> Result<(), Error> {
+    fs::create_dir_all(dir)?;
+    for (name, json) in BUNDLED_THEMES {
+        let target = dir.join(name).join("theme.json");
+        if target.exists() {
+            continue;
+        }
+        fs::create_dir_all(dir.join(name))?;
+        fs::write(&target, json)?;
+    }
+    Ok(())
+}
+
 /// List installed skin names (folders under skins dir that carry a valid
-/// theme.json). Sorted. The default theme is not listed as a skin.
+/// theme.json). Sorted. The default theme is not listed as a skin. Bundled
+/// reference themes (Nord, Dracula, Material) are seeded here on first run.
 pub fn installed() -> Result<Vec<String>, Error> {
+    let _ = seed_bundled();
     let Some(dir) = paths::skins_dir() else {
         return Ok(Vec::new());
     };
+    if !dir.is_dir() {
+        // No skins installed yet — the dir may not exist; treat as empty
+        // rather than surfacing an io::Error to the GUI.
+        return Ok(Vec::new());
+    }
     let mut names = Vec::new();
     for entry in fs::read_dir(&dir).map_err(Error::from)? {
         let entry = entry.map_err(Error::from)?;
@@ -226,5 +310,67 @@ mod tests {
         let name = "no-skin-here";
         assert_eq!(asset_path(name, "theme.json"), None);
         assert_eq!(asset_path(name, "../../secrets.txt"), None);
+    }
+
+    #[test]
+    fn bundled_themes_parse_and_validate() {
+        for (name, json) in BUNDLED_THEMES {
+            let m: SkinManifest = serde_json::from_str(json).expect("bundled theme is valid JSON");
+            validate(&m).expect("bundled theme validates");
+            assert_eq!(m.name, *name, "bundled folder name matches manifest");
+            let tokens = m.effective_tokens();
+            assert!(
+                tokens.contains_key("--lz-accent") && tokens.contains_key("--lz-bg"),
+                "{name} carries accent + bg tokens"
+            );
+        }
+    }
+
+    #[test]
+    fn bundled_tokens_falls_back_for_any_named_theme() {
+        // resolve() must work for a bundled name even before seeding,
+        // and fall back to the embedded copy when the folder is absent.
+        assert!(bundled("Nord").is_some());
+        assert_eq!(bundled("Dracula").map(|_| "dracula"), Some("dracula"));
+        assert!(bundled("Material").is_some());
+        assert_eq!(bundled("Not-A-Theme"), None);
+    }
+
+    #[test]
+    fn seed_into_writes_and_preserves_existing() {
+        let base = std::env::temp_dir().join(format!(
+            "lz-skins-seed-{}",
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .expect("clock")
+                .as_nanos()
+        ));
+        seed_into(&base).expect("seed writes bundled themes");
+        for (name, _) in BUNDLED_THEMES {
+            assert!(
+                base.join(name).join("theme.json").is_file(),
+                "seeded {name}/theme.json"
+            );
+        }
+
+        // A user-customized bundled theme is never overwritten.
+        fs::write(base.join("Nord").join("theme.json"), r#"{"name":"Nord"}"#).expect("write edit");
+        seed_into(&base).expect("second seed is a no-op for existing files");
+        assert_eq!(
+            fs::read_to_string(base.join("Nord").join("theme.json")).expect("read"),
+            r#"{"name":"Nord"}"#,
+            "existing user theme is preserved"
+        );
+
+        fs::remove_dir_all(&base).expect("cleanup");
+    }
+
+    #[test]
+    fn resolve_bundled_theme_when_not_seeded() {
+        // No pre-seeding happens here; bundled fallback must produce tokens.
+        let tokens = resolve(Some("Nord")).expect("bundled fallback");
+        assert_eq!(tokens.get("--lz-bg").map(String::as_str), Some("#2E3440"));
+        let tokens = resolve(Some("Dracula")).expect("bundled fallback");
+        assert_eq!(tokens.get("--lz-bg").map(String::as_str), Some("#282A36"));
     }
 }

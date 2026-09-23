@@ -130,6 +130,9 @@ struct DownloadArgs {
     /// Download tab: official or community.
     #[arg(long, default_value = "official")]
     tab: String,
+    /// Restrict to one source host (e.g. `mega`, `google`).
+    #[arg(long)]
+    source: Option<String>,
     /// Resume an existing job instead of starting fresh.
     #[arg(long)]
     resume: bool,
@@ -241,6 +244,7 @@ fn dispatch(cli: Cli) -> Result<ExitCode, crate::core::Error> {
                 &args.version,
                 &args.platform,
                 &args.tab,
+                args.source.as_deref(),
                 args.resume,
                 args.queue,
             )

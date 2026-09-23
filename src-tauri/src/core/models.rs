@@ -44,6 +44,43 @@ pub struct GameCard {
     pub views: Option<String>,
 }
 
+/// One entry in the `/game-genres/` tag cloud.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct Genre {
+    /// Display label, e.g. "2D Game".
+    pub label: String,
+    /// URL slug, e.g. `2d-game`.
+    pub slug: String,
+    /// Game count shown by the site, when disclosed.
+    pub count: Option<u32>,
+}
+
+/// Filters for the archive listing, mirroring the site's GET params 1:1
+/// (`q`, `platform`, `engine`, `state`, `sort`, repeated `tags[]` /
+/// `tags-exclude[]`). The Store view holds one of these and sends it to
+/// `catalog_page`; the CLI exposes the same surface through `sync --filter`.
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(default)]
+pub struct ArchiveFilter {
+    /// Free-text `q` (site search box).
+    pub q: Option<String>,
+    /// Platform select: `All`, `PC`, `Mac`, `Linux`, `Android`.
+    pub platform: Option<String>,
+    /// Engine select: `RenPy`, `RPG Maker`, `Unity`, `Unreal Engine`,
+    /// `HTML`, `Flash`, `Wolf RPG`, `Other`.
+    pub engine: Option<String>,
+    /// Dev state select: `Finished`, `Ongoing`, `Abandoned`, `Onhold`,
+    /// `Demo`.
+    pub state: Option<String>,
+    /// Sort select: `Last Update`, `Popularity`, `New to Old`, `Old to
+    /// New`, `Rating`.
+    pub sort: Option<String>,
+    /// Included `tags[]` slugs (genre taxonomy, e.g. `2d-game`, `rpg`).
+    pub include_tags: Vec<String>,
+    /// Excluded `tags-exclude[]` slugs.
+    pub exclude_tags: Vec<String>,
+}
+
 /// Page-level metadata for a listing (archive / genre / search).
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
 pub struct ArchiveMeta {

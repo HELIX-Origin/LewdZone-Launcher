@@ -18,7 +18,7 @@ resolves real links and hands them to an installed download manager (FDM, IDM, o
 
 | | |
 |---|---|
-| 🖥️ **Steam-like desktop app** | Store, Library, Downloads, Settings views |
+| 🖥️ **Storefront-style desktop app** | Store, Library, Downloads, Settings views |
 | ⌨️ **Native CLI engine** | Full app capability, headless & scriptable, `--json` output |
 | 🕷️ **LewdZone scraper** | Games, tags, versions, and download links |
 | 🗄️ **SQLite catalog** | Stores go-link tokens — never resolved URLs |

@@ -13,6 +13,8 @@ const config = {
   },
   kit: {
     adapter: adapter({
+      pages: "src-tauri/out",
+      assets: "src-tauri/out",
       fallback: "index.html",
     }),
   },

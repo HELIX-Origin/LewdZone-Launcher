@@ -1,0 +1,22 @@
+{
+  "name": "Material",
+  "version": "1.0.0",
+  "author": "LewdZone Launcher",
+  "tokens": {
+    "--lz-accent": "#BB86FC",
+    "--lz-primary": "#03DAC6",
+    "--lz-cyan": "#03DAC6",
+    "--lz-bg": "#121212",
+    "--lz-surface": "#1E1E1E",
+    "--lz-surface-2": "#2D2D2D",
+    "--lz-text": "#FFFFFF",
+    "--lz-text-dim": "#9E9E9E",
+    "--lz-danger": "#CF6679",
+    "--lz-ok": "#4ADE80",
+    "--lz-radius": "4px",
+    "--lz-gap": "12px",
+    "--lz-gradient": "linear-gradient(160deg, #121212 0%, #1E1E1E 100%)",
+    "--lz-glow": "0 0 14px rgba(187, 134, 252, 0.35)",
+    "--lz-glass": "rgba(30, 30, 30, 0.6)"
+  }
+}

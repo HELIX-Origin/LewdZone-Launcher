@@ -6,8 +6,8 @@ macOS) for browsing, downloading, and organizing games from
 + OS webview, Svelte frontend — whose binary also exposes a **native Rust CLI**:
 one core, two entry points.
 
-- A **Tauri 2 desktop app** — the primary product. Steam-like pages: **Store**,
-  **Library**, **Downloads**, **Settings**.
+- A **Tauri 2 desktop app** — the primary product. Storefront-style pages:
+  **Store**, **Library**, **Downloads**, **Settings**.
 - A **native Rust CLI** — the scriptable edition of the same engine.
   `lewdzone <command> --json` drives everything the app does.
 

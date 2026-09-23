@@ -1,5 +1,5 @@
 //! Per-OS default locations for the SQLite catalog, JSON config, and the
-//! Steam-mirror library tree (Rule 02, ADR-0005).
+//! library tree (Rule 02, ADR-0005).
 
 use std::path::PathBuf;
 
@@ -23,7 +23,7 @@ pub fn default_config_path() -> Option<PathBuf> {
     base_config_dir().map(|base| base.join("config.json"))
 }
 
-/// App data root ("steam root", ADR-0005):
+/// App data root (ADR-0005):
 /// - Windows: `%APPDATA%\lewdzone`
 /// - macOS:   `~/Library/Application Support/lewdzone`
 /// - Linux:   `$XDG_DATA_HOME/lewdzone` (`~/.local/share/...`)
@@ -37,7 +37,7 @@ pub fn config_root() -> Option<PathBuf> {
     base_config_dir()
 }
 
-// Steam-mirror tree (ADR-0005): all under `<data_root>/`.
+// Library tree (ADR-0005): all under `<data_root>/`.
 //   lewdzone.db, config.json, appcache/, logs/, library/, userdata/
 pub fn appcache_dir() -> Option<PathBuf> {
     data_root().map(|root| root.join("appcache"))
@@ -47,7 +47,7 @@ pub fn logs_dir() -> Option<PathBuf> {
     data_root().map(|root| root.join("logs"))
 }
 
-/// The "steamapps/" analog — holds libraryfolders.json, app manifests,
+/// The library root — holds libraryfolders.json, app manifests,
 /// `common/<Title>/` installs, `downloading/`, and `artwork/`.
 pub fn library_dir() -> Option<PathBuf> {
     data_root().map(|root| root.join("library"))
@@ -83,7 +83,7 @@ pub fn userdata_dir() -> Option<PathBuf> {
     data_root().map(|root| root.join("userdata"))
 }
 
-/// Machine-local caches (Steam `%LOCALAPPDATA%\Steam\` analog):
+/// Machine-local caches (per-OS cache-dir analog):
 /// - Windows: `%LOCALAPPDATA%\lewdzone\htmlcache` etc.
 /// - macOS:   `~/Library/Caches/lewdzone`
 /// - Linux:   `$XDG_CACHE_HOME/lewdzone` (`~/.cache/...`)
@@ -114,12 +114,12 @@ pub fn cache_dir() -> Option<PathBuf> {
     }
 }
 
-/// Webview/cache folder under the cache dir (Steam `htmlcache` analog).
+/// Webview/cache folder under the cache dir.
 pub fn htmlcache_dir() -> Option<PathBuf> {
     cache_dir().map(|c| c.join("htmlcache"))
 }
 
-/// Per-game save area (Steam `Documents\My Games\<Game>\` analog).
+/// Per-game save area (`<Documents>/My Games/<Game>/` analog).
 /// Falls back under the data root when no Documents folder resolves.
 pub fn my_games_dir() -> Option<PathBuf> {
     let documents = documents_dir();
@@ -156,10 +156,31 @@ pub fn game_saves_dir(title: &str) -> Option<PathBuf> {
     my_games_dir().map(|dir| dir.join(sanitize_dir_name(title)))
 }
 
-/// User-installed theme skins (retained Steam feature, ADR-0005):
-/// `<config_root>/skins/<Name>/theme.json` + token overrides.
+/// The app's own installation folder (where the executable lives) — the
+/// Windows app folder, where users can reach files next to the exe.
+fn app_dir() -> Option<PathBuf> {
+    std::env::current_exe()
+        .ok()
+        .and_then(|exe| exe.parent().map(PathBuf::from))
+}
+
+/// User-installed theme skins (retained feature, ADR-0005):
+/// `<skins>/<Name>/theme.json` + token overrides (theme package per subfolder).
+///
+/// The folder is chosen per OS so users can always reach it:
+/// - Windows: next to the executable — `<app>/skins`
+/// - macOS:   the user data dir (the `.app` bundle is not user-writable or
+///   easily accessible, so a common accessible path is used)
+/// - Linux:   the local-share data dir (XDG data home)
 pub fn skins_dir() -> Option<PathBuf> {
-    config_root().map(|root| root.join("skins"))
+    #[cfg(target_os = "windows")]
+    {
+        app_dir().map(|root| root.join("skins"))
+    }
+    #[cfg(not(target_os = "windows"))]
+    {
+        data_root().map(|root| root.join("skins"))
+    }
 }
 
 /// Resolve a skin folder by name; `None` name means the built-in default.
@@ -167,7 +188,7 @@ pub fn skin_dir(name: &str) -> Option<PathBuf> {
     skins_dir().map(|dir| dir.join(sanitize_dir_name(name)))
 }
 
-/// Strip characters unsafe in folder names while keeping the Steam-like title.
+/// Strip characters unsafe in folder names while keeping the readable title.
 fn sanitize_dir_name(title: &str) -> String {
     let bad = ['<', '>', ':', '"', '/', '\\', '|', '?', '*'];
     let clean: String = title
@@ -302,5 +323,33 @@ mod tests {
         assert_eq!(sanitize_dir_name("A:B <bad> title?"), "A_B _bad_ title_");
         assert_eq!(sanitize_dir_name("   "), "Game");
         assert_eq!(sanitize_dir_name("ok-name!"), "ok-name!");
+    }
+
+    #[test]
+    fn skins_live_in_a_user_accessible_folder() {
+        let dir = skins_dir().expect("skins");
+        assert!(
+            dir.ends_with("skins"),
+            "skins dir ends with /skins: {dir:?}"
+        );
+        assert!(
+            skins_dir().expect("skins").is_absolute(),
+            "skins dir is an absolute path"
+        );
+        #[cfg(target_os = "windows")]
+        {
+            let app = app_dir().expect("executable resolves");
+            assert_eq!(dir, app.join("skins"), "windows: <app>/skins");
+        }
+        #[cfg(not(target_os = "windows"))]
+        {
+            let root = data_root().expect("data root");
+            assert!(dir.starts_with(&root), "data-root skins dir: {dir:?}");
+        }
+        assert_eq!(
+            skin_dir("Pink Neon").expect("skin"),
+            dir.join("Pink Neon"),
+            "one subfolder per theme"
+        );
     }
 }

@@ -1,0 +1,22 @@
+{
+  "name": "Dracula",
+  "version": "1.0.0",
+  "author": "LewdZone Launcher",
+  "tokens": {
+    "--lz-accent": "#BD93F9",
+    "--lz-primary": "#FF79C6",
+    "--lz-cyan": "#8BE9FD",
+    "--lz-bg": "#282A36",
+    "--lz-surface": "#21222C",
+    "--lz-surface-2": "#44475A",
+    "--lz-text": "#F8F8F2",
+    "--lz-text-dim": "#6272A4",
+    "--lz-danger": "#FF5555",
+    "--lz-ok": "#50FA7B",
+    "--lz-radius": "4px",
+    "--lz-gap": "12px",
+    "--lz-gradient": "linear-gradient(160deg, #282A36 0%, #21222C 100%)",
+    "--lz-glow": "0 0 14px rgba(189, 147, 249, 0.35)",
+    "--lz-glass": "rgba(40, 42, 54, 0.6)"
+  }
+}

@@ -1,6 +1,6 @@
-//! Library folder registry + per-game manifests — the Steam `steamapps/`
-//! analog (ADR-0005). `libraryfolders.json` mirrors Steam's
-//! `libraryfolders.vdf`; `appmanifest_<post_id>.json` mirrors `appmanifest_*.acf`.
+//! Library folder registry + per-game manifests (ADR-0005).
+//! `libraryfolders.json` holds the ordered roots;
+//! `appmanifest_<post_id>.json` is the per-game record.
 
 use std::collections::BTreeMap;
 use std::fs;
@@ -14,7 +14,7 @@ use crate::core::Error;
 
 const DEFAULT_LIBRARY_LABEL: &str = "Default";
 
-/// Ordered library roots: `{ index: LibraryFolder }` (Steam vdf order analog).
+/// Ordered library roots: `{ index: LibraryFolder }` (order analog).
 #[derive(Debug, Serialize, Deserialize, Default, Clone)]
 #[serde(transparent)]
 pub struct LibraryFolders {
@@ -25,23 +25,23 @@ pub struct LibraryFolders {
 pub struct LibraryFolder {
     pub path: String,
     pub label: Option<String>,
-    /// `games: { post_id: size_on_disk }` (Steam `apps` analog).
+    /// `games: { post_id: size_on_disk }` (per-root installed games).
     #[serde(default)]
     pub games: BTreeMap<i64, u64>,
 }
 
-/// `appmanifest_<post_id>.json` — AppState analog.
+/// `appmanifest_<post_id>.json` — the per-game record.
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct AppManifest {
     pub post_id: i64,
     pub title: String,
-    /// Install folder name under `common/` (Steam `installdir` analog).
+    /// Install folder name under `common/` (installdir analog).
     pub installdir: String,
     pub version_label: Option<String>,
     pub platform: Option<String>,
     pub tab: Option<String>,
     pub host_slug: Option<String>,
-    /// StateFlags analog: 4 = fully installed.
+    /// State flags analog: 4 = fully installed.
     #[serde(default = "default_state_flags")]
     pub state_flags: u32,
     pub last_updated: Option<String>,
@@ -293,7 +293,7 @@ mod tests {
     }
 
     #[test]
-    fn install_dirs_follow_steam_shape() {
+    fn install_dirs_follow_mirrored_shape() {
         let root = PathBuf::from("X:/stor/library");
         let m = AppManifest {
             installdir: "My Game".to_string(),

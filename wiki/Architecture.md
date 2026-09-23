@@ -66,28 +66,35 @@ flowchart TD
   `kind` columns).
 - Config + DB live in the per-OS config dir; see [Configuration](Configuration).
 
-## 📂 Folder structure (Steam mirror, ADR-0005)
+## 📂 Folder structure (ADR-0005)
 
-The on-disk layout mirrors the Steam client's, so the launcher *is* a game
-launcher — same shape as Steam, different target site + palette:
+The on-disk layout is a launcher-style tree: data root, library, logs, cache,
+and per-game saves, mirroring the shape of modern desktop launchers:
 
 ```
 <data_root>/lewdzone/          # %APPDATA% / ~/Library/Application Support / $XDG_DATA_HOME
   lewdzone.db                           # SQLite catalog (WAL, FK, tokens only)
   config.json                           # JSON settings (Rule 10 secrets redacted)
   appcache/                             # cached catalog/site data
-  logs/<component>.log                  # per-subsystem logs (Steam logs/ analog)
-  library/                              # "steamapps" analog
-    libraryfolders.json                 # ordered library roots (Steam libraryfolders.vdf analog)
-    appmanifest_<post_id>.json          # per-game manifest (Steam appmanifest_*.acf analog)
+  logs/<component>.log                  # per-subsystem logs
+  library/                              # library root (library-folder analog)
+    libraryfolders.json                 # ordered library roots (libraryfolders analog)
+    appmanifest_<post_id>.json          # per-game manifest (appmanifest analog)
     common/<Game Title>/                # installed games
     downloading/<post_id>/              # in-progress downloads
     artwork/<post_id>_<kind>.png        # hero / logo / p / bare grid art
   userdata/<local_user_id>/             # per-user config + shortcuts
 <cache_root>/lewdzone/         # %LOCALAPPDATA% / ~/Library/Caches / $XDG_CACHE_HOME
-  htmlcache/                            # webview/tile cache (Steam htmlcache analog)
-<documents>/My Games/<Game Title>/      # per-game saves (Steam Documents\My Games analog)
-<config_root>/lewdzone/skins/<Name>/   # theme skins (classic Steam skins/)
+  htmlcache/                            # webview/tile cache
+<documents>/My Games/<Game Title>/      # per-game saves (Documents\My Games analog)
+<skins_root>/                      # per-OS user-accessible skins folder:
+                                  #   Windows: <install dir>/skins
+                                  #   macOS/Linux: <data_root>/skins
+  <Name>/theme.json               # user theme skins (one subfolder per theme)
+    assets/                       # embedded theme resources inside the theme folder
+  Nord/theme.json                 # bundled reference themes — Nord, Dracula,
+  Dracula/theme.json              # Material — seeded on first run + wiki examples
+  Material/theme.json
 ```
 
 - Manifest files (`appmanifest_<post_id>.json`) are the source of truth for
@@ -96,7 +103,7 @@ launcher — same shape as Steam, different target site + palette:
 - Downloads stage into `downloading/<post_id>/` and publish to
   `common/<Title>/` on completion.
 - Artwork files under `library/artwork/` are indexed by `artwork_cache` in
-  SQLite (ADR-0004); the Theme picker (skins) is first-class and, unlike Valve,
+  SQLite (ADR-0004); the Theme picker (skins) is first-class and
   is retained as a core capability ([ADR-0005](../.agents/adr/0005-steam-mirror-folder-structure)).
 
 ## 🪄 Content enrichment pipeline

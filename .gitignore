@@ -7,15 +7,10 @@
 node_modules/
 build/
 .svelte-kit/
-
-# --------------------------------------------------
-# Rust
-# --------------------------------------------------
-# These are build artifacts and generated files
-# created by the Rust compiler.
-# --------------------------------------------------
+src-tauri/out/
 src-tauri/target/
-src-tauri/gen/schemas
+src-tauri/build/
+src-tauri/gen/schemas/
 
 # --------------------------------------------------
 # Tooling / cache

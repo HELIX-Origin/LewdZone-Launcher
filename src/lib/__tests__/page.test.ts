@@ -2,10 +2,11 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/svelte";
 import userEvent from "@testing-library/user-event";
 import { invoke } from "@tauri-apps/api/core";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 
 vi.mock("@tauri-apps/api/core", () => ({
   invoke: vi.fn(async () => "Hello, test! from Rust"),
-}));;
+}));
 
 vi.mock("$app/state", () => ({
   page: { url: new URL("http://localhost/store") },
@@ -15,42 +16,176 @@ vi.mock("$app/navigation", () => ({
   goto: vi.fn(),
 }));
 
+vi.mock("@tauri-apps/api/window", () => {
+  const win = {
+    minimize: vi.fn(),
+    toggleMaximize: vi.fn(),
+    close: vi.fn(),
+    startDragging: vi.fn(),
+  };
+  return { getCurrentWindow: vi.fn(() => win) };
+});
+
 import Layout from "../../routes/+layout.svelte";
 import SettingsPage from "../../routes/settings/+page.svelte";
 import StorePage from "../../routes/store/+page.svelte";
+import GamePage from "../../routes/store/[slug]/+page.svelte";
+import LibraryPage from "../../routes/library/+page.svelte";
+
+const sampleGame = {
+  slug: "wild-life",
+  title: "Wild Life",
+  thumb_url: "https://h1.lzcdn.com/img/wild-life-cover.jpg",
+  platforms: ["pc"],
+  engine: "Unreal Engine",
+  state: "Ongoing",
+  version_tag: "v2026-06-15 Full",
+  developer: "Adeptus Steve",
+  genre_slugs: ["3d-games"],
+  genres: ["3D Game"],
+  views: "962K",
+};
+
+const sampleGenres = [
+  { label: "3D Game", slug: "3d-games", count: 1740 },
+  { label: "Adventure", slug: "adventure", count: 3314 },
+];
+
+const sampleGameData = {
+  slug: "wild-life",
+  post_id: 54321,
+  title: "Wild Life",
+  developer: "Adeptus Steve",
+  current_version: "v2026-06-15 Full",
+  engine: "Unreal Engine",
+  platforms: ["pc"],
+  genres: ["3d-games", "adventure"],
+  size_label: "5.0 GB",
+  censorship: "Uncensored",
+  screenshots: ["https://h1.lzcdn.com/img/wild-life-shot.jpg"],
+  description: "A mad universe of choices.",
+  versions: [
+    {
+      label: "v2026-06-15 Full",
+      is_latest: true,
+      official: [
+        {
+          label: "FULL",
+          variant: null,
+          host: "fileknot",
+          platform: "pc",
+          go_link: "https://lewdzone.com/go/#t=v1.a.b",
+        },
+      ],
+      community: [],
+    },
+  ],
+  download_entries: [
+    {
+      label: "FULL",
+      variant: null,
+      host: "fileknot",
+      platform: "pc",
+      go_link: "https://lewdzone.com/go/#t=v1.a.b",
+    },
+  ],
+};
+
+const sampleJob = {
+  game: "wild-life",
+  version: "v2026-06-15 Full",
+  platform: "pc",
+  tab: "official",
+  manager: "fdm",
+  url: "https://resolved.example/file.zip",
+  target: "D:/Games/Wild Life/Wild Life - v2026-06-15 Full - PC.zip",
+};
+
+const sampleSources = [
+  { host: "fileknot", label: "native cloud app", preferred: false },
+];
+
+type InvokeArgs = Record<string, unknown>;
+
+function mockInvoke(impl: (cmd: string, args?: InvokeArgs) => unknown) {
+  const invokeMock = invoke as unknown as ReturnType<typeof vi.fn>;
+  invokeMock.mockReset();
+  invokeMock.mockImplementation(impl);
+  return invokeMock;
+}
 
 describe("app shell", () => {
-  it("renders the four primary tabs", () => {
+  it("renders the left icon sidebar with primary tabs", () => {
     render(Layout);
-    for (const label of ["Store", "Library", "Downloads", "Settings"]) {
+    for (const label of ["Favorites", "Library", "Store", "Settings"]) {
       expect(screen.getByRole("button", { name: label })).toBeInTheDocument();
     }
+    expect(screen.queryByRole("button", { name: "Home" })).not.toBeInTheDocument();
+    const sidebar = screen.getByRole("complementary", { name: "Primary" });
+    expect(sidebar).toBeInTheDocument();
+  });
+
+  it("renders the custom macOS-style title bar with traffic light controls", () => {
+    render(Layout);
+    expect(screen.getByText("LewdZone Launcher")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Close window" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Minimize window" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Maximize window" }),
+    ).toBeInTheDocument();
+  });
+
+  it("renders a custom menu bar with items and a profile button", () => {
+    render(Layout);
+    for (const label of ["File", "View", "Help"]) {
+      expect(screen.getByRole("button", { name: label })).toBeInTheDocument();
+    }
+    expect(
+      screen.getByRole("button", { name: "Profile" }),
+    ).toBeInTheDocument();
+  });
+
+  it("traffic-light buttons call the window controls, not the drag", async () => {
+    const user = userEvent.setup();
+    render(Layout);
+    await user.click(screen.getByRole("button", { name: "Minimize window" }));
+    await user.click(screen.getByRole("button", { name: "Maximize window" }));
+    await user.click(screen.getByRole("button", { name: "Close window" }));
+    const win = getCurrentWindow();
+    expect(win.minimize).toHaveBeenCalledTimes(1);
+    expect(win.toggleMaximize).toHaveBeenCalledTimes(1);
+    expect(win.close).toHaveBeenCalledTimes(1);
+    expect(win.startDragging).not.toHaveBeenCalled();
+  });
+
+  it("opens the Help → About dialog from the menu bar", async () => {
+    const user = userEvent.setup();
+    render(Layout);
+    await user.click(screen.getByRole("button", { name: "Help" }));
+    await user.click(
+      screen.getByRole("menuitem", { name: "About LewdZone Launcher" }),
+    );
+    const dialog = screen.getByRole("dialog", { name: "About" });
+    expect(dialog).toBeInTheDocument();
+    expect(screen.getAllByText("LewdZone Launcher").length).toBeGreaterThan(0);
   });
 });
 
 describe("store page", () => {
   beforeEach(() => {
-    const invokeMock = invoke as unknown as ReturnType<typeof vi.fn>;
-    invokeMock.mockReset();
-    invokeMock.mockImplementation(async (cmd: string) => {
+    mockInvoke(async (cmd: string, args?: InvokeArgs) => {
       if (cmd === "catalog_page") {
         return {
-          games: [
-            {
-              slug: "wild-life",
-              title: "Wild Life",
-              thumb_url: "https://h1.lzcdn.com/img/wild-life-cover.jpg",
-              platforms: ["pc"],
-              engine: "Unreal Engine",
-              state: "Ongoing",
-              version_tag: "v2026-06-15 Full",
-              developer: "Adeptus Steve",
-              genres: ["3D Game"],
-              views: "962K",
-            },
-          ],
-          meta: { page: 1, total_pages: 787 },
+          games: [sampleGame],
+          meta: { page: args?.page ?? 1, total_pages: 787 },
         };
+      }
+      if (cmd === "catalog_genres") {
+        return sampleGenres;
       }
       return [];
     });
@@ -67,31 +202,128 @@ describe("store page", () => {
     expect(await screen.findByText("Wild Life")).toBeInTheDocument();
     expect(screen.getAllByRole("listitem").length).toBeGreaterThan(0);
   });
+
+  it("sends the full filter object with the page", async () => {
+    render(StorePage);
+    await screen.findByText("Wild Life");
+    const invokeMock = invoke as unknown as ReturnType<typeof vi.fn>;
+    const call = invokeMock.mock.calls.find((c) => c[0] === "catalog_page");
+    expect(call).toBeTruthy();
+    expect(call?.[1]).toEqual(
+      expect.objectContaining({
+        page: 1,
+        filter: expect.objectContaining({ sort: "Popularity" }),
+      }),
+    );
+  });
+
+  it("loads the genre cloud into the category rail", async () => {
+    render(StorePage);
+    expect(await screen.findByText("Adventure")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Include 3D Game" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Exclude 3D Game" })).toBeInTheDocument();
+  });
+});
+
+describe("store game detail page", () => {
+  beforeEach(() => {
+    mockInvoke(async (cmd: string) => {
+      if (cmd === "game_page") return sampleGameData;
+      if (cmd === "game_sources") return sampleSources;
+      if (cmd === "game_download") return [sampleJob];
+      return [];
+    });
+  });
+
+  it("renders the loaded game's meta and download panel", async () => {
+    render(GamePage);
+    expect(await screen.findByText("Wild Life")).toBeInTheDocument();
+    expect(screen.getByText("by Adeptus Steve")).toBeInTheDocument();
+    expect(screen.getByText("5.0 GB")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Download Wild Life" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Source")).toBeInTheDocument();
+  });
+
+  it("defaults the source dropdown to the preferred source", async () => {
+    mockInvoke(async (cmd: string) => {
+      if (cmd === "game_page") return sampleGameData;
+      if (cmd === "game_sources") return [...sampleSources, { host: "mega", label: "MEGA", preferred: true }];
+      return [];
+    });
+    render(GamePage);
+    await screen.findByText("Wild Life");
+    const select = await screen.findByLabelText("Source");
+    expect((select as HTMLSelectElement).value).toBe("mega");
+  });
+
+  it("dispatches a download through game_download", async () => {
+    const user = userEvent.setup();
+    render(GamePage);
+    const btn = await screen.findByRole("button", { name: "Download Wild Life" });
+    await user.click(btn);
+    expect(invoke).toHaveBeenCalledWith(
+      "game_download",
+      expect.objectContaining({
+        slug: "wild-life",
+        version: "v2026-06-15 Full",
+        platform: "PC",
+        tab: "official",
+        source: "fileknot",
+      }),
+    );
+    expect(await screen.findByText("Dispatched 1 job to fdm.")).toBeInTheDocument();
+  });
+});
+
+describe("library page", () => {
+  it("shows the empty state when nothing is installed", async () => {
+    mockInvoke(async (cmd: string) => {
+      if (cmd === "library_list") return { root: "D:/lewdzone/library", games: [] };
+      return [];
+    });
+    render(LibraryPage);
+    expect(await screen.findByRole("heading", { name: "Library" })).toBeInTheDocument();
+    expect(screen.getByText(/Nothing installed yet/)).toBeInTheDocument();
+  });
+
+  it("lists installed games from manifests", async () => {
+    mockInvoke(async (cmd: string) => {
+      if (cmd === "library_list") {
+        return {
+          root: "D:/lewdzone/library",
+          games: [
+            { post_id: 54321, size: 5_368_709_120, folder: "Wild Life" },
+            { post_id: 111, size: 214_748_3648, folder: "Treasure of Nadia" },
+          ],
+        };
+      }
+      return [];
+    });
+    render(LibraryPage);
+    expect(await screen.findByText("Wild Life")).toBeInTheDocument();
+    expect(screen.getByText("Treasure of Nadia")).toBeInTheDocument();
+  });
 });
 
 describe("settings page", () => {
-
   beforeEach(() => {
-    const invokeMock = invoke as unknown as ReturnType<typeof vi.fn>;
-    invokeMock.mockReset();
-    invokeMock.mockImplementation(
-      async (cmd: string, args?: { key?: string; value?: string }) => {
-        switch (cmd) {
-          case "settings_get":
-            return {
-              "library-root": "D:/Games",
-              "capture-aware": false,
-              theme: "",
-            };
-          case "themes_list":
-            return ["midnight", "candy"];
-          case "settings_set":
-            return { key: args?.key, value: args?.value };
-          default:
-            return [];
-        }
-      },
-    );
+    mockInvoke(async (cmd: string, args?: InvokeArgs) => {
+      switch (cmd) {
+        case "settings_get":
+          return {
+            "library-root": "D:/Games",
+            "capture-aware": false,
+            "source-priority": "mega,google",
+            theme: "",
+          };
+        case "themes_list":
+          return ["midnight", "candy"];
+        case "settings_set":
+          return { key: args?.key, value: args?.value };
+        default:
+          return [];
+      }
+    });
   });
 
   it("loads snapshot + theme list into the page", async () => {
@@ -113,5 +345,44 @@ describe("settings page", () => {
       expect.objectContaining({ key: "library-root", value: "D:/Games/SteamLibrary" }),
     );
     expect(await screen.findByText("library-root saved")).toBeInTheDocument();
+  });
+
+  it("shows the preferred download sources setting with the saved value", async () => {
+    render(SettingsPage);
+    const input = (await screen.findByDisplayValue("mega,google")) as HTMLInputElement;
+    expect(input).toBeInTheDocument();
+    expect(input.value).toBe("mega,google");
+  });
+
+  it("saves the preferred download sources setting", async () => {
+    const user = userEvent.setup();
+    render(SettingsPage);
+    const input = (await screen.findByDisplayValue("mega,google")) as HTMLInputElement;
+    await user.clear(input);
+    await user.type(input, "dropbox,mega");
+    await user.keyboard("{Enter}");
+
+    expect(invoke).toHaveBeenCalledWith(
+      "settings_set",
+      expect.objectContaining({ key: "source-priority", value: "dropbox,mega" }),
+    );
+    expect(await screen.findByText("source-priority saved")).toBeInTheDocument();
+  });
+
+  it("exposes the native-cloud toggle", async () => {
+    render(SettingsPage);
+    expect(await screen.findByText("Native cloud apps")).toBeInTheDocument();
+  });
+
+  it("saves the home page selection", async () => {
+    const user = userEvent.setup();
+    render(SettingsPage);
+    const select = (await screen.findByLabelText("Home page")) as HTMLSelectElement;
+    await user.selectOptions(select, "favorites");
+    expect(invoke).toHaveBeenCalledWith(
+      "settings_set",
+      expect.objectContaining({ key: "home-page", value: "favorites" }),
+    );
+    expect(await screen.findByText("home-page saved")).toBeInTheDocument();
   });
 });

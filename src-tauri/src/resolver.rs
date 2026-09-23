@@ -26,20 +26,23 @@ const TIMEOUT: Duration = Duration::from_secs(15);
 /// Minimum gap between requests to the API host.
 const HOST_INTERVAL: Duration = Duration::from_secs(1);
 
-/// Allowlisted host slugs (mirrors the go.js `ICONS` list; re-verified against
-/// the treasure-of-nadia fixture, Rule 10.2). Anything else is refused.
+/// Allowlisted host slugs (Rule 10.2). Product policy (user, 2026-09): the site
+/// hosted many cloud providers, but most have shut down or are untrusted/dodgy
+/// — only reputable mirrors that are known to still accept uploads may reach a
+/// download manager. Anything else is refused.
 const KNOWN_HOSTS: &[&str] = &[
     "fileknot",
     "transfaze",
-    "gofile",
     "mega",
-    "mixdrop",
-    "terminal",
+    "google",
     "uploadhaven",
     "workupload",
-    "pixeldrain",
-    "racaty",
     "mediafire",
+    "dropbox",
+    "pixeldrain",
+    "mixdrop",
+    "racaty",
+    "terminal",
 ];
 
 /// Result of one successful resolution.
@@ -106,6 +109,35 @@ pub fn validate_host(host: &str) -> Result<(), Error> {
     } else {
         Err(Error::Network(format!("unknown download host '{host}'")))
     }
+}
+
+/// The allowlist, for validation of user-supplied priority lists.
+pub fn allowed_hosts() -> &'static [&'static str] {
+    KNOWN_HOSTS
+}
+
+/// Whether a host has a native cloud desktop app/browser handler that should
+/// receive downloads before the download manager (`native-cloud` setting).
+pub fn is_native_cloud_host(host: &str) -> bool {
+    matches!(host, "google" | "dropbox" | "mediafire" | "mega")
+}
+
+/// Rank of `host` inside a comma-separated `source-priority` list (higher =
+/// more preferred). Unknown hosts and non-allowlisted slugs rank 0, so a
+/// configured preference never pulls in a disallowed host.
+pub fn priority_rank(host: &str, priority: Option<&str>) -> usize {
+    let Some(list) = priority else {
+        return 0;
+    };
+    for (rank, slug) in list.split(',').enumerate() {
+        let slug = slug.trim();
+        if slug.eq_ignore_ascii_case(host)
+            && KNOWN_HOSTS.iter().any(|k| k.eq_ignore_ascii_case(slug))
+        {
+            return rank + 1;
+        }
+    }
+    0
 }
 
 fn host_of(url: &str) -> Option<&str> {
@@ -334,8 +366,43 @@ mod tests {
     fn allowlist_rejects_unknown_host() {
         assert!(validate_host("fileknot").is_ok());
         assert!(validate_host("mega").is_ok());
+        assert!(validate_host("google").is_ok());
+        assert!(validate_host("dropbox").is_ok());
         let err = validate_host("evil.example").unwrap_err();
         assert!(matches!(err, Error::Network(_)));
+        // Only gofile is truly dead (service shut down). The other former
+        // de-listings — mixdrop, racaty, terminal — still accept uploads and
+        // are re-allowed. Transfaze and pixeldrain were always valid mirrors.
+        for dead in ["gofile"] {
+            assert!(
+                validate_host(dead).is_err(),
+                "{dead} should no longer resolve"
+            );
+        }
+        for live in ["pixeldrain", "transfaze", "mixdrop", "racaty", "terminal"] {
+            assert!(validate_host(live).is_ok(), "{live} should resolve");
+        }
+    }
+
+    #[test]
+    fn priority_rank_orders_only_allowlisted_hosts() {
+        // Preferred list ordering: earlier slug = higher rank.
+        assert_eq!(priority_rank("mega", Some("mega,google,dropbox")), 1);
+        assert_eq!(priority_rank("dropbox", Some("mega,google,dropbox")), 3);
+        assert_eq!(priority_rank("fileknot", Some("mega,google,dropbox")), 0);
+        // A disallowed slug in the list never grants a rank.
+        assert_eq!(priority_rank("gofile", Some("mega,gofile")), 0);
+        // Case-insensitive matching.
+        assert_eq!(priority_rank("GOOGLE", Some("mega,Google")), 2);
+        // No list = no preference.
+        assert_eq!(priority_rank("mega", None), 0);
+    }
+
+    #[test]
+    fn allowed_hosts_exposes_the_allowlist() {
+        assert!(allowed_hosts().contains(&"fileknot"));
+        assert!(allowed_hosts().contains(&"mega"));
+        assert!(!allowed_hosts().contains(&"gofile"));
     }
 
     #[test]

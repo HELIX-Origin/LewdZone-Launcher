@@ -11,6 +11,7 @@
 - [Download Managers](Download-Managers)
 - [Content Providers](Content-Providers)
 - [Configuration](Configuration)
+- [Theme Development](Theme-Development)
 - [Troubleshooting](Troubleshooting)
 
 **🛠️ Development**

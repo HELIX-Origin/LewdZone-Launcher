@@ -38,11 +38,17 @@ retains it.
 1. **Token sources, in order:** built-in default (`src/lib/theme/default.css`)
    < user skin. An installed skin only overrides token values — components read
    tokens, never raw colors, so any skin works with every view.
-2. **Skin layout** (`<config_root>/skins/<Name>/`, ADR-0005):
+2. **Skin layout** (per-OS user-accessible skins folder, ADR-0005 — one
+   subfolder per theme; the built-in default is compiled in, never stored
+   there). Windows: `<install dir>/skins/`. macOS: `~/Library/Application
+   Support/lewdzone/skins/`. Linux: `$XDG_DATA_HOME/lewdzone/skins/`:
    - `theme.json` — manifest: `{ "name", "version", "author", "tokens" }` where
      `tokens` is a partial `{ "--lz-bg": "...", ... }` map.
-   - optional `assets/` for extra images (backgrounds, accents) referenced by
-     token names.
+   - embedded resources (images, accents) live **inside the theme folder, next
+     to `theme.json`** — optional `assets/` (subfolders allowed).
+   - bundled reference themes **Nord, Dracula, Material** are embedded in the
+     binary, seeded into the skins folder on first run, and serve as live wiki
+     examples.
 3. **Settings → Appearance** has a Theme picker listing the default plus every
    installed skin (from `paths::skins_dir()`); changing skins swaps tokens
    **without an app restart** (CSS custom properties are swapped at runtime on

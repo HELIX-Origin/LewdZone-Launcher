@@ -36,7 +36,7 @@ fn parse_cards(document: &Html) -> Vec<GameCard> {
     let card_sel = Selector::parse("div.item.games.detailed").expect("valid card selector");
     let link_sel =
         Selector::parse("a[href^='https://lewdzone.com/game/']").expect("valid game-link selector");
-    let img_sel = Selector::parse("img.preview[data-src]").expect("valid img selector");
+    let img_sel = Selector::parse("img.preview").expect("valid img selector");
     let h4_sel = Selector::parse("h4[title]").expect("valid h4 selector");
     let vt_sel = Selector::parse(".version-tag").expect("valid vt selector");
     let by_sel = Selector::parse("small").expect("valid small selector");
@@ -61,7 +61,11 @@ fn parse_cards(document: &Html) -> Vec<GameCard> {
         let thumb = node
             .select(&img_sel)
             .next()
-            .and_then(|img| img.value().attr("data-src"))
+            .and_then(|img| {
+                img.value()
+                    .attr("data-src")
+                    .or_else(|| img.value().attr("src"))
+            })
             .map(str::to_string);
 
         let title = node
@@ -330,5 +334,24 @@ mod tests {
             Some("3d-games".into())
         );
         assert!(slug_from_game_url("https://lewdzone.com/game/").is_none());
+    }
+
+    #[test]
+    fn search_results_use_src_fallback_for_thumbs() {
+        // Search pages (WordPress `?s=`) render the same card markup but the
+        // cover sits in `img.preview[src]` instead of `[data-src]`.
+        let html = include_str!("../../tests/fixtures/html/lz_search.html");
+        let page = parse_archive(html);
+        assert_eq!(page.games.len(), 1);
+        let card = &page.games[0];
+        assert_eq!(
+            card.slug,
+            "nejicomisimulator-tma02-turning-a-rude-titanic-tittied-slut-into-your-personal-heifer-hole"
+        );
+        assert!(card
+            .thumb_url
+            .as_deref()
+            .unwrap_or_default()
+            .starts_with("https://lewdzone.com/wp-content/uploads/"));
     }
 }

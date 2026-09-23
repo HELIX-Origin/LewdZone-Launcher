@@ -77,10 +77,15 @@
   <div class="settings">
     <h1>Settings</h1>
 
-    {#each [
+{#each [
       ["library-root", "Library root", "Where games are installed (library folders)."],
       ["dm", "Download manager", "Active manager: fdm, idm, or torrent."],
       ["content-priority", "Content providers", "Comma-separated provider priority list."],
+      [
+        "source-priority",
+        "Preferred download sources",
+        "Comma-separated cloud hosts (mega, google, dropbox, mediafire, pixeldrain). Preferred sources are listed first and used as the default on a game's download panel.",
+      ],
     ] as [key, label, hint] (key)}
       <label class="field">
         <span class="field-label">{label}</span>
@@ -98,6 +103,22 @@
     {/each}
 
     <label class="field">
+      <span class="field-label">Home page</span>
+      <select
+        aria-label="Home page"
+        value={typeof snapshot["home-page"] === "string" && snapshot["home-page"]
+          ? snapshot["home-page"]
+          : "store"}
+        onchange={(e) => save("home-page", (e.currentTarget as HTMLSelectElement).value)}
+      >
+        {#each ["store", "favorites", "library", "downloads", "settings"] as page (page)}
+          <option value={page}>{page}</option>
+        {/each}
+      </select>
+      <span class="field-hint">Which tab opens at launch.</span>
+    </label>
+
+    <label class="field">
       <span class="field-label">Capture-aware sync</span>
       <input
         type="checkbox"
@@ -105,6 +126,16 @@
         onchange={(e) => save("capture-aware", (e.currentTarget as HTMLInputElement).checked)}
       />
       <span class="field-hint">Pause network work while the window is captured/streaming.</span>
+    </label>
+
+    <label class="field">
+      <span class="field-label">Native cloud apps</span>
+      <input
+        type="checkbox"
+        checked={snapshot["native-cloud"] === true}
+        onchange={(e) => save("native-cloud", (e.currentTarget as HTMLInputElement).checked)}
+      />
+      <span class="field-hint">Hand Google Drive, Dropbox, MediaFire, and MEGA downloads to their desktop apps instead of the download manager.</span>
     </label>
 
     <fieldset class="field">
@@ -118,7 +149,7 @@
           <option value={name}>{name}</option>
         {/each}
       </select>
-      <span class="field-hint">Skins in config/skins override tokens at runtime — no restart needed.</span>
+      <span class="field-hint">Nord, Dracula, and Material ship with the app. Custom skins go in the user skins folder (one subfolder per theme) — next to the app on Windows, in the app data folder on macOS/Linux. Built-in default stays; skins apply at runtime — no restart needed.</span>
     </fieldset>
 
     {#if toast}<p class="toast" aria-live="polite">{toast}</p>{/if}

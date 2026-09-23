@@ -58,7 +58,10 @@ Our launcher mirrors that shape 1:1, renaming only the product-specific leaf:
   htmlcache/                            # webview/http cache
   local.vdf -> local.json               # machine-local state (window pos, last library index)
 <DOCUMENTS>/My Games/<Game Title>/      # per-game saves (Steam Documents\My Games analog)
-<CONFIG_ROOT>/lewdzone/skins/<Name>/    # user-installed theme skins (retained Steam feature)
+<SKINS_ROOT>/<Name>/                   # user-installed theme skins (retained Steam feature), one subfolder per theme
+  <SKINS_ROOT> per OS                 # Windows: <install dir>/skins; macOS/Linux: <DATA_ROOT>/lewdzone/skins
+  theme.json                          # manifest + --lz-* tokens; assets/ beside it (embedded resources)
+  Nord/, Dracula/, Material/          # bundled reference themes, seeded on first run
 ```
 
 - **Download root key** in settings selects the library root(s); default library
@@ -75,11 +78,18 @@ Our launcher mirrors that shape 1:1, renaming only the product-specific leaf:
 - **Cache goes to `%LOCALAPPDATA%`** (Windows), `~/Library/Caches` (macOS),
   `$XDG_CACHE_HOME` (Linux); **per-game saves go to `Documents\My Games`** —
   exactly what Steam does. Cache is expendable; saves are user data.
-- **Themes are a first-class citizen.** `<config_root>/skins/<Name>/` holds
-  user-installed theme packages (a `theme.css`/manifest overriding the design
-  tokens in `wiki/Design-Conventions`). The webview loads tokens from the
-  active skin at startup; Settings has a Theme picker. This deliberately
-  **retains the custom-skin capability Valve dropped** (user directive).
+- **Themes are a first-class citizen.** A per-OS user-accessible skins folder
+  (Windows: `<install dir>/skins`; macOS: `~/Library/Application Support/
+  lewdzone/skins`; Linux: `$XDG_DATA_HOME/lewdzone/skins`), one subfolder per
+  theme, holds user-installed theme packages (a `theme.json` manifest + `--lz-*`
+  token overrides; embedded resources sit inside the theme folder next to the
+  manifest). The built-in default theme is compiled in and never stored there;
+  custom skins load in its place at runtime. The three bundled reference themes
+  (Nord, Dracula, Material) are embedded in the binary, seeded into the skins
+  folder on first run, and double as live wiki examples. The webview loads
+  tokens from the active skin at startup; Settings has a Theme picker. This
+  deliberately **retains the custom-skin capability Valve dropped** (user
+  directive).
 
 ## Consequences
 

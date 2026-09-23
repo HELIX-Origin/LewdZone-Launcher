@@ -6,4 +6,5 @@
 pub mod archive;
 pub mod fetch;
 pub mod game;
+pub mod genres;
 pub use fetch::fetch;

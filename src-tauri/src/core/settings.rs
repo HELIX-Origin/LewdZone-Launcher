@@ -21,9 +21,20 @@ pub struct Settings {
     pub capture_aware: Option<bool>,
     /// Active theme skin name (ADR-0005); unset = built-in default.
     pub theme: Option<String>,
-    /// Library root override (Steam `libraryfolders` analog, ADR-0005);
+    /// Library root override (library-folders analog, ADR-0005);
     /// unset = `<data_root>/library`.
     pub library_root: Option<String>,
+    /// Grace period between consecutive download starts (seconds); unset = 20.
+    pub download_grace_seconds: Option<u64>,
+    /// Preferred cloud-source hosts, comma-separated (e.g. `mega,google,dropbox`).
+    /// Entries are ordered/filtered by this list before download selection.
+    pub source_priority: Option<String>,
+    /// Hand downloads from native-cloud hosts (Google Drive, Dropbox, MediaFire,
+    /// Mega) to the default cloud handler instead of the download manager.
+    pub native_cloud: Option<bool>,
+    /// Which sidebar tab opens at launch (`store`, `favorites`, `library`,
+    /// `downloads`, `settings`); unset = `store`.
+    pub home_page: Option<String>,
     /// Extra user-provided keys, kept un-echoed (Rule 10).
     #[serde(flatten)]
     pub extra: BTreeMap<String, serde_json::Value>,
@@ -56,6 +67,10 @@ impl Settings {
             "capture-aware" => self.capture_aware.map(serde_json::Value::Bool),
             "theme" => self.theme.clone().map(serde_json::Value::String),
             "library-root" => self.library_root.clone().map(serde_json::Value::String),
+            "download-grace-seconds" => self.download_grace_seconds.map(serde_json::Value::from),
+            "source-priority" => self.source_priority.clone().map(serde_json::Value::String),
+            "native-cloud" => self.native_cloud.map(serde_json::Value::Bool),
+            "home-page" => self.home_page.clone().map(serde_json::Value::String),
             other => self.extra.get(other).cloned(),
         };
         s
@@ -81,6 +96,18 @@ impl Settings {
             "library-root" => {
                 self.library_root = Some(take_string(key, value)?);
             }
+            "download-grace-seconds" => {
+                self.download_grace_seconds = Some(take_u64(key, value)?);
+            }
+            "source-priority" => {
+                self.source_priority = Some(take_string(key, value)?);
+            }
+            "native-cloud" => {
+                self.native_cloud = Some(take_bool(key, value)?);
+            }
+            "home-page" => {
+                self.home_page = Some(take_string(key, value)?);
+            }
             other => {
                 self.extra.insert(other.to_string(), value);
             }
@@ -102,6 +129,12 @@ fn take_bool(key: &str, value: serde_json::Value) -> Result<bool, Error> {
         .ok_or_else(|| Error::Usage(format!("setting '{key}' expects a boolean")))
 }
 
+fn take_u64(key: &str, value: serde_json::Value) -> Result<u64, Error> {
+    value
+        .as_u64()
+        .ok_or_else(|| Error::Usage(format!("setting '{key}' expects a number")))
+}
+
 const KNOWN_KEYS: &[&str] = &[
     "download-root",
     "dm",
@@ -109,6 +142,10 @@ const KNOWN_KEYS: &[&str] = &[
     "capture-aware",
     "theme",
     "library-root",
+    "download-grace-seconds",
+    "source-priority",
+    "native-cloud",
+    "home-page",
 ];
 
 /// All known + extra settings as a JSON object (data form for GUI bridge).
@@ -163,12 +200,66 @@ pub fn apply(ctx: &Context, key: &str, value: &str) -> Result<serde_json::Value,
     let mut s = Settings::load(&ctx.config_path)?;
     let parsed: serde_json::Value = if value == "true" || value == "false" {
         serde_json::Value::Bool(value == "true")
+    } else if value.is_empty() {
+        // Empty text — a cleared setting — is a string, not a number.
+        serde_json::Value::String(String::new())
     } else if value.chars().all(|c| c.is_ascii_digit()) {
-        serde_json::Value::Number(value.parse().expect("digits parse"))
+        serde_json::Value::Number(
+            value
+                .parse::<u64>()
+                .map(serde_json::Number::from)
+                .map_err(|e| Error::Usage(format!("setting '{key}': {e}")))?,
+        )
     } else {
         serde_json::Value::String(value.to_string())
     };
     s.set_value(key, parsed.clone())?;
     s.save(&ctx.config_path)?;
     Ok(parsed)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn tmp_ctx(tag: &str) -> Context {
+        let dir = std::env::temp_dir().join(format!("lz-settings-{tag}-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).expect("temp dir");
+        Context::new(dir.join("test.db"), dir.join("config.json"))
+    }
+
+    #[test]
+    fn apply_empty_value_parses_as_string_not_number() {
+        let ctx = tmp_ctx("empty");
+        // Regression: "" is all-()digits vacuously; it must not panic on parse.
+        let parsed = apply(&ctx, "source-priority", "").expect("empty value applies");
+        assert_eq!(parsed, serde_json::Value::String(String::new()));
+        let saved = Settings::load(&ctx.config_path).expect("load");
+        assert_eq!(saved.source_priority.as_deref(), Some(""));
+        let _ = fs::remove_dir_all(ctx.config_path.parent().expect("dir"));
+    }
+
+    #[test]
+    fn apply_parses_digits_booleans_and_strings() {
+        let ctx = tmp_ctx("kinds");
+        assert_eq!(
+            apply(&ctx, "download-grace-seconds", "30").expect("number"),
+            serde_json::Value::Number(serde_json::Number::from(30u64))
+        );
+        assert_eq!(
+            apply(&ctx, "native-cloud", "true").expect("bool"),
+            serde_json::Value::Bool(true)
+        );
+        assert_eq!(
+            apply(&ctx, "theme", "Nord").expect("string"),
+            serde_json::Value::String("Nord".into())
+        );
+        // Non-numeric strings must not be rejected as numbers.
+        assert!(matches!(
+            apply(&ctx, "download-grace-seconds", "abc"),
+            Err(Error::Usage(_))
+        ));
+        let _ = fs::remove_dir_all(ctx.config_path.parent().expect("dir"));
+    }
 }

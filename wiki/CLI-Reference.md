@@ -63,9 +63,14 @@ the download:
 lewdzone download treasure-of-nadia
 lewdzone download --game treasure-of-nadia \
   --version latest --platform PC --tab official --json
+lewdzone download --game treasure-of-nadia --source mega   # one specific source host
 lewdzone download treasure-of-nadia --resume   # resume an existing job
 lewdzone download treasure-of-nadia --queue    # enqueue without starting
 ```
+
+`--source <host>` restricts the download to a single source from that game's
+page (e.g. `mega`, `fileknot`, `dropbox`). Without it, every available source
+is dispatched in the configured order (see `source-priority` below).
 
 Torrent links are only accepted by a torrent-capable manager (exit 4
 otherwise).
@@ -84,6 +89,9 @@ lewdzone list --jobs     # job queue
 lewdzone settings get              # all settings
 lewdzone settings get download-root
 lewdzone settings set download-root "D:/Games"
+lewdzone settings set download-grace-seconds 20   # pause between download starts
+lewdzone settings set source-priority "mega, google, dropbox"  # preferred source order
+lewdzone settings set native-cloud true       # pass cloud hosts to their apps/browser
 ```
 
 ### `dm`

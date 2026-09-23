@@ -6,6 +6,8 @@ roadmap when they're scoped.
 
 ## 🚧 Immediate
 
+### `.agents` cleanup (fdm → dm family)
+
 - [x] Rename `PLAN.md` → `ROADMAP.md`
 - [x] Fix mermaid compliance defects in `.agents/agents/*` (Rule 09) — still to verify in cleanup pass
 - [x] Fix `rule-04` / `rule-08` emoji mojibake (done via a one-off scanner test)
@@ -13,25 +15,36 @@ roadmap when they're scoped.
 - [x] `rule-01` module list: `fdm` → `dm`
 - [x] `rule-08` example title: `catalog sync + FDM queue` → `catalog sync + DM queue`
 - [x] `rule-00-governance` family list: `database/fdm/cli` → `database/dm/cli`
-- [ ] `testing.md` + `test-suite-architect.md` — swap `fdm` fake / `test_fdm` for dm family (verify)
-- [ ] `module-contractor.md` — `T4 fdm bridge` → dm bridge (verify)
-- [ ] `cli.md` / `architect.md` / `index.md` — finish `fdm`→`dm` refs (verify)
 - [x] `launch-fdm` skill → DM-agnostic `launch-download` skill (done; `launch-fdm/` deleted)
-- [ ] Add `gui-build-loop` + `package-desktop-app` skills (referenced by gui.md)
-- [ ] Write templates layer: `agent`, `skill`, `rule`, `module-rust`, `test-rust`, `migration-sql`, `adr`, `issue`, `issue-roadmap`, `release-notes`, `commit-message-guide`, `shortcut-artwork`, Tauri `view`/`command`, `cli-json-contract`, `dm-adapter`
+- [ ] Delete stale `.agents/agents/fdm/fdm.md` shim (the family is `dm`; `fdm-adapter` lives under `.agents/agents/dm/`)
+- [ ] `testing.md` + `test-suite-architect.md` — swap remaining `fdm` fake / `test_fdm` wording for the dm family (`.agents/agents/fdm/fdm.md` still present)
+- [ ] `module-contractor.md` — `T4 fdm bridge` → dm bridge
 - [ ] Write `.agents/README.md` index
-- [x] Scaffold `src-tauri/src/` Rust crate layout (Rule 03 skeleton)
-- [x] Add `.gitignore` entry for `scratch/` (already in initial push)
+- [ ] Write the rest of the templates layer (only `adr.md` + `changelog.md` exist of the ~17 planned)
+- [ ] Add `gui-build-loop` + `package-desktop-app` skills (referenced by gui.md)
 - [ ] Verify archive pagination scheme (`?page=N` vs `/page/N/`) on live site
-- [x] Promote scratch scanners into the Rust test suite (mojibake, fdm→dm stale refs, typo check)
-- [x] Add `cargo test` config + coverage floors (Rule 11)
-- [x] Add content-provider layer agents (`.agents/agents/content/`, 7 files) + provider-registry
-- [x] Wire multi-provider artwork into shortcuts family (`artwork-fetch` dispatches via content registry)
-- [x] Settings/API-keys section in view-designer + wiki (Configuration, Security, Getting-Started)
-- [x] Add `wiki/Content-Providers.md` + sidebar + README/Home/Development/Agents/Architecture touchpoints
+
+### Content-provider layer (Phase 2 engine)
+
 - [ ] Implement `src-tauri/src/content/` (contract, registry, adapter stubs) + `game_external`/`artwork_cache` schema
 - [ ] Implement `enrich-game-and-art` skill + `content-provider` template
 - [ ] `rule-03`/`rule-10` — fold content-provider keys/secrets wording (verify coverage)
+
+### Core / GUI features
+
+- [x] App relayout to the dark cyberpunk spec: left icon sidebar + top header (wide rounded search + circular profile avatar), deep cyan/charcoal gradient bg, neon accents, glassmorphism, thin scrollbar. **Home is not a separate tab** — it is the Store.
+- [x] Store view = storefront: top search, left category/genre rail, hero + media-grid rows (~9 poster-ratio tiles 2:3/3:4), tile → game detail. Backed by live search (`?s=`), genre pages, platform/sort filters (headless `/games/` + `/game-genre/`).
+- [x] Custom macOS-style title bar: frameless window (`decorations: false`) with traffic-light window controls (red/yellow/green) + custom menu bar (File/View/Help menus, profile button).
+- [x] Download-source controls: `source-priority` reordering + per-game `game_sources` panel (preferred default) + native-cloud pass-through.
+- [x] Download scheduler: `download-grace-seconds` pacing between dispatch starts (free-tier throttle protection).
+- [x] **Non-blocking async download queue** (Rust core): `game_download` enqueues and returns instantly; a background worker resolves + dispatches one request at a time; `downloads_list` exposes progress. (Pixeldrain proxy-cycle "bypass" was implemented then removed — the upstream service is dead.)
+- [x] Bundled theme skins (Nord / Dracula / Material) shipped in-repo + `home-page` launch tab setting.
+- [ ] **Downloads page**: poll `downloads_list` and render each job's status/message (currently a stub). Add Downloads to the icon sidebar nav. Update the store detail `download()` to the queued (`QueueJob`) return.
+- [ ] Persist `download_job` rows + resume across restarts (queue is in-memory for now).
+- [ ] Library view = downloaded games: list installed titles from app manifests, with extract + launch support.
+- [ ] Multi-format installs: the site ships games as web HTML, `.exe`, and other formats; use the site's engine/tag taxonomy to infer the actual game binary for launch (engine → binary discovery).
+- [ ] App icons: regenerate from `assets/appicon.png` via `tauri icon`, wire the outputs into `tauri.conf.json` (`bundle.icon`) and fix the non-rendering sidebar logo image.
+- [ ] CLI-only npm package on GitHub Packages: publish the standalone CLI as an npm package (no GUI bundled), so releases ship a `lewdzone` binary via the GitHub package registry.
 
 ## 🗄️ Backlog (unscoped)
 

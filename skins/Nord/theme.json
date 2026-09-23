@@ -1,0 +1,22 @@
+{
+  "name": "Nord",
+  "version": "1.0.0",
+  "author": "LewdZone Launcher",
+  "tokens": {
+    "--lz-accent": "#88C0D0",
+    "--lz-primary": "#8FBCBB",
+    "--lz-cyan": "#81A1C1",
+    "--lz-bg": "#2E3440",
+    "--lz-surface": "#3B4252",
+    "--lz-surface-2": "#434C5E",
+    "--lz-text": "#ECEFF4",
+    "--lz-text-dim": "#D8DEE9",
+    "--lz-danger": "#BF616A",
+    "--lz-ok": "#A3BE8C",
+    "--lz-radius": "4px",
+    "--lz-gap": "12px",
+    "--lz-gradient": "linear-gradient(160deg, #2E3440 0%, #3B4252 100%)",
+    "--lz-glow": "0 0 14px rgba(136, 192, 208, 0.35)",
+    "--lz-glass": "rgba(43, 48, 64, 0.6)"
+  }
+}
