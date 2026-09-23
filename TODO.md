@@ -55,4 +55,4 @@ roadmap when they're scoped.
 - [x] Enrichment e2e for a thin title (VNDB description + SteamGridDB icon + VNDB cover, cached + offline replay)
 - [x] Per-OS shortcut builders (.lnk / .desktop / macOS alias) tested
 - [ ] Perf budgets: cold start <2s, list <300ms, search <200ms, parse <400ms
-- [ ] CI workflows: cargo fmt/clippy/test, svelte-check, vitest; tauri build matrix
+- [x] CI workflows: cargo fmt/clippy/test, svelte-check, vitest; tauri build matrix

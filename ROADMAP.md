@@ -94,11 +94,11 @@ flowchart TD
 
 ## ✅ Acceptance Criteria
 
-- [ ] `lewdzone --help` clean on PowerShell and bash
+- [x] `lewdzone --help` clean on PowerShell and bash
 - [x] `download --game treasure-of-nadia --json` resolves and dispatches (direct-file hosts stream in-app; others open via OS default handler)
 - [x] Store/Library/Downloads/Settings all map 1:1 to an invoke command or CLI command
 - [x] Files land in `<downloads>/Games/<Title>/` staging and `<lzapps>/<slug>/` installs
-- [ ] Rust + frontend suites green on CI
+- [x] Rust + frontend suites green on CI
 
 ## 🔗 Related
 
