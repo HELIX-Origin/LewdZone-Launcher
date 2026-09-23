@@ -31,7 +31,7 @@ impl Provider for Vndb {
             return Ok(None);
         };
 
-        let description = (!vn.description.is_empty()).then(|| vn.description);
+        let description = (!vn.description.is_empty()).then_some(vn.description);
         let developer = vn
             .developers
             .into_iter()
@@ -39,11 +39,11 @@ impl Provider for Vndb {
             .map(|p| p.name)
             .or_else(|| vn.producers.into_iter().next().map(|p| p.name));
         let rating = vn.rating;
-        let tags: Vec<String> = vn.tags.into_iter().take(8).collect();
+        let tags: Vec<String> = vn.tags.into_iter().take(8).map(|t| t.name).collect();
         let screenshots: Vec<String> = vn
             .screenshots
             .into_iter()
-            .filter_map(|s| s.thumbnail.replace("/s/", "/"))
+            .map(|s| s.thumbnail.replace("/s/", "/"))
             .collect();
 
         Ok(Some(Enrichment {
@@ -137,8 +137,6 @@ struct SearchResponse {
 
 #[derive(Debug, Deserialize)]
 struct Vn {
-    id: String,
-    title: String,
     description: String,
     rating: Option<f32>,
     image: Option<String>,

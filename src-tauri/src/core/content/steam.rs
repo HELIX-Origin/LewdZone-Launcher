@@ -118,7 +118,6 @@ struct StoreSearchResponse {
 #[derive(Debug, Deserialize)]
 struct StoreSearchItem {
     id: u64,
-    name: String,
 }
 
 #[derive(Debug, Deserialize)]

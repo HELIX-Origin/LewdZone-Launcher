@@ -103,7 +103,7 @@ fn fetch_token(secrets: &std::collections::BTreeMap<String, String>) -> Result<S
     let resp = agent
         .post(&url)
         .header("Accept", "application/json")
-        .call()
+        .send("")
         .map_err(|e| Error::Network(format!("igdb token: {e}")))?;
 
     if resp.status() != 200 {
@@ -197,7 +197,6 @@ struct TokenResponse {
 
 #[derive(Debug, Deserialize)]
 struct IgdbGame {
-    name: String,
     summary: Option<String>,
     genres: Option<Vec<Named>>,
     screenshots: Option<Vec<Image>>,
