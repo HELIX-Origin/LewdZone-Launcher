@@ -15,8 +15,6 @@ move it to the commit that resolved it (`git log`).
 
 ## 📝 Filing a bug
 
-## 📝 Filing a bug
-
 Bug title on GitHub: `🐛 <problem summary>`. Body must include:
 
 - Steps to reproduce (reproduce-first)
