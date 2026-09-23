@@ -300,8 +300,34 @@ describe("library page", () => {
         return {
           root: "/fake/library",
           games: [
-            { post_id: 54321, size: 5_368_709_120, folder: "Wild Life" },
-            { post_id: 111, size: 214_748_3648, folder: "Treasure of Nadia" },
+            {
+              slug: "wild-life",
+              post_id: 54321,
+              title: "Wild Life",
+              version: "v2026",
+              platform: "pc",
+              tab: "fileknot",
+              engine: "Unity",
+              install_path: "/fake/library/lzapps/wild-life",
+              candidates: ["WildLife.exe"],
+              launch_exe: "",
+              installed_at: "2026-01-01T00:00:00Z",
+              size_on_disk: 5_368_709_120,
+            },
+            {
+              slug: "treasure-of-nadia",
+              post_id: 111,
+              title: "Treasure of Nadia",
+              version: "1.0117",
+              platform: "pc",
+              tab: "fileknot",
+              engine: "Ren'Py",
+              install_path: "/fake/library/lzapps/treasure-of-nadia",
+              candidates: ["TreasureOfNadia.exe"],
+              launch_exe: "",
+              installed_at: "2026-01-02T00:00:00Z",
+              size_on_disk: 2_147_483_648,
+            },
           ],
         };
       }
@@ -310,6 +336,41 @@ describe("library page", () => {
     render(LibraryPage);
     expect(await screen.findByText("Wild Life")).toBeInTheDocument();
     expect(screen.getByText("Treasure of Nadia")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Launch Wild Life/ })).toBeInTheDocument();
+  });
+
+  it("invokes game_launch when the Launch button is clicked", async () => {
+    const user = userEvent.setup();
+    const invocations: Array<{ cmd: string; args?: InvokeArgs }> = [];
+    mockInvoke(async (cmd: string, args?: InvokeArgs) => {
+      invocations.push({ cmd, args });
+      if (cmd === "library_list") {
+        return {
+          root: "/fake/library",
+          games: [
+            {
+              slug: "wild-life",
+              post_id: 54321,
+              title: "Wild Life",
+              version: "v2026",
+              platform: "pc",
+              tab: "fileknot",
+              engine: "Unity",
+              install_path: "/fake/library/lzapps/wild-life",
+              candidates: ["WildLife.exe"],
+              launch_exe: "",
+              installed_at: "2026-01-01T00:00:00Z",
+              size_on_disk: 5_368_709_120,
+            },
+          ],
+        };
+      }
+      return [];
+    });
+    render(LibraryPage);
+    const btn = await screen.findByRole("button", { name: /Launch Wild Life/ });
+    await user.click(btn);
+    expect(invocations.some((i) => i.cmd === "game_launch" && i.args?.slug === "wild-life")).toBe(true);
   });
 });
 

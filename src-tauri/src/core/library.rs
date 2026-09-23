@@ -1,6 +1,9 @@
 //! Library folder registry + per-game manifests (ADR-0005).
 //! `libraryfolders.json` holds the ordered roots;
 //! `appmanifest_<post_id>.json` is the per-game record.
+//!
+//! Installed apps are discovered from `<lzapps_root>/<slug>/app.json` manifests
+//! written by the extractor (see `core::extract`).
 
 use std::collections::BTreeMap;
 use std::fs;
@@ -10,7 +13,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::core::paths;
 use crate::core::settings::Settings;
-use crate::core::Error;
+use crate::core::{Context, Error};
 
 const DEFAULT_LIBRARY_LABEL: &str = "Default";
 
@@ -220,6 +223,83 @@ pub fn resolved_appmanifest_path(
     Ok(resolved_library_root(config_path)?.join(format!("appmanifest_{post_id}.json")))
 }
 
+/// A discovered installed app, read from `<lzapps_root>/<slug>/app.json`.
+#[derive(Debug, Clone, serde::Serialize)]
+pub struct InstalledApp {
+    pub slug: String,
+    pub post_id: Option<i64>,
+    pub title: String,
+    pub version: String,
+    pub platform: String,
+    pub tab: String,
+    pub engine: Option<String>,
+    pub install_path: PathBuf,
+    pub candidates: Vec<String>,
+    pub launch_exe: String,
+    pub installed_at: Option<String>,
+    pub size_on_disk: u64,
+}
+
+/// List every installed app under the effective `lzapps/` root.
+pub fn list_installed(ctx: &Context) -> Result<Vec<InstalledApp>, Error> {
+    let root = crate::core::folder::lzapps_root(ctx)?;
+    if !root.exists() {
+        return Ok(Vec::new());
+    }
+
+    let mut apps = Vec::new();
+    for entry in fs::read_dir(&root)? {
+        let entry = entry?;
+        let path = entry.path();
+        if !path.is_dir() {
+            continue;
+        }
+        let manifest_path = path.join("app.json");
+        if !manifest_path.exists() {
+            continue;
+        }
+
+        let raw = fs::read_to_string(&manifest_path)?;
+        let manifest: crate::core::extract::AppJson = serde_json::from_str(&raw)
+            .map_err(|e| Error::Runtime(format!("corrupt {}: {e}", manifest_path.display())))?;
+
+        apps.push(InstalledApp {
+            slug: manifest.slug,
+            post_id: manifest.post_id,
+            title: manifest.title,
+            version: manifest.version,
+            platform: manifest.platform,
+            tab: manifest.tab,
+            engine: manifest.engine,
+            install_path: path.clone(),
+            candidates: manifest.candidates,
+            launch_exe: manifest.launch_exe,
+            installed_at: Some(manifest.installed_at),
+            size_on_disk: dir_size(&path)?,
+        });
+    }
+
+    apps.sort_by_key(|a| a.title.to_lowercase());
+    Ok(apps)
+}
+
+fn dir_size(path: &Path) -> Result<u64, Error> {
+    let mut total = 0u64;
+    let mut stack = vec![path.to_path_buf()];
+    while let Some(cur) = stack.pop() {
+        for entry in fs::read_dir(&cur)? {
+            let entry = entry?;
+            let meta = entry.metadata()?;
+            if meta.is_dir() {
+                stack.push(entry.path());
+            } else {
+                total += meta.len();
+            }
+        }
+    }
+    Ok(total)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -342,5 +422,50 @@ mod tests {
         assert!(resolved_libraryfolders_path(None)
             .expect("folders path")
             .ends_with("libraryfolders.json"));
+    }
+
+    #[test]
+    fn list_installed_reads_lzapps_app_json() {
+        let dir = unique_dir();
+        fs::create_dir_all(&dir).unwrap();
+        let cfg = dir.join("config.json");
+        let db = dir.join("test.db");
+        let lib_root = dir.to_string_lossy();
+        let cfg_json = serde_json::json!({"library_root": lib_root.to_string()});
+        fs::write(&cfg, serde_json::to_string(&cfg_json).unwrap()).unwrap();
+        let ctx = Context::new(db, cfg);
+
+        let lzapps = dir.join("lzapps");
+        let install = lzapps.join("treasure-of-nadia");
+        fs::create_dir_all(&install).unwrap();
+        fs::write(install.join("game.exe"), b"fake exe").unwrap();
+        fs::write(
+            install.join("app.json"),
+            br#"{
+                "format": "lewdzone-lzapp",
+                "slug": "treasure-of-nadia",
+                "post_id": 123,
+                "title": "Treasure of Nadia",
+                "version": "1.0117",
+                "platform": "pc",
+                "tab": "fileknot",
+                "engine": "Ren'Py",
+                "download_url": "https://fileknot.io/dl/x",
+                "install_path": "treasure-of-nadia",
+                "installed_at": "2026-01-01T00:00:00Z",
+                "candidates": ["game.exe"],
+                "launch_exe": ""
+            }"#,
+        )
+        .unwrap();
+
+        let apps = list_installed(&ctx).expect("lists installed apps");
+        assert_eq!(apps.len(), 1);
+        assert_eq!(apps[0].slug, "treasure-of-nadia");
+        assert_eq!(apps[0].title, "Treasure of Nadia");
+        assert_eq!(apps[0].post_id, Some(123));
+        assert!(apps[0].size_on_disk >= 8); // "fake exe" plus app.json
+
+        let _ = fs::remove_dir_all(&dir);
     }
 }

@@ -59,16 +59,16 @@ flowchart TD
 - [ ] Fix any remaining verification gaps (final svelte-check pass, clippy/fmt clean)
 - [x] **GUI relayout** to the dark cyberpunk spec: left icon sidebar (Store/Favorites/Library/Settings; Downloads pending its page) + top header (rounded search + profile avatar), deep cyan/charcoal gradient, neon accents, glassmorphism, thin scrollbar. **Home is not a separate tab** — it is the Store.
 - [x] **Storefront**: top search, left genre/category rail, hero + media-grid rows (~9 poster tiles 2:3/3:4), tile → game detail. Live search (`?s=`), genre pages, platform/sort filters (`/games/` + `/game-genre/`). Backed by the full site filter surface (q/platform/engine/state/sort/tags[]/tags-exclude[]) and no ads / no redirect exposure (downloads resolve via resolver + DM adapters only).
-- [ ] **Library = downloaded games**: list installed titles from app manifests; extract + launch support from the Library view.
-- [ ] **Multi-format launch**: games ship as web HTML / `.exe` / other formats; infer the game binary via the site's engine/tag taxonomy so Launch opens the right target.
+- [x] **Library = downloaded games**: list installed titles from `lzapps/<slug>/app.json`; launch support from the Library view.
+- [x] **Multi-format launch**: games ship as web HTML / `.exe` / other formats; infer the game binary via the site's engine/tag taxonomy so Launch opens the right target.
 - [x] Custom macOS-style title bar: frameless window (`decorations: false`) + traffic lights (red/yellow/green) + custom File/View/Help menus + profile button. 14 frontend tests green.
 - [x] Download-source controls: `source-priority` reordering + per-game `game_sources` panel (preferred default) + native-cloud pass-through.
 - [x] Download scheduler: `download-grace-seconds` pacing between dispatch starts (free-tier throttle protection). Pixeldrain proxy-cycle "bypass" was implemented then removed — the upstream service is dead.
-- [x] **Non-blocking async download queue** (Rust core): `game_download` enqueues and returns instantly; a background worker resolves + dispatches one request at a time; the Downloads view polls `downloads_list`. Rust suite green (160→157 tests after the pixeldrain removal).
-- [ ] Storefront catalog view: real tiles + game-page lookup (search/content-provider layer) — MVP tiles + `/store/[slug]` detail wired; deeper content-provider enrichment pending.
-- [ ] **Downloads page**: poll `downloads_list` and render each job's status/message (currently a stub); add Downloads to the icon sidebar nav; store detail `download()` returns `queued` feedback.
+- [x] **Non-blocking async download queue** (Rust core): `game_download` enqueues and returns instantly; a background worker resolves + dispatches one request at a time; the Downloads view polls `downloads_list`.
+- [x] **Downloads page**: poll `downloads_list` and render each job's status/message; add Downloads to the icon sidebar nav; store detail `download()` returns `queued` feedback.
 - [ ] Persist `download_job` rows + resume across restarts (queue is in-memory for now).
-- [ ] App icons: regenerate from `assets/appicon.png` via `tauri icon`, wire into `tauri.conf.json` bundle icons, and fix the non-rendering sidebar logo.
+- [ ] Storefront catalog view: real tiles + game-page lookup (search/content-provider layer) — MVP tiles + `/store/[slug]` detail wired; deeper content-provider enrichment pending.
+- [x] App icons: regenerate from `assets/appicon.png` via `tauri icon`, wire into `tauri.conf.json` bundle icons, and fix the non-rendering sidebar logo image.
 - [ ] Router recreation of store pages (ripped UI mirrored into local HTML)
 
 ## Later ⏳
@@ -90,10 +90,9 @@ flowchart TD
 ## ✅ Acceptance Criteria
 
 - [ ] `lewdzone --help` clean on PowerShell and bash
-- [ ] `download --game treasure-of-nadia --json` resolves and dispatches to the active manager (`lewdzone dm fdm` selects it)
-- [ ] Store/Library/Downloads/Settings all map 1:1 to an invoke command or CLI command
-- [ ] Torrent links only accepted by a torrent-capable manager
-- [ ] Files land in `<Library>/common/<Title>/` per ADR-0005 mirror layout
+- [x] `download --game treasure-of-nadia --json` resolves and dispatches (direct-file hosts stream in-app; others open via OS default handler)
+- [x] Store/Library/Downloads/Settings all map 1:1 to an invoke command or CLI command
+- [ ] Files land in `<downloads>/Games/<Title>/` staging and `<lzapps>/<slug>/` installs
 - [ ] Rust + frontend suites green on CI
 
 ## 🔗 Related

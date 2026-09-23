@@ -197,6 +197,17 @@ fn library_list(
     crate::core::list::library_listing(&ctx).map_err(|e| e.to_string())
 }
 
+/// Launch an installed game from its `lzapps/<slug>/app.json` manifest.
+#[tauri::command]
+fn game_launch(state: tauri::State<'_, AppState>, slug: String) -> Result<(), String> {
+    let ctx = state
+        .context
+        .lock()
+        .map_err(|_| "state lock poisoned".to_string())?;
+    crate::core::launch::run(&ctx, &slug).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
 /// `settings.get()` — one value or the whole snapshot as JSON for the page.
 #[tauri::command]
 fn settings_get(
@@ -323,7 +334,8 @@ pub fn run() {
             game_download,
             downloads_list,
             favorites_list,
-            library_list
+            library_list,
+            game_launch
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

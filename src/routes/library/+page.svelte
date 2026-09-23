@@ -7,9 +7,18 @@
   type LoadState = "loading" | "ready" | "error";
 
   interface LibraryGame {
-    post_id: number;
-    size: number;
-    folder: string;
+    slug: string;
+    post_id: number | null;
+    title: string;
+    version: string;
+    platform: string;
+    tab: string;
+    engine: string | null;
+    install_path: string;
+    candidates: string[];
+    launch_exe: string;
+    installed_at: string | null;
+    size_on_disk: number;
   }
 
   interface LibraryListing {
@@ -21,6 +30,7 @@
   let error = $state("");
   let games: LibraryGame[] = $state([]);
   let root: string | null = $state(null);
+  let launching = $state<Record<string, boolean>>({});
 
   function formatSize(bytes: number): string {
     if (bytes <= 0) return "—";
@@ -34,14 +44,18 @@
     return `${n.toFixed(n >= 100 ? 0 : 1)} ${units[i]}`;
   }
 
-  function folderName(folder: string): string {
-    const cleaned = folder.replace(/\\/g, "/");
-    const parts = cleaned.split("/").filter(Boolean);
-    return parts.length > 0 ? parts[parts.length - 1] : folder;
+  function platformLabel(p: string): string {
+    const map: Record<string, string> = {
+      pc: "PC",
+      mac: "Mac",
+      linux: "Linux",
+    };
+    return map[p.toLowerCase()] ?? p;
   }
 
-  onMount(async () => {
+  async function load() {
     status = "loading";
+    error = "";
     try {
       const listing = await invoke<LibraryListing>("library_list");
       games = listing.games;
@@ -51,7 +65,20 @@
       status = "error";
       error = String(err);
     }
-  });
+  }
+
+  async function launch(game: LibraryGame) {
+    launching[game.slug] = true;
+    try {
+      await invoke("game_launch", { slug: game.slug });
+    } catch (err) {
+      error = String(err);
+    } finally {
+      launching[game.slug] = false;
+    }
+  }
+
+  onMount(load);
 </script>
 
 {#if status === "loading"}
@@ -78,24 +105,34 @@
       </p>
     {:else}
       <div class="grid" role="list">
-        {#each games as game (game.post_id)}
-          <div class="tile" role="listitem" title={game.folder}>
+        {#each games as game (game.slug)}
+          <div class="tile" role="listitem" title={game.install_path}>
             <div
               class="icon"
               aria-hidden="true"
-              data-post-id={game.post_id}
+              data-post-id={game.post_id ?? ""}
             >
               <span class="icon-glyph"
                 ><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6.5" width="18" height="11" rx="5.5"/><circle cx="8" cy="11.5" r="1.1" fill="currentColor" stroke="none"/><circle cx="12.5" cy="11.5" r="1.1" fill="currentColor" stroke="none"/><path d="M16.2 14.4h.01M18.6 12.4h.01"/></svg></span
               >
             </div>
             <div class="tile-body">
-              <div class="tile-name">{folderName(game.folder)}</div>
+              <div class="tile-name">{game.title}</div>
               <div class="tile-meta">
-                <span>ID {game.post_id}</span>
+                <span>{game.version}</span>
                 <span>·</span>
-                <span>{formatSize(game.size)}</span>
+                <span>{platformLabel(game.platform)}</span>
+                <span>·</span>
+                <span>{formatSize(game.size_on_disk)}</span>
               </div>
+              <button
+                class="launch-btn"
+                onclick={() => launch(game)}
+                disabled={launching[game.slug]}
+                aria-label={`Launch ${game.title}`}
+              >
+                {launching[game.slug] ? "Launching…" : "Launch"}
+              </button>
             </div>
           </div>
         {/each}
@@ -152,7 +189,6 @@
     overflow: hidden;
     display: flex;
     flex-direction: column;
-    cursor: default;
   }
 
   .icon {
@@ -178,6 +214,9 @@
 
   .tile-body {
     padding: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
   }
 
   .tile-name {
@@ -192,11 +231,34 @@
   }
 
   .tile-meta {
-    margin-top: 4px;
     display: flex;
     gap: 6px;
     color: var(--lz-text-dim);
     font-size: 11px;
+    flex-wrap: wrap;
+  }
+
+  .launch-btn {
+    margin-top: 4px;
+    width: 100%;
+    padding: 6px 10px;
+    border: none;
+    border-radius: var(--lz-radius);
+    background: var(--lz-primary);
+    color: var(--lz-bg);
+    font-weight: 600;
+    font-size: 12px;
+    cursor: pointer;
+    transition: opacity 0.15s ease;
+  }
+
+  .launch-btn:hover:not(:disabled) {
+    opacity: 0.85;
+  }
+
+  .launch-btn:disabled {
+    opacity: 0.6;
+    cursor: default;
   }
 
   .note {

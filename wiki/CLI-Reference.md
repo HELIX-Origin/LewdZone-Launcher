@@ -93,6 +93,18 @@ lewdzone settings get download-root
 lewdzone settings set download-root "D:/Games"
 lewdzone settings set download-grace-seconds 20   # pause between download starts
 lewdzone settings set source-priority "mega, google, dropbox"  # preferred source order
+lewdzone settings set sgdb-api-key <key> --secret
+```
+
+### `launch`
+
+Launch an installed game from the `lzapps/<slug>/` folder. The command reads
+`app.json`, uses the user-editable `launch_exe` override if set, and falls back
+to the auto-detected executable candidate.
+
+```
+lewdzone launch treasure-of-nadia
+lewdzone launch --game treasure-of-nadia
 ```
 
 ### `dm`
@@ -130,6 +142,7 @@ lewdzone sync --json
 lewdzone info --game treasure-of-nadia --json
 lewdzone download --game treasure-of-nadia --version latest \
   --platform PC --tab official --json
+lewdzone launch treasure-of-nadia
 lewdzone list --library --json
 ```
 

@@ -39,11 +39,11 @@ roadmap when they're scoped.
 - [x] Download scheduler: `download-grace-seconds` pacing between dispatch starts (free-tier throttle protection).
 - [x] **Non-blocking async download queue** (Rust core): `game_download` enqueues and returns instantly; a background worker resolves + dispatches one request at a time; `downloads_list` exposes progress. (Pixeldrain proxy-cycle "bypass" was implemented then removed — the upstream service is dead.)
 - [x] Bundled theme skins (Nord / Dracula / Material) shipped in-repo + `home-page` launch tab setting.
-- [ ] **Downloads page**: poll `downloads_list` and render each job's status/message (currently a stub). Add Downloads to the icon sidebar nav. Update the store detail `download()` to the queued (`QueueJob`) return.
+- [x] **Downloads page**: poll `downloads_list` and render each job's status/message. Add Downloads to the icon sidebar nav. Update the store detail `download()` to the queued (`QueueJob`) return.
 - [ ] Persist `download_job` rows + resume across restarts (queue is in-memory for now).
-- [ ] Library view = downloaded games: list installed titles from app manifests, with extract + launch support.
-- [ ] Multi-format installs: the site ships games as web HTML, `.exe`, and other formats; use the site's engine/tag taxonomy to infer the actual game binary for launch (engine → binary discovery).
-- [ ] App icons: regenerate from `assets/appicon.png` via `tauri icon`, wire the outputs into `tauri.conf.json` (`bundle.icon`) and fix the non-rendering sidebar logo image.
+- [x] Library view = downloaded games: list installed titles from app manifests, with launch support.
+- [x] Multi-format installs: the site ships games as web HTML, `.exe`, and other formats; use the site's engine/tag taxonomy to infer the actual game binary for launch (engine → binary discovery).
+- [x] App icons: regenerate from `assets/appicon.png` via `tauri icon`, wire the outputs into `tauri.conf.json` (`bundle.icon`) and fix the non-rendering sidebar logo image.
 
 ## 🗄️ Backlog (unscoped)
 

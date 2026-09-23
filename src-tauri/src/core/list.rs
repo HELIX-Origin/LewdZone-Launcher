@@ -2,8 +2,8 @@
 //! (Rule 03 / Rule 13: the Storefront webview and the CLI share this core).
 //!
 //! Catalog rows come straight from the SQLite DB written by `sync`
-//! (database family). Library rows come from the library-folder manifests
-//! (ADR-0005). Jobs come from the `download_job` table.
+//! (database family). Library rows come from the installed app manifests in
+//! `lzapps/<slug>/app.json` (ADR-0005). Jobs come from the `download_job` table.
 
 use crate::cli::ExitCode;
 use crate::core::{library, Context, Error};
@@ -16,7 +16,7 @@ pub struct Listing {
     pub games: Vec<db::repo::CatalogGame>,
 }
 
-/// Listing of installed games from library manifests.
+/// Listing of installed games from `lzapps/<slug>/app.json` manifests.
 #[derive(Debug, Clone, serde::Serialize)]
 pub struct LibraryListing {
     pub root: Option<std::path::PathBuf>,
@@ -25,9 +25,18 @@ pub struct LibraryListing {
 
 #[derive(Debug, Clone, serde::Serialize)]
 pub struct LibraryGame {
-    pub post_id: i64,
-    pub size: u64,
-    pub folder: String,
+    pub slug: String,
+    pub post_id: Option<i64>,
+    pub title: String,
+    pub version: String,
+    pub platform: String,
+    pub tab: String,
+    pub engine: Option<String>,
+    pub install_path: String,
+    pub candidates: Vec<String>,
+    pub launch_exe: String,
+    pub installed_at: Option<String>,
+    pub size_on_disk: u64,
 }
 
 pub fn run(ctx: &Context, library_flag: bool, jobs: bool) -> Result<ExitCode, Error> {
@@ -42,16 +51,25 @@ pub fn run(ctx: &Context, library_flag: bool, jobs: bool) -> Result<ExitCode, Er
 
 /// Read-only library listing for the webview (Rule 13: same core, no prints).
 pub fn library_listing(ctx: &Context) -> Result<LibraryListing, Error> {
-    let root = library::resolved_library_root(Some(&ctx.config_path))?;
-    let folders = library::LibraryFolders::load(&root.join("libraryfolders.vdf"))?;
-    let mut games = Vec::new();
-    for (folder, post_id, size) in folders.iter_games() {
-        games.push(LibraryGame {
-            post_id,
-            size,
-            folder: folder.path.clone(),
-        });
-    }
+    let root = crate::core::folder::lzapps_root(ctx)?;
+    let apps = library::list_installed(ctx)?;
+    let games = apps
+        .into_iter()
+        .map(|app| LibraryGame {
+            slug: app.slug,
+            post_id: app.post_id,
+            title: app.title,
+            version: app.version,
+            platform: app.platform,
+            tab: app.tab,
+            engine: app.engine,
+            install_path: app.install_path.to_string_lossy().into_owned(),
+            candidates: app.candidates,
+            launch_exe: app.launch_exe,
+            installed_at: app.installed_at,
+            size_on_disk: app.size_on_disk,
+        })
+        .collect();
     Ok(LibraryListing {
         root: Some(root),
         games,
