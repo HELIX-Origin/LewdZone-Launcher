@@ -35,6 +35,8 @@
   let games: LibraryGame[] = $state([]);
   let root: string | null = $state(null);
   let launching = $state<Record<string, boolean>>({});
+  let shortcutting = $state<Record<string, boolean>>({});
+  let shortcutFeedback = $state("");
   let coverUrls: Record<string, string | null> = $state({});
   let favorites: Record<string, boolean> = $state({});
   let togglingFavorite = $state<Record<string, boolean>>({});
@@ -118,6 +120,20 @@
       error = String(err);
     } finally {
       launching[game.slug] = false;
+    }
+  }
+
+  async function createShortcut(game: LibraryGame) {
+    if (shortcutting[game.slug]) return;
+    shortcutting[game.slug] = true;
+    shortcutFeedback = "";
+    try {
+      const path = await invoke<string>("create_shortcut", { slug: game.slug });
+      shortcutFeedback = `Shortcut saved to ${path}`;
+    } catch (err) {
+      error = String(err);
+    } finally {
+      shortcutting[game.slug] = false;
     }
   }
 
@@ -212,14 +228,28 @@
                 <span>·</span>
                 <span>{formatSize(game.size_on_disk)}</span>
               </div>
-              <button
-                class="launch-btn"
-                onclick={() => launch(game)}
-                disabled={launching[game.slug]}
-                aria-label={`Launch ${game.title}`}
-              >
-                {launching[game.slug] ? "Launching…" : "Launch"}
-              </button>
+              <div class="btn-row">
+                <button
+                  class="launch-btn"
+                  onclick={() => launch(game)}
+                  disabled={launching[game.slug]}
+                  aria-label={`Launch ${game.title}`}
+                >
+                  {launching[game.slug] ? "Launching…" : "Launch"}
+                </button>
+                <button
+                  class="shortcut-btn"
+                  onclick={() => createShortcut(game)}
+                  disabled={shortcutting[game.slug]}
+                  aria-label={`Create shortcut for ${game.title}`}
+                  title="Create desktop shortcut"
+                >
+                  {shortcutting[game.slug] ? "…" : "Shortcut"}
+                </button>
+              </div>
+              {#if shortcutFeedback}
+                <p class="shortcut-feedback" role="status">{shortcutFeedback}</p>
+              {/if}
             </div>
           </div>
         {/each}
@@ -373,9 +403,14 @@
     flex-wrap: wrap;
   }
 
-  .launch-btn {
+  .btn-row {
+    display: flex;
+    gap: 6px;
     margin-top: 4px;
-    width: 100%;
+  }
+
+  .launch-btn {
+    flex: 1;
     padding: 6px 10px;
     border: none;
     border-radius: var(--lz-radius);
@@ -394,6 +429,33 @@
   .launch-btn:disabled {
     opacity: 0.6;
     cursor: default;
+  }
+
+  .shortcut-btn {
+    padding: 6px 10px;
+    border: 1px solid var(--lz-surface-2);
+    border-radius: var(--lz-radius);
+    background: var(--lz-surface);
+    color: var(--lz-text);
+    font-weight: 600;
+    font-size: 12px;
+    cursor: pointer;
+    transition: opacity 0.15s ease;
+  }
+
+  .shortcut-btn:hover:not(:disabled) {
+    opacity: 0.85;
+  }
+
+  .shortcut-btn:disabled {
+    opacity: 0.6;
+    cursor: default;
+  }
+
+  .shortcut-feedback {
+    margin: 4px 0 0;
+    font-size: 11px;
+    color: var(--lz-ok);
   }
 
   .note {

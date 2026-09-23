@@ -210,6 +210,17 @@ fn favorite_remove(state: tauri::State<'_, AppState>, slug: String) -> Result<()
     crate::core::favorites::remove(&ctx, &slug).map_err(|e| e.to_string())
 }
 
+/// Create a native desktop shortcut for an installed game.
+#[tauri::command]
+fn create_shortcut(state: tauri::State<'_, AppState>, slug: String) -> Result<String, String> {
+    let ctx = state
+        .context
+        .lock()
+        .map_err(|_| "state lock poisoned".to_string())?;
+    let path = crate::core::shortcuts::create(&ctx, &slug).map_err(|e| e.to_string())?;
+    Ok(path.to_string_lossy().to_string())
+}
+
 /// Installed games from the library manifests (ADR-0005).
 #[tauri::command]
 fn library_list(
@@ -407,6 +418,7 @@ pub fn run() {
             favorite_add,
             favorite_remove,
             library_list,
+            create_shortcut,
             game_launch,
             content_enrich,
             artwork_url

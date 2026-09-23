@@ -443,12 +443,49 @@ describe("library page", () => {
         };
       }
       if (cmd === "favorites_list") return [];
+      if (cmd === "favorite_add") return null;
       return [];
     });
     render(LibraryPage);
     const btn = await screen.findByRole("button", { name: /Add Wild Life to favorites/ });
     await user.click(btn);
     expect(invocations.some((i) => i.cmd === "favorite_add" && i.args?.slug === "wild-life")).toBe(true);
+  });
+
+  it("invokes create_shortcut when the Shortcut button is clicked", async () => {
+    const user = userEvent.setup();
+    const invocations: Array<{ cmd: string; args?: InvokeArgs }> = [];
+    mockInvoke(async (cmd: string, args?: InvokeArgs) => {
+      invocations.push({ cmd, args });
+      if (cmd === "library_list") {
+        return {
+          root: "/fake/library",
+          games: [
+            {
+              slug: "wild-life",
+              post_id: 54321,
+              title: "Wild Life",
+              version: "v2026",
+              platform: "pc",
+              tab: "fileknot",
+              engine: "Unity",
+              install_path: "/fake/library/lzapps/wild-life",
+              candidates: ["WildLife.exe"],
+              launch_exe: "",
+              installed_at: "2026-01-01T00:00:00Z",
+              size_on_disk: 5_368_709_120,
+            },
+          ],
+        };
+      }
+      if (cmd === "favorites_list") return [];
+      if (cmd === "create_shortcut") return "/fake/Desktop/Wild Life.lnk";
+      return [];
+    });
+    render(LibraryPage);
+    const btn = await screen.findByRole("button", { name: /Create shortcut for Wild Life/ });
+    await user.click(btn);
+    expect(invocations.some((i) => i.cmd === "create_shortcut" && i.args?.slug === "wild-life")).toBe(true);
   });
 });
 
