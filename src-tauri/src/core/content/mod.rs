@@ -18,7 +18,12 @@ use crate::core::models::GameCard;
 use crate::core::{paths, Context, Error};
 use crate::db;
 
+pub mod igdb;
+pub mod indiedb;
+pub mod itch;
+pub mod steam;
 pub mod steamgriddb;
+pub mod vndb;
 
 /// Kinds of artwork the launcher can cache.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -74,7 +79,14 @@ pub trait Provider: Send + Sync {
 
 /// All registered providers, in priority order.
 pub fn providers() -> Vec<Box<dyn Provider>> {
-    vec![Box::new(steamgriddb::SteamGridDb)]
+    vec![
+        Box::new(steamgriddb::SteamGridDb),
+        Box::new(vndb::Vndb),
+        Box::new(igdb::Igdb),
+        Box::new(itch::Itch),
+        Box::new(steam::Steam),
+        Box::new(indiedb::IndieDb),
+    ]
 }
 
 /// Stable cache key for a game title. Lowercase, collapsed whitespace.
