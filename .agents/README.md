@@ -43,6 +43,41 @@ workflows, and others).
 - **Install layout**: `downloads/` for staging, `lzapps/<slug>/` for extracted
   games, plus an itch.io-style `app.json` manifest.
 
+## Templates
+
+Reusable scaffolds live in [`templates/`](templates/):
+
+| Template | Use |
+| --- | --- |
+| `adr.md` | Architecture Decision Record |
+| `changelog.md` | Release changelog entry |
+| `rule.md` | New numbered rule |
+| `issue.md` | GitHub issue / sub-issue |
+| `commit-message.md` | Conventional commit format |
+| `content-provider.md` | New external content-provider adapter |
+| `command-spec.md` | New CLI subcommand spec |
+| `postmortem.md` | Incident postmortem |
+| `release-notes.md` | GitHub release notes |
+| `skill.md` | New reusable skill |
+| `agent.md` | New agent family sub-agent |
+| `test-plan.md` | Feature test plan |
+| `migration.md` | SQLite schema migration |
+
+## Skills
+
+Reusable procedures live in [`skills/`](skills/):
+
+| Skill | Use |
+| --- | --- |
+| `launch-download` | Dispatch a resolved download (stream or OS handler) |
+| `parse-version-prompts` | Extract version/platform/tab from user input |
+| `resolve-go-token` | Resolve a lewdzone go-link token |
+| `scrape-catalog` | Scrape an archive/genre/search page |
+| `scrape-game-page` | Scrape a full game detail page |
+| `enrich-game-and-art` | Enrich a game with external metadata + cached artwork |
+| `gui-build-loop` | Local Tauri dev/build loop |
+| `package-desktop-app` | Cross-platform installer packaging |
+
 ## Entry points
 
 - Rules index: [`rules/index.md`](rules/index.md)
