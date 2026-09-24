@@ -34,7 +34,7 @@ impl Provider for Itch {
         let html = match scraper::fetch(&link) {
             Ok(h) => h,
             Err(e) => {
-                eprintln!("[itch] fetch failed for {link}: {e}");
+                crate::core::logging::debug("itch", &format!("fetch failed for {link}: {e}"));
                 return Ok(None);
             }
         };
@@ -160,7 +160,7 @@ fn search_first_result(title: &str) -> Result<Option<String>, Error> {
     let html = match scraper::fetch(&url) {
         Ok(h) => h,
         Err(e) => {
-            eprintln!("[itch] search error for '{cleaned}': {e}");
+            crate::core::logging::debug("itch", &format!("search error for '{cleaned}': {e}"));
             return Ok(None);
         }
     };
@@ -199,7 +199,7 @@ fn download_bytes(url: &str) -> Result<Option<Vec<u8>>, Error> {
             }
         }
         Err(e) => {
-            eprintln!("[itch] download failed for {url}: {e}");
+            crate::core::logging::debug("itch", &format!("download failed for {url}: {e}"));
             Ok(None)
         }
     }

@@ -50,9 +50,7 @@ impl Provider for Vndb {
             .screenshots
             .into_iter()
             .filter_map(|s| {
-                if !s.url.is_empty() {
-                    Some(s.url)
-                } else if !s.thumbnail.is_empty() {
+                if !s.thumbnail.is_empty() {
                     Some(s.thumbnail.replace("/sf.t/", "/sf/").replace("/s/", "/"))
                 } else {
                     None
@@ -84,8 +82,8 @@ impl Provider for Vndb {
         let target_url = match kind {
             ArtworkKind::Cover => vn.image.map(|img| img.url).filter(|u| !u.is_empty()),
             ArtworkKind::Background => vn.screenshots.into_iter().find_map(|s| {
-                if !s.url.is_empty() {
-                    Some(s.url)
+                if !s.thumbnail.is_empty() {
+                    Some(s.thumbnail.replace("/sf.t/", "/sf/").replace("/s/", "/"))
                 } else {
                     None
                 }
@@ -156,7 +154,7 @@ fn search_vn(title: &str) -> Result<Option<Vn>, Error> {
 
     let query = json!({
         "filters": ["search", "=", term],
-        "fields": "id,title,description,rating,image{url},screenshots{url,thumbnail},developers{name},producers{name},tags{name}",
+        "fields": "id,title,description,rating,image.url,screenshots.thumbnail,developers.name,producers.name,tags.name",
         "results": 1,
     });
     let body = query.to_string();
@@ -172,23 +170,28 @@ fn search_vn(title: &str) -> Result<Option<Vn>, Error> {
         .post("https://api.vndb.org/kana/vn")
         .header("Content-Type", "application/json")
         .header("Accept", "application/json")
+        .header("User-Agent", "LewdZoneLauncher/0.2.1")
         .send(&body)
     {
         Ok(r) => r,
         Err(e) => {
-            eprintln!("[vndb] search request error for '{term}': {e}");
+            crate::core::logging::debug("vndb", &format!("search request error for '{term}': {e}"));
             return Ok(None);
         }
     };
 
     if resp.status() != 200 {
+        crate::core::logging::debug(
+            "vndb",
+            &format!("search returned status {}: {term}", resp.status()),
+        );
         return Ok(None);
     }
 
     let text = match resp.into_body().read_to_string() {
         Ok(t) => t,
         Err(e) => {
-            eprintln!("[vndb] body read error: {e}");
+            crate::core::logging::debug("vndb", &format!("body read error: {e}"));
             return Ok(None);
         }
     };
@@ -196,7 +199,7 @@ fn search_vn(title: &str) -> Result<Option<Vn>, Error> {
     let result: SearchResponse = match serde_json::from_str(&text) {
         Ok(r) => r,
         Err(e) => {
-            eprintln!("[vndb] json parse error: {e}");
+            crate::core::logging::debug("vndb", &format!("json parse error: {e}"));
             return Ok(None);
         }
     };
@@ -215,7 +218,7 @@ fn download_bytes(url: &str) -> Result<Option<Vec<u8>>, Error> {
             }
         }
         Err(e) => {
-            eprintln!("[vndb] download failed for {url}: {e}");
+            crate::core::logging::debug("vndb", &format!("download failed for {url}: {e}"));
             Ok(None)
         }
     }
@@ -253,8 +256,6 @@ struct VnImage {
 
 #[derive(Debug, Deserialize)]
 struct VnScreenshot {
-    #[serde(default)]
-    pub url: String,
     #[serde(default)]
     pub thumbnail: String,
 }

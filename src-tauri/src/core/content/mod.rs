@@ -134,7 +134,10 @@ pub fn enrich(ctx: &Context, card: &GameCard) -> Result<Enrichment, Error> {
                 }
                 Ok(None) => {}
                 Err(e) => {
-                    eprintln!("[content] provider {} enrich error: {e}", provider.name());
+                    crate::core::logging::debug(
+                        "content",
+                        &format!("provider {} enrich error: {e}", provider.name()),
+                    );
                 }
             }
         }
@@ -240,12 +243,14 @@ pub fn artwork(
             }
             Ok(_) => {}
             Err(e) => {
-                eprintln!(
-                    "[content] {} artwork failed for '{}' ({:?}): {}",
-                    provider.name(),
-                    card.title,
-                    kind,
-                    e
+                crate::core::logging::debug(
+                    "content",
+                    &format!(
+                        "{} artwork failed for '{}' ({:?}): {e}",
+                        provider.name(),
+                        card.title,
+                        kind
+                    ),
                 );
             }
         }

@@ -31,12 +31,8 @@ impl Provider for IndieDb {
         let Some(link) = search_first_result(&card.title)? else {
             return Ok(None);
         };
-        let html = match scraper::fetch(&link) {
-            Ok(h) => h,
-            Err(e) => {
-                eprintln!("[indiedb] fetch error for {link}: {e}");
-                return Ok(None);
-            }
+        let Some(html) = fetch_html(&link) else {
+            return Ok(None);
         };
         let doc = Html::parse_document(&html);
 
@@ -111,9 +107,8 @@ impl Provider for IndieDb {
         let Some(link) = search_first_result(&card.title)? else {
             return Ok(None);
         };
-        let html = match scraper::fetch(&link) {
-            Ok(h) => h,
-            Err(_) => return Ok(None),
+        let Some(html) = fetch_html(&link) else {
+            return Ok(None);
         };
         let doc = Html::parse_document(&html);
 
@@ -173,6 +168,51 @@ pub fn clean_title(title: &str) -> String {
     t.trim().to_string()
 }
 
+fn fetch_html(url: &str) -> Option<String> {
+    let agent = ureq::Agent::config_builder()
+        .timeout_connect(Some(std::time::Duration::from_secs(10)))
+        .timeout_recv_response(Some(std::time::Duration::from_secs(10)))
+        .timeout_recv_body(Some(std::time::Duration::from_secs(10)))
+        .build()
+        .new_agent();
+
+    let resp = match agent
+        .get(url)
+        .header(
+            "User-Agent",
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+        )
+        .header(
+            "Accept",
+            "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        )
+        .header("Accept-Language", "en-US,en;q=0.9")
+        .call()
+    {
+        Ok(r) => r,
+        Err(e) => {
+            crate::core::logging::debug("indiedb", &format!("fetch error for {url}: {e}"));
+            return None;
+        }
+    };
+
+    if resp.status() != 200 {
+        crate::core::logging::debug(
+            "indiedb",
+            &format!("returned status {} for {url}", resp.status()),
+        );
+        return None;
+    }
+
+    match resp.into_body().read_to_string() {
+        Ok(t) => Some(t),
+        Err(e) => {
+            crate::core::logging::debug("indiedb", &format!("body read error: {e}"));
+            None
+        }
+    }
+}
+
 fn search_first_result(title: &str) -> Result<Option<String>, Error> {
     use percent_encoding::{utf8_percent_encode, NON_ALPHANUMERIC};
     let cleaned = clean_title(title);
@@ -181,12 +221,8 @@ fn search_first_result(title: &str) -> Result<Option<String>, Error> {
     }
     let term = utf8_percent_encode(&cleaned, NON_ALPHANUMERIC).to_string();
     let url = format!("https://www.indiedb.com/games?filter=t&kw={term}&page=1");
-    let html = match scraper::fetch(&url) {
-        Ok(h) => h,
-        Err(e) => {
-            eprintln!("[indiedb] search error for '{cleaned}': {e}");
-            return Ok(None);
-        }
+    let Some(html) = fetch_html(&url) else {
+        return Ok(None);
     };
     let doc = Html::parse_document(&html);
 
@@ -218,7 +254,7 @@ fn download_bytes(url: &str) -> Result<Option<Vec<u8>>, Error> {
             }
         }
         Err(e) => {
-            eprintln!("[indiedb] download failed for {url}: {e}");
+            crate::core::logging::debug("indiedb", &format!("download failed for {url}: {e}"));
             Ok(None)
         }
     }

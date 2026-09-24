@@ -135,14 +135,17 @@ fn search_app_id(title: &str) -> Result<Option<u64>, Error> {
     let json = match scraper::fetch(&url) {
         Ok(j) => j,
         Err(e) => {
-            eprintln!("[steam] storesearch error for '{cleaned}': {e}");
+            crate::core::logging::debug(
+                "steam",
+                &format!("storesearch error for '{cleaned}': {e}"),
+            );
             return Ok(None);
         }
     };
     let resp: StoreSearchResponse = match serde_json::from_str(&json) {
         Ok(r) => r,
         Err(e) => {
-            eprintln!("[steam] storesearch json parse error: {e}");
+            crate::core::logging::debug("steam", &format!("storesearch json parse error: {e}"));
             return Ok(None);
         }
     };
@@ -155,14 +158,14 @@ fn app_details(app_id: u64) -> Result<Option<AppDetails>, Error> {
     let json = match scraper::fetch(&url) {
         Ok(j) => j,
         Err(e) => {
-            eprintln!("[steam] appdetails error for {app_id}: {e}");
+            crate::core::logging::debug("steam", &format!("appdetails error for {app_id}: {e}"));
             return Ok(None);
         }
     };
     let mut resp: AppDetailsResponse = match serde_json::from_str(&json) {
         Ok(r) => r,
         Err(e) => {
-            eprintln!("[steam] appdetails json parse error: {e}");
+            crate::core::logging::debug("steam", &format!("appdetails json parse error: {e}"));
             return Ok(None);
         }
     };
@@ -181,7 +184,7 @@ fn download_bytes(url: &str) -> Result<Option<Vec<u8>>, Error> {
             }
         }
         Err(e) => {
-            eprintln!("[steam] download failed for {url}: {e}");
+            crate::core::logging::debug("steam", &format!("download failed for {url}: {e}"));
             Ok(None)
         }
     }
