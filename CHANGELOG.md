@@ -12,35 +12,22 @@ the top; the current development state lives under `Unreleased`.
 
 ---
 
-## v0.1.0 — 2026-09-24
+## [v0.1.0](https://github.com/HELIX-Origin/LewdZone-Launcher/releases/tag/v0.1.0) — 2026-09-24
 
 Initial release of LewdZone Launcher — a cross-platform desktop game launcher and native CLI engine for lewdzone.com.
 
-### ✨ Added
+### ✨ Features & Capabilities
 
-- **feat(core): single Tauri 2 binary with native Rust CLI engine** (`lewdzone <cmd> --json`) sharing 1:1 parity with the desktop GUI (Rule 03, Rule 13).
-- **feat(scraper): rate-limited LewdZone web scraper** for catalog pagination, game cards, genre clouds, version tabs, and download sources.
-- **feat(resolver): two-step go-link token resolver** via `start` → `reveal` API with dead and malicious host blacklist protection (`gofile`, `gofiles`, `zippyshare`, `cdnclick`, `anonfile`, `anonfiles`, `anonzip`, `uptobox`, `yourfilestore`, `qiwi`, `transfersh`).
-- **feat(resolver): in-app sandboxed webview resolver** for countdown and captcha challenges, blocking popups, adware, and tracking scripts.
-- **feat(download): in-app direct file streaming** for `fileknot` with real-time byte counters and download speed calculation.
-- **feat(download): OS default handler dispatch** for cloud storage hosts (`mega`, `google`, `dropbox`, `mediafire`, `pixeldrain`, `workupload`, `uploadhaven`, `transfaze`).
-- **feat(extract): multi-format archive extraction** using the standalone 7-Zip console executable (`7za`/`7z`/`7zz`) with real-time percentage progress parsing (`-bsp1`), silent background execution, and cancellation.
-- **feat(folder): flat library directory layout** organizing downloads into `<library-root>/downloads/<archive>` and installs into `<library-root>/installed/<slug>/` with an `app.json` manifest.
-- **feat(library): automatic game discovery & launch** via "Scan Games" (`games-dir`), itch.io-style manifest generation, and game process launching.
-- **feat(queue): persistent SQLite download queue** supporting sequential workers, pause/resume, and active job cancel/delete controls.
-- **feat(tray): system tray integration** featuring custom tray icon, context menu (Open, Library, Downloads, Store, Settings, Quit), and minimize-to-tray window management.
-- **feat(theme): dynamic runtime theme engine** shipping Nord, Dracula, and Material reference skins with dynamic CSS token switching without app restart.
-- **feat(content): external metadata & artwork enrichment** pipeline supporting SteamGridDB, VNDB, IGDB, itch.io, Steam, and IndieDB with secure SQLite secret storage.
-- **docs(wiki): comprehensive GitHub wiki suite** including getting started, 7-Zip CLI setup guide, architecture, CLI reference, configuration, theme development, troubleshooting, and testing.
-
-### 🛠 Fixed
-
-- **fix(gui): remove redundant profile icon** from top navigation bar.
-- **fix(folder): flatten library downloads and installed folders**, removing cluttered engine subdirectories while retaining backward-compatible legacy detection.
-- **fix(resolver): replace restrictive host allowlist** with an open blacklist targeting defunct and malicious mirrors.
-- **fix(testing): hermetic offline test suites** passing 183 Rust tests and 31 Vitest frontend tests.
-
-### 🚫 Removed
-
-- Unreliable external download-manager adapters (FDM, IDM, torrent) in favor of integrated streaming and native OS dispatch.
-- Android platform downloads in the desktop application.
+- **Unified Desktop GUI & Native Rust CLI**: Built on Tauri 2 and Rust, sharing a single core engine between the desktop GUI and the standalone command-line client (`lewdzone <cmd> --json`) with 100% feature parity.
+- **Built-in Catalog Browsing & Search**: Built-in scraper for lewdzone.com catalog with tag/genre filtering, engine selectors (Ren'Py, RPG Maker, Unity, HTML), release status, and pagination.
+- **Two-Step Go-Link Token Resolver**: Automatic resolution of `#t=v1...` go-links via API and sandboxed challenge webview for countdown and turnstile verification.
+- **Smart Download Routing**: In-app streaming with real-time byte counters and speed tracking for direct hosts (`fileknot`), plus seamless OS default handler dispatch for cloud storage hosts (`mega`, `google`, `dropbox`, `mediafire`, `pixeldrain`, `workupload`, `uploadhaven`, `transfaze`).
+- **Defunct & Malicious Host Shielding**: Host blacklist rejecting dead, defunct, or malicious mirrors (`gofile`, `zippyshare`, `cdnclick`, `anonfiles`, `uptobox`, `yourfilestore`, `qiwi`, `transfersh`).
+- **High-Performance 7-Zip CLI Extraction**: High-speed, multi-format archive extraction (`.7z`, `.zip`, `.rar`, `.tar`, `.tar.xz`) utilizing standalone 7-Zip console binaries (`7za`/`7z`/`7zz`) with real-time progress parsing (`-bsp1`) and background execution.
+- **Organized Flat Library Layout**: Clean file hierarchy (`<library-root>/downloads/<archive>` and `<library-root>/installed/<slug>/app.json`) removing engine subfolder clutter.
+- **Game Scanner & Launcher**: Automatic game discovery scanner, itch.io-compatible manifest generation, and game launch process tracking.
+- **Persistent SQLite Queue**: Sequential download queue with pause, resume, and cancellation controls.
+- **System Tray Integration**: Minimize-to-tray background operation with quick access context menu (Open, Library, Downloads, Store, Settings, Quit).
+- **Dynamic Theming**: Runtime stylesheet switching across Nord, Dracula, and Material themes without restarting the app.
+- **External Metadata & Artwork Enrichment**: Metadata and artwork pipeline fetching posters and hero banners from SteamGridDB, VNDB, IGDB, itch.io, Steam, and IndieDB with secure SQLite secret storage.
+- **Offline Test Suite & Verification**: 100% passing hermetic test suites with 183 Rust core tests and 31 Svelte Vitest frontend tests.
