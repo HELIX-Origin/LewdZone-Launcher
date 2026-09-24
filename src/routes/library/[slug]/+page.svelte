@@ -5,6 +5,7 @@
   import { invoke, convertFileSrc } from "@tauri-apps/api/core";
   import { page } from "$app/state";
   import { goto } from "$app/navigation";
+  import { openUrl } from "@tauri-apps/plugin-opener";
   import MediaCarousel from "$lib/components/MediaCarousel.svelte";
 
   type LoadState = "loading" | "ready" | "error";
@@ -103,6 +104,61 @@
     clean = clean.replace(/\s*-\s*(PC|Mac|Linux|Android|Windows).*$/i, "");
     const res = clean.replace(/\s+/g, " ").trim();
     return res || raw;
+  }
+
+  function parseGameMetadata(g: GameData | null, inst: LibraryGame | null) {
+    if (!g && !inst) return { title: "", state: "", version: "" };
+    let raw = g?.title || inst?.title || "";
+    let state = "";
+    const bracketMatch = raw.match(/\[([^\]]+)\]/);
+    if (bracketMatch) {
+      state = bracketMatch[1].trim();
+    }
+
+    let title = cleanDisplayTitle(raw);
+    let ver = inst?.version || g?.current_version || "";
+    ver = ver.replace(/^[vV]/, "").replace(/\s*\(.*?\)/, "").trim();
+
+    return {
+      title: title || raw,
+      state,
+      version: ver,
+    };
+  }
+
+  const metaInfo = $derived(parseGameMetadata(game, installed));
+
+  function cleanGameDescription(desc: string | null | undefined): string {
+    if (!desc) return "";
+    let clean = desc;
+    clean = clean.replace(/Download\s+(Latest\s+)?Version\s+[^.]*(\.|$)/gi, "");
+    clean = clean.replace(/Download\s+free\s+[^.]*(\.|$)/gi, "");
+    clean = clean.replace(/\(Size:[^)]+\)/gi, "");
+    clean = clean.replace(/Walkthrough\s+for\s+[^.]*(\.|$)/gi, "");
+    return clean.replace(/\s+/g, " ").trim();
+  }
+
+  let copiedLink = $state(false);
+
+  async function openExternalLink(url: string) {
+    try {
+      await openUrl(url);
+    } catch {
+      window.open(url, "_blank");
+    }
+  }
+
+  async function copyPageUrl() {
+    if (!game) return;
+    try {
+      await navigator.clipboard.writeText(`https://lewdzone.com/game/${game.slug}/`);
+      copiedLink = true;
+      setTimeout(() => {
+        copiedLink = false;
+      }, 2000);
+    } catch (e) {
+      console.warn("Clipboard failed:", e);
+    }
   }
 
   function formatPlaytime(seconds: number | undefined): string {
@@ -404,16 +460,21 @@
       </button>
 
       <div class="hero-meta">
-        <h1>{cleanDisplayTitle(game.title)}</h1>
+        <div class="title-status-line">
+          <h1>{metaInfo.title}</h1>
+          {#if metaInfo.state}
+            <span class="status-badge {metaInfo.state.toLowerCase()}">{metaInfo.state}</span>
+          {/if}
+        </div>
         <div class="meta-row">
           {#if game.developer}<span>by {game.developer}</span>{/if}
-          {#if game.current_version}<span>v{game.current_version}</span>{/if}
+          {#if metaInfo.version}<span>v{metaInfo.version}</span>{/if}
           {#if game.engine}<span>{game.engine}</span>{/if}
-          {#if game.censorship}<span>{game.censorship}</span>{/if}
           {#if typeof game.rating === "number" && game.rating > 0}
             <span class="rating">★ {game.rating.toFixed(1)}</span>
           {/if}
         </div>
+
         {#if game.genres.length > 0}
           <div class="genre-row">
             {#each game.genres as genre (genre)}
@@ -528,72 +589,200 @@
       </div>
     {/if}
 
-    <!-- Playtime & Statistics Section -->
-    {#if installed}
-      <div class="stats-grid">
-        <div class="stat-card">
-          <span class="stat-title">Playtime</span>
-          <span class="stat-num glow">{formatPlaytime(installed.playtime_seconds)}</span>
-        </div>
-        <div class="stat-card">
-          <span class="stat-title">Last Played</span>
-          <span class="stat-num">{formatLastPlayed(installed.last_played_at)}</span>
-        </div>
-        <div class="stat-card">
-          <span class="stat-title">Sessions</span>
-          <span class="stat-num">{installed.play_count ?? 0}</span>
-        </div>
-        <div class="stat-card">
-          <span class="stat-title">Size on Disk</span>
-          <span class="stat-num">{formatSize(installed.size_on_disk)}</span>
-        </div>
-      </div>
-    {/if}
-
-    <!-- Game Description -->
-    {#if game.description}
-      <section class="section-card">
-        <h2>About This Game</h2>
-        <p class="description-text">{game.description}</p>
-      </section>
-    {/if}
-
-    <!-- Artwork & Media Carousel (Up to 10 Images) -->
-    <MediaCarousel title={game.title} screenshots={game.screenshots} />
-
-    <!-- Installation Metadata & Path Details -->
-    {#if installed}
-      <section class="section-card meta-details">
-        <h2>Installation Details</h2>
-        <div class="details-list">
-          <div class="detail-row">
-            <span class="detail-label">Platform:</span>
-            <span class="detail-val">{platformLabel(installed.platform)}</span>
+    <!-- 2-Column Content Layout -->
+    <div class="game-content-layout">
+      <!-- Left Column: Main Content -->
+      <div class="main-column">
+        {#if game.description}
+          <div class="about-card">
+            <h3>About This Game</h3>
+            <p class="desc">{cleanGameDescription(game.description)}</p>
           </div>
-          <div class="detail-row">
-            <span class="detail-label">Installed Version:</span>
-            <span class="detail-val">{installed.version}</span>
-          </div>
-          {#if installed.engine}
-            <div class="detail-row">
-              <span class="detail-label">Game Engine:</span>
-              <span class="detail-val">{installed.engine}</span>
+        {/if}
+
+        <!-- Playtime & Statistics Section -->
+        {#if installed}
+          <div class="stats-grid">
+            <div class="stat-card">
+              <span class="stat-title">Playtime</span>
+              <span class="stat-num glow">{formatPlaytime(installed.playtime_seconds)}</span>
             </div>
-          {/if}
-          <div class="detail-row">
-            <span class="detail-label">Install Location:</span>
-            <code class="detail-path">{installed.install_path}</code>
+            <div class="stat-card">
+              <span class="stat-title">Last Played</span>
+              <span class="stat-num">{formatLastPlayed(installed.last_played_at)}</span>
+            </div>
+            <div class="stat-card">
+              <span class="stat-title">Sessions</span>
+              <span class="stat-num">{installed.play_count ?? 0}</span>
+            </div>
+            <div class="stat-card">
+              <span class="stat-title">Size on Disk</span>
+              <span class="stat-num">{formatSize(installed.size_on_disk)}</span>
+            </div>
+          </div>
+        {/if}
+
+        <!-- Shared Artwork & Media Carousel (Up to 10 Images) -->
+        <MediaCarousel title={metaInfo.title} screenshots={game.screenshots} />
+
+        <!-- Installation Details -->
+        {#if installed}
+          <section class="section-card meta-details">
+            <h3>Installation Details</h3>
+            <div class="details-list">
+              <div class="detail-row">
+                <span class="detail-label">Platform:</span>
+                <span class="detail-val">{platformLabel(installed.platform)}</span>
+              </div>
+              <div class="detail-row">
+                <span class="detail-label">Installed Version:</span>
+                <span class="detail-val">{installed.version}</span>
+              </div>
+              {#if installed.engine}
+                <div class="detail-row">
+                  <span class="detail-label">Game Engine:</span>
+                  <span class="detail-val">{installed.engine}</span>
+                </div>
+              {/if}
+              <div class="detail-row">
+                <span class="detail-label">Install Location:</span>
+                <code class="detail-path">{installed.install_path}</code>
+              </div>
+            </div>
+          </section>
+        {/if}
+      </div>
+
+      <!-- Right Column: Metadata & Links Card -->
+      <aside class="sidebar-column">
+        <div class="metadata-card">
+          <div class="card-header">
+            <h3>Game Information</h3>
+          </div>
+
+          <div class="meta-data-table">
+            {#if metaInfo.state}
+              <div class="meta-entry">
+                <span class="entry-label">Status</span>
+                <span class="status-pill {metaInfo.state.toLowerCase()}">{metaInfo.state}</span>
+              </div>
+            {/if}
+
+            {#if game.developer}
+              <div class="meta-entry">
+                <span class="entry-label">Developer</span>
+                <span class="entry-value highlight">{game.developer}</span>
+              </div>
+            {/if}
+
+            {#if installed?.version || metaInfo.version}
+              <div class="meta-entry">
+                <span class="entry-label">Version</span>
+                <span class="entry-value">v{installed?.version || metaInfo.version}</span>
+              </div>
+            {/if}
+
+            {#if installed?.engine || game.engine}
+              <div class="meta-entry">
+                <span class="entry-label">Engine</span>
+                <span class="entry-value">{installed?.engine || game.engine}</span>
+              </div>
+            {/if}
+
+            {#if installed?.size_on_disk}
+              <div class="meta-entry">
+                <span class="entry-label">Size on Disk</span>
+                <span class="entry-value">{formatSize(installed.size_on_disk)}</span>
+              </div>
+            {:else if game.size_label}
+              <div class="meta-entry">
+                <span class="entry-label">File Size</span>
+                <span class="entry-value">{game.size_label}</span>
+              </div>
+            {/if}
+
+            {#if game.censorship}
+              <div class="meta-entry">
+                <span class="entry-label">Censorship</span>
+                <span class="entry-value">{game.censorship}</span>
+              </div>
+            {/if}
+
+            {#if typeof game.rating === "number" && game.rating > 0}
+              <div class="meta-entry">
+                <span class="entry-label">User Rating</span>
+                <span class="entry-value rating">★ {game.rating.toFixed(1)} / 5</span>
+              </div>
+            {/if}
+
+            {#if game.platforms && game.platforms.length > 0}
+              <div class="meta-entry">
+                <span class="entry-label">Platforms</span>
+                <div class="platform-tags">
+                  {#each game.platforms as p}
+                    <span class="platform-tag">{platformLabel(p)}</span>
+                  {/each}
+                </div>
+              </div>
+            {/if}
+          </div>
+
+          <div class="card-divider"></div>
+
+          <div class="card-header">
+            <h3>Metadata & Links</h3>
+          </div>
+
+          <div class="meta-links-group">
+            <button class="ext-link-btn primary" onclick={() => openExternalLink(`https://lewdzone.com/game/${game?.slug}/`)}>
+              <span class="link-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+              </span>
+              <span>View on LewdZone</span>
+            </button>
+
+            <button class="ext-link-btn" onclick={() => openExternalLink(`https://vndb.org/v?q=${encodeURIComponent(metaInfo.title)}`)}>
+              <span class="link-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></span>
+              <span>Search on VNDB</span>
+            </button>
+
+            <button class="ext-link-btn" onclick={() => openExternalLink(`https://store.steampowered.com/search/?term=${encodeURIComponent(metaInfo.title)}`)}>
+              <span class="link-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m10 15 5-3-5-3v6Z"/></svg></span>
+              <span>Search on Steam</span>
+            </button>
+
+            <button class="ext-link-btn" onclick={() => openExternalLink(`https://itch.io/search?q=${encodeURIComponent(metaInfo.title)}`)}>
+              <span class="link-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M10 10l4 2-4 2v-4z"/></svg></span>
+              <span>Search on itch.io</span>
+            </button>
+
+            <button class="ext-link-btn copy" onclick={copyPageUrl}>
+              <span class="link-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg></span>
+              <span>{copiedLink ? "Copied Link!" : "Copy Page URL"}</span>
+            </button>
+
+            {#if installed}
+              <button class="ext-link-btn" onclick={openFolder}>
+                <span class="link-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg></span>
+                <span>Browse Local Files</span>
+              </button>
+              <button class="ext-link-btn" onclick={makeShortcut}>
+                <span class="link-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></span>
+                <span>Create Shortcut</span>
+              </button>
+            {/if}
           </div>
         </div>
-      </section>
-    {/if}
+      </aside>
+    </div>
+
   {/if}
 </div>
 
 <style>
   .installed-page {
     padding: var(--lz-gap);
-    max-width: 960px;
+    max-width: 1200px;
     margin: 0 auto;
     display: flex;
     flex-direction: column;
@@ -902,7 +1091,7 @@
     padding: 18px 20px;
   }
 
-  .section-card h2 {
+  .section-card h3 {
     font-size: 16px;
     margin: 0 0 12px 0;
     color: var(--lz-text);
@@ -1012,4 +1201,222 @@
     cursor: pointer;
     font-size: 14px;
   }
+
+  /* 2-Column Content Layout */
+  .game-content-layout {
+    display: grid;
+    grid-template-columns: 1fr 320px;
+    gap: 20px;
+    margin-top: var(--lz-gap);
+    align-items: start;
+  }
+
+  @media (max-width: 960px) {
+    .game-content-layout {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .main-column {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--lz-gap);
+  }
+
+  .sidebar-column {
+    min-width: 0;
+  }
+
+  .about-card {
+    background: var(--lz-surface);
+    border: 1px solid var(--lz-surface-2);
+    border-radius: var(--lz-radius);
+    padding: var(--lz-gap);
+  }
+
+  .about-card h3 {
+    margin: 0 0 10px;
+    font-size: 15px;
+    color: var(--lz-text);
+  }
+
+  .about-card .desc {
+    margin: 0;
+    color: var(--lz-text-dim);
+    line-height: 1.5;
+    font-size: 13.5px;
+    white-space: pre-line;
+  }
+
+  .title-status-line {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .status-badge {
+    display: inline-flex;
+    align-items: center;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    padding: 3px 8px;
+    border-radius: 4px;
+    background: rgba(0, 238, 255, 0.15);
+    color: #00eeff;
+    border: 1px solid rgba(0, 238, 255, 0.35);
+  }
+
+  .status-badge.finished {
+    background: rgba(46, 204, 113, 0.16);
+    color: #2ecc71;
+    border-color: rgba(46, 204, 113, 0.35);
+  }
+
+  .metadata-card {
+    background: var(--lz-surface);
+    border: 1px solid var(--lz-surface-2);
+    border-radius: var(--lz-radius);
+    padding: 16px;
+    position: sticky;
+    top: 16px;
+  }
+
+  .card-header h3 {
+    margin: 0 0 12px;
+    font-size: 13px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    color: var(--lz-cyan);
+  }
+
+  .meta-data-table {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .meta-entry {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 13px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  }
+
+  .meta-entry:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+  }
+
+  .entry-label {
+    color: var(--lz-text-dim);
+    font-size: 12px;
+  }
+
+  .entry-value {
+    color: var(--lz-text);
+    font-weight: 600;
+    text-align: right;
+  }
+
+  .entry-value.highlight {
+    color: var(--lz-cyan);
+  }
+
+  .entry-value.rating {
+    color: #ffb800;
+  }
+
+  .status-pill {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 2px 8px;
+    border-radius: 4px;
+    background: rgba(0, 238, 255, 0.15);
+    color: #00eeff;
+    border: 1px solid rgba(0, 238, 255, 0.3);
+  }
+
+  .status-pill.finished {
+    background: rgba(46, 204, 113, 0.15);
+    color: #2ecc71;
+    border-color: rgba(46, 204, 113, 0.3);
+  }
+
+  .platform-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    justify-content: flex-end;
+  }
+
+  .platform-tag {
+    font-size: 11px;
+    background: var(--lz-surface-2);
+    padding: 2px 6px;
+    border-radius: 4px;
+    color: var(--lz-text-dim);
+  }
+
+  .card-divider {
+    height: 1px;
+    background: var(--lz-border);
+    margin: 16px 0;
+  }
+
+  .meta-links-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .ext-link-btn {
+    appearance: none;
+    border: 1px solid var(--lz-border);
+    background: var(--lz-surface-2);
+    color: var(--lz-text);
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: background 0.15s, border-color 0.15s, transform 0.1s;
+    width: 100%;
+    text-align: left;
+  }
+
+  .ext-link-btn:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: var(--lz-cyan);
+    transform: translateY(-1px);
+  }
+
+  .ext-link-btn.primary {
+    background: rgba(0, 238, 255, 0.12);
+    border-color: rgba(0, 238, 255, 0.35);
+    color: #00eeff;
+  }
+
+  .ext-link-btn.primary:hover {
+    background: rgba(0, 238, 255, 0.2);
+    border-color: #00eeff;
+  }
+
+  .link-icon svg {
+    width: 14px;
+    height: 14px;
+    display: block;
+  }
 </style>
+

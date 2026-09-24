@@ -43,7 +43,7 @@ pub fn parse_game(html: &str) -> Game {
 
     let genres = parse_genres(&document);
     let screenshots = parse_screenshots(&document);
-    let description = meta(&document, "description");
+    let description = parse_description(&document);
 
     let versions = parse_versions(&document);
     let (official, community) = parse_download_tabs(&document);
@@ -519,6 +519,78 @@ fn first_text(document: &Html, selector: &str) -> Option<String> {
 fn clean_text(s: &str) -> String {
     s.split_whitespace().collect::<Vec<_>>().join(" ")
 }
+
+/// Parse the game description / synopsis, prioritizing the actual page synopsis
+/// over SEO meta description tags that contain download boilerplate.
+fn parse_description(document: &Html) -> Option<String> {
+    // 1. Check the main content block for synopsis paragraphs
+    if let Ok(p_sel) = Selector::parse("div.content-block.main-content p, div.main-content p") {
+        let mut paras = Vec::new();
+        for p in document.select(&p_sel) {
+            let text = clean_text(&p.text().collect::<String>());
+            if text.is_empty() {
+                continue;
+            }
+            let lower = text.to_lowercase();
+            // Skip non-synopsis notices, cheat warnings, adblock alerts, install instructions
+            if lower.contains("cheat mod warning")
+                || lower.contains("how to install")
+                || lower.contains("adblock")
+                || lower.contains("please co-operate")
+                || lower.contains("dead links")
+                || lower.contains("system requirements")
+                || lower.contains("download link")
+                || lower.starts_with("download latest version")
+            {
+                continue;
+            }
+            paras.push(text);
+        }
+        if !paras.is_empty() {
+            let full = paras.join("\n\n");
+            let cleaned = clean_description_boilerplate(&full);
+            if !cleaned.is_empty() {
+                return Some(cleaned);
+            }
+        }
+    }
+
+    // 2. Fall back to meta description / og:description with boilerplate stripped
+    let meta_desc = meta(document, "description").or_else(|| meta(document, "og:description"));
+    meta_desc.map(|d| clean_description_boilerplate(&d)).filter(|s| !s.is_empty())
+}
+
+/// Strip SEO download boilerplate phrases from descriptions (e.g. "Download Latest Version ...", "Walkthrough for ...").
+fn clean_description_boilerplate(raw: &str) -> String {
+    let mut sentences = Vec::new();
+    for sentence in raw.split('.') {
+        let s = sentence.trim();
+        if s.is_empty() {
+            continue;
+        }
+        let lower = s.to_lowercase();
+        if lower.starts_with("download latest version")
+            || lower.starts_with("download version")
+            || lower.contains("download latest version")
+            || lower.contains("adult sex game, walkthrough for")
+            || (lower.starts_with("download ") && lower.contains("for windows"))
+        {
+            continue;
+        }
+        sentences.push(s);
+    }
+    if sentences.is_empty() {
+        clean_text(raw)
+    } else {
+        let joined = sentences.join(". ");
+        if !joined.ends_with('.') {
+            format!("{}.", joined)
+        } else {
+            joined
+        }
+    }
+}
+
 
 #[cfg(test)]
 mod tests {

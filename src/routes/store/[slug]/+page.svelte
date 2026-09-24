@@ -125,6 +125,16 @@
 
   const metaInfo = $derived(parseGameMetadata(game));
 
+  function cleanGameDescription(desc: string | null | undefined): string {
+    if (!desc) return "";
+    let clean = desc;
+    clean = clean.replace(/Download\s+(Latest\s+)?Version\s+[^.]*(\.|$)/gi, "");
+    clean = clean.replace(/Download\s+free\s+[^.]*(\.|$)/gi, "");
+    clean = clean.replace(/\(Size:[^)]+\)/gi, "");
+    clean = clean.replace(/Walkthrough\s+for\s+[^.]*(\.|$)/gi, "");
+    return clean.replace(/\s+/g, " ").trim();
+  }
+
   async function openExternalLink(url: string) {
     try {
       await openUrl(url);
@@ -132,6 +142,7 @@
       window.open(url, "_blank");
     }
   }
+
 
   async function copyPageUrl() {
     if (!game) return;
@@ -497,7 +508,7 @@
         {#if game.description}
           <div class="about-card">
             <h3>About This Game</h3>
-            <p class="desc">{game.description}</p>
+            <p class="desc">{cleanGameDescription(game.description)}</p>
           </div>
         {/if}
 
