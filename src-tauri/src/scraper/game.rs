@@ -263,11 +263,30 @@ fn parse_screenshots(document: &Html) -> Vec<String> {
     let mut urls = Vec::new();
 
     // 1. Primary gallery thumbnail anchor links (points to full-res original)
-    if let Ok(sel) = Selector::parse("div.gallery figure.gallery-item .gallery-icon a[href]") {
-        for a in document.select(&sel) {
-            if let Some(href) = a.value().attr("href") {
-                if href.contains("wp-content/uploads") {
-                    urls.push(href.to_string());
+    let gallery_selectors = [
+        "div.gallery figure.gallery-item .gallery-icon a[href]",
+        "div.gallery .gallery-icon a[href]",
+        "div.gallery figure a[href]",
+        "div.gallery a[href]",
+        "figure.wp-block-gallery a[href]",
+        "ul.wp-block-gallery a[href]",
+        ".blocks-gallery-item a[href]",
+    ];
+    for sel_str in gallery_selectors {
+        if let Ok(sel) = Selector::parse(sel_str) {
+            for a in document.select(&sel) {
+                if let Some(href) = a.value().attr("href") {
+                    let href_lower = href.to_ascii_lowercase();
+                    if href_lower.contains("wp-content/uploads")
+                        && (href_lower.contains(".jpg")
+                            || href_lower.contains(".jpeg")
+                            || href_lower.contains(".png")
+                            || href_lower.contains(".webp")
+                            || href_lower.contains(".gif"))
+                        && !urls.contains(&href.to_string())
+                    {
+                        urls.push(href.to_string());
+                    }
                 }
             }
         }
@@ -278,9 +297,13 @@ fn parse_screenshots(document: &Html) -> Vec<String> {
         let img_selectors = [
             ".carousel img",
             ".swiper-slide img",
+            "figure.wp-block-gallery img",
+            ".blocks-gallery-item img",
             "div.gallery figure.gallery-item img",
+            "div.gallery img",
             "div.main-content img",
             "div.entry-content img",
+            "div.content-block img",
         ];
         for sel_str in img_selectors {
             if let Ok(sel) = Selector::parse(sel_str) {
@@ -302,20 +325,30 @@ fn parse_screenshots(document: &Html) -> Vec<String> {
                                 || s_lower.contains(".png")
                                 || s_lower.contains(".webp")
                                 || s_lower.contains(".gif"))
+                            && !urls.contains(&s.to_string())
                         {
                             urls.push(s.to_string());
+                            if urls.len() >= 10 {
+                                break;
+                            }
                         }
                     }
                 }
             }
+            if urls.len() >= 10 {
+                break;
+            }
         }
     }
 
-    // Deduplicate preserving order
+    // Deduplicate preserving order and cap at 10
     let mut deduped = Vec::new();
     for u in urls {
         if !deduped.contains(&u) {
             deduped.push(u);
+            if deduped.len() >= 10 {
+                break;
+            }
         }
     }
     deduped

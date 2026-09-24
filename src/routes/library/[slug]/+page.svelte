@@ -5,6 +5,7 @@
   import { invoke, convertFileSrc } from "@tauri-apps/api/core";
   import { page } from "$app/state";
   import { goto } from "$app/navigation";
+  import MediaCarousel from "$lib/components/MediaCarousel.svelte";
 
   type LoadState = "loading" | "ready" | "error";
 
@@ -70,11 +71,9 @@
   let uninstalling = $state(false);
   let toastMsg = $state<string | null>(null);
 
-  // Artwork & Carousel
+  // Artwork
   let heroArtUrl = $state<string | null>(null);
   let coverArtUrl = $state<string | null>(null);
-  let activeImageIndex = $state(0);
-  let isLightboxOpen = $state(false);
 
   function formatArtworkUrl(raw: string | null | undefined): string | null {
     if (!raw) return null;
@@ -270,9 +269,12 @@
         }
         if (enrichment.screenshots) {
           for (const s of enrichment.screenshots) {
-            if (!game.screenshots.includes(s)) {
+            if (!game.screenshots.includes(s) && game.screenshots.length < 10) {
               game.screenshots.push(s);
             }
+          }
+          if (game.screenshots.length > 10) {
+            game.screenshots = game.screenshots.slice(0, 10);
           }
         }
       }
@@ -356,39 +358,12 @@
     }
   }
 
-  // Carousel controls
-  function nextImage() {
-    if (!game || game.screenshots.length === 0) return;
-    activeImageIndex = (activeImageIndex + 1) % game.screenshots.length;
-  }
-
-  function prevImage() {
-    if (!game || game.screenshots.length === 0) return;
-    activeImageIndex = (activeImageIndex - 1 + game.screenshots.length) % game.screenshots.length;
-  }
-
-  function selectImage(index: number) {
-    activeImageIndex = index;
-  }
-
-  function toggleLightbox() {
-    isLightboxOpen = !isLightboxOpen;
-  }
-
-  function handleKeydown(e: KeyboardEvent) {
-    if (e.key === "ArrowRight") nextImage();
-    if (e.key === "ArrowLeft") prevImage();
-    if (e.key === "Escape" && isLightboxOpen) isLightboxOpen = false;
-  }
-
   onMount(() => {
     if (slug) {
       load(slug);
     }
   });
 </script>
-
-<svelte:window onkeydown={handleKeydown} />
 
 <div class="installed-page">
   {#if status === "loading"}
@@ -565,68 +540,8 @@
       </section>
     {/if}
 
-    <!-- Preview Carousel Section -->
-    {#if game.screenshots.length > 0}
-      <section class="section-card" aria-label="Game Preview Images">
-        <div class="carousel-head">
-          <h2>Artwork & Media</h2>
-          <span class="counter">{activeImageIndex + 1} / {game.screenshots.length}</span>
-        </div>
-
-        <div class="carousel-stage">
-          <button type="button" class="nav-arrow left" onclick={prevImage} aria-label="Previous image">
-            ‹
-          </button>
-
-          <button type="button" class="stage-img-btn" onclick={toggleLightbox} aria-label="Click to enlarge image">
-            <img
-              class="stage-img"
-              src={game.screenshots[activeImageIndex]}
-              alt={`${game.title} preview screenshot ${activeImageIndex + 1}`}
-            />
-            <div class="stage-overlay">
-              <span class="zoom-badge">🔍 Fullscreen</span>
-            </div>
-          </button>
-
-          <button type="button" class="nav-arrow right" onclick={nextImage} aria-label="Next image">
-            ›
-          </button>
-        </div>
-
-        <!-- Thumbnail Strip -->
-        <div class="thumbnail-strip" role="tablist" aria-label="Thumbnails">
-          {#each game.screenshots as thumbUrl, idx (thumbUrl)}
-            <button
-              type="button"
-              class="thumb-btn"
-              class:active={idx === activeImageIndex}
-              onclick={() => selectImage(idx)}
-              aria-label={`View image ${idx + 1}`}
-              role="tab"
-              aria-selected={idx === activeImageIndex}
-            >
-              <img src={thumbUrl} alt="" loading="lazy" />
-            </button>
-          {/each}
-        </div>
-      </section>
-    {/if}
-
-    <!-- Lightbox Modal -->
-    {#if isLightboxOpen && game.screenshots.length > 0}
-      <div class="lightbox" role="dialog" aria-modal="true">
-        <button class="lightbox-close" onclick={toggleLightbox} aria-label="Close fullscreen view">✕</button>
-        <button class="lightbox-nav left" onclick={prevImage} aria-label="Previous">❮</button>
-        <img
-          class="lightbox-img"
-          src={game.screenshots[activeImageIndex]}
-          alt={`${game.title} full view`}
-        />
-        <button class="lightbox-nav right" onclick={nextImage} aria-label="Next">❯</button>
-        <div class="lightbox-caption">{activeImageIndex + 1} of {game.screenshots.length}</div>
-      </div>
-    {/if}
+    <!-- Artwork & Media Carousel (Up to 10 Images) -->
+    <MediaCarousel title={game.title} screenshots={game.screenshots} />
 
     <!-- Installation Metadata & Path Details -->
     {#if installed}
@@ -982,184 +897,6 @@
     line-height: 1.6;
     white-space: pre-line;
   }
-
-  /* Carousel */
-  .carousel-head {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 12px;
-  }
-
-  .carousel-head h2 {
-    margin: 0;
-  }
-
-  .counter {
-    font-size: 12px;
-    color: var(--lz-text-dim);
-  }
-
-  .carousel-stage {
-    position: relative;
-    aspect-ratio: 16 / 9;
-    border-radius: var(--lz-radius);
-    overflow: hidden;
-    background: #000;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .stage-img-btn {
-    all: unset;
-    width: 100%;
-    height: 100%;
-    cursor: zoom-in;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .stage-img {
-    max-width: 100%;
-    max-height: 100%;
-    object-fit: contain;
-  }
-
-  .stage-overlay {
-    position: absolute;
-    bottom: 10px;
-    right: 10px;
-    background: rgba(0, 0, 0, 0.65);
-    padding: 4px 8px;
-    border-radius: 4px;
-    font-size: 11px;
-    color: #fff;
-    opacity: 0;
-    transition: opacity 0.2s ease;
-  }
-
-  .carousel-stage:hover .stage-overlay {
-    opacity: 1;
-  }
-
-  .nav-arrow {
-    position: absolute;
-    top: 50%;
-    transform: translateY(-50%);
-    width: 40px;
-    height: 40px;
-    background: rgba(0, 0, 0, 0.5);
-    border: none;
-    border-radius: 50%;
-    color: #fff;
-    font-size: 24px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    z-index: 5;
-    transition: background 0.15s ease;
-  }
-
-  .nav-arrow:hover {
-    background: rgba(0, 0, 0, 0.85);
-  }
-
-  .nav-arrow.left {
-    left: 12px;
-  }
-
-  .nav-arrow.right {
-    right: 12px;
-  }
-
-  .thumbnail-strip {
-    display: flex;
-    gap: 8px;
-    margin-top: 10px;
-    overflow-x: auto;
-    padding-bottom: 4px;
-  }
-
-  .thumb-btn {
-    all: unset;
-    flex: 0 0 80px;
-    aspect-ratio: 16 / 9;
-    border-radius: 4px;
-    overflow: hidden;
-    cursor: pointer;
-    border: 2px solid transparent;
-    transition: border-color 0.15s ease;
-  }
-
-  .thumb-btn.active {
-    border-color: var(--lz-cyan);
-  }
-
-  .thumb-btn img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-  }
-
-  /* Lightbox */
-  .lightbox {
-    position: fixed;
-    inset: 0;
-    z-index: 100;
-    background: rgba(0, 0, 0, 0.9);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .lightbox-img {
-    max-width: 90vw;
-    max-height: 85vh;
-    object-fit: contain;
-  }
-
-  .lightbox-close {
-    position: absolute;
-    top: 16px;
-    right: 20px;
-    background: transparent;
-    border: none;
-    color: #fff;
-    font-size: 24px;
-    cursor: pointer;
-  }
-
-  .lightbox-nav {
-    position: absolute;
-    top: 50%;
-    transform: translateY(-50%);
-    background: rgba(255, 255, 255, 0.1);
-    border: none;
-    color: #fff;
-    font-size: 28px;
-    padding: 16px 20px;
-    border-radius: 4px;
-    cursor: pointer;
-  }
-
-  .lightbox-nav.left {
-    left: 20px;
-  }
-
-  .lightbox-nav.right {
-    right: 20px;
-  }
-
-  .lightbox-caption {
-    position: absolute;
-    bottom: 20px;
-    color: #aaa;
-    font-size: 13px;
-  }
-
   /* Details List */
   .details-list {
     display: flex;

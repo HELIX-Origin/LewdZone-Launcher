@@ -29,10 +29,74 @@ impl Provider for SteamGridDb {
 
     fn enrich(
         &self,
-        _secrets: &BTreeMap<String, String>,
-        _card: &GameCard,
+        secrets: &BTreeMap<String, String>,
+        card: &GameCard,
     ) -> Result<Option<Enrichment>, Error> {
-        Ok(Some(Enrichment::default()))
+        let Some(key) = secrets.get("sgdb-api-key").filter(|k| !k.trim().is_empty()) else {
+            return Ok(None);
+        };
+
+        let term = percent_encode(&card.title);
+        let search_url = format!("https://www.steamgriddb.com/api/v2/search/autocomplete/{term}");
+        let json = match authenticated_get(&search_url, key) {
+            Ok(j) => j,
+            Err(_) => return Ok(None),
+        };
+        let resp: SearchResponse = match serde_json::from_str(&json) {
+            Ok(r) => r,
+            Err(_) => return Ok(None),
+        };
+
+        let Some(game) = resp.data.into_iter().next() else {
+            return Ok(None);
+        };
+
+        let mut screenshots = Vec::new();
+
+        // 1. Heroes (high-resolution background / preview banners)
+        let heroes_url = format!(
+            "https://www.steamgriddb.com/api/v2/heroes/game/{id}?nsfw=true",
+            id = game.id
+        );
+        if let Ok(heroes_json) = authenticated_get(&heroes_url, key) {
+            if let Ok(art) = serde_json::from_str::<ArtResponse>(&heroes_json) {
+                for item in art.data {
+                    if !item.url.is_empty()
+                        && !screenshots.contains(&item.url)
+                        && screenshots.len() < 10
+                    {
+                        screenshots.push(item.url);
+                    }
+                }
+            }
+        }
+
+        // 2. Grids (cover / box artwork)
+        let grids_url = format!(
+            "https://www.steamgriddb.com/api/v2/grids/game/{id}?nsfw=true",
+            id = game.id
+        );
+        if let Ok(grids_json) = authenticated_get(&grids_url, key) {
+            if let Ok(art) = serde_json::from_str::<ArtResponse>(&grids_json) {
+                for item in art.data {
+                    if !item.url.is_empty()
+                        && !screenshots.contains(&item.url)
+                        && screenshots.len() < 10
+                    {
+                        screenshots.push(item.url);
+                    }
+                }
+            }
+        }
+
+        Ok(Some(Enrichment {
+            description: None,
+            developer: None,
+            rating: None,
+            tags: Vec::new(),
+            genres: Vec::new(),
+            screenshots,
+        }))
     }
 
     fn artwork(

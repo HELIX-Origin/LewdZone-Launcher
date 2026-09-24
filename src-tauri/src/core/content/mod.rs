@@ -58,13 +58,17 @@ pub fn artwork_dir() -> Result<PathBuf, Error> {
 }
 
 pub mod igdb;
+pub mod indiedb;
+pub mod itch;
+pub mod steam;
 pub mod steamgriddb;
+pub mod vndb;
 
 use std::collections::BTreeMap;
 use std::io::Write;
 
 /// Best-effort enrichment for a game. LewdZone scraped data is the authoritative baseline;
-/// external providers (SteamGridDB, IGDB) supply missing or improved metadata.
+/// external providers (VNDB, Steam, itch.io, IndieDB, SteamGridDB, IGDB) supply missing or improved metadata.
 pub fn enrich(ctx: &Context, card: &GameCard) -> Result<Enrichment, Error> {
     let mut merged = Enrichment {
         description: card.description.clone(),
@@ -74,6 +78,12 @@ pub fn enrich(ctx: &Context, card: &GameCard) -> Result<Enrichment, Error> {
         genres: card.external_genres.clone(),
         screenshots: Vec::new(),
     };
+
+    if let Some(ref thumb) = card.thumb_url {
+        if !thumb.trim().is_empty() {
+            merged.screenshots.push(thumb.clone());
+        }
+    }
 
     let secrets = load_secrets(ctx)?;
     for provider in providers() {
@@ -88,12 +98,20 @@ pub fn enrich(ctx: &Context, card: &GameCard) -> Result<Enrichment, Error> {
                             .trim()
                             .is_empty()
                     {
-                        merged.description = extra.description;
+                        if let Some(d) = extra.description {
+                            if !d.trim().is_empty() {
+                                merged.description = Some(d);
+                            }
+                        }
                     }
                     if merged.developer.is_none()
                         || merged.developer.as_deref().unwrap_or("").trim().is_empty()
                     {
-                        merged.developer = extra.developer;
+                        if let Some(dev) = extra.developer {
+                            if !dev.trim().is_empty() {
+                                merged.developer = Some(dev);
+                            }
+                        }
                     }
                     if merged.rating.is_none() {
                         merged.rating = extra.rating;
@@ -109,7 +127,7 @@ pub fn enrich(ctx: &Context, card: &GameCard) -> Result<Enrichment, Error> {
                         }
                     }
                     for s in extra.screenshots {
-                        if !merged.screenshots.contains(&s) {
+                        if !merged.screenshots.contains(&s) && merged.screenshots.len() < 10 {
                             merged.screenshots.push(s);
                         }
                     }
@@ -150,7 +168,14 @@ pub trait Provider: Send + Sync {
 
 /// All registered providers.
 pub fn providers() -> Vec<Box<dyn Provider>> {
-    vec![Box::new(steamgriddb::SteamGridDb), Box::new(igdb::Igdb)]
+    vec![
+        Box::new(steamgriddb::SteamGridDb),
+        Box::new(igdb::Igdb),
+        Box::new(vndb::Vndb),
+        Box::new(steam::Steam),
+        Box::new(itch::Itch),
+        Box::new(indiedb::IndieDb),
+    ]
 }
 
 /// Load all secrets this layer cares about from SQLite.
@@ -278,8 +303,8 @@ mod tests {
     #[test]
     fn enrich_returns_baseline_without_external_calls() {
         let card = GameCard {
-            slug: "wild-life".to_string(),
-            title: "Wild Life".to_string(),
+            slug: "test-unmatched-game-xyz".to_string(),
+            title: "TestUnmatchedGameXYZ".to_string(),
             description: Some("A wild adventure".to_string()),
             developer: Some("Adeptus Steve".to_string()),
             external_genres: vec!["Adventure".to_string()],

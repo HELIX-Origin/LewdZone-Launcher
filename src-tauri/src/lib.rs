@@ -247,8 +247,46 @@ fn game_page(
 
     // 2. DB persistence: if present in SQLite DB with versions or entries, load into memory and return
     if let Ok(conn) = ctx.open_db() {
-        if let Ok(Some(game)) = crate::db::repo::game_by_slug(&conn, &clean_slug) {
+        if let Ok(Some(mut game)) = crate::db::repo::game_by_slug(&conn, &clean_slug) {
             if !game.versions.is_empty() || !game.download_entries.is_empty() {
+                // If game in DB has fewer than 2 screenshots or missing description, enrich it from external providers
+                if game.screenshots.len() < 2 || game.description.is_none() {
+                    let card = crate::core::models::GameCard {
+                        slug: game.slug.clone(),
+                        title: game.title.clone(),
+                        post_id: game.post_id,
+                        thumb_url: game.screenshots.first().cloned(),
+                        description: game.description.clone(),
+                        developer: game.developer.clone(),
+                        genres: game.genres.clone(),
+                        ..Default::default()
+                    };
+                    if let Ok(extra) = crate::core::content::enrich(&ctx, &card) {
+                        if (game.description.is_none()
+                            || game.description.as_deref().unwrap_or("").trim().is_empty())
+                            && extra.description.is_some()
+                        {
+                            game.description = extra.description;
+                        }
+                        if (game.developer.is_none()
+                            || game.developer.as_deref().unwrap_or("").trim().is_empty())
+                            && extra.developer.is_some()
+                        {
+                            game.developer = extra.developer;
+                        }
+                        for g in extra.genres {
+                            if !game.genres.contains(&g) {
+                                game.genres.push(g);
+                            }
+                        }
+                        for s in extra.screenshots {
+                            if !game.screenshots.contains(&s) && game.screenshots.len() < 10 {
+                                game.screenshots.push(s);
+                            }
+                        }
+                        let _ = crate::db::repo::upsert_game(&conn, &game, None, None);
+                    }
+                }
                 if let Ok(mut cache) = state.game_cache.lock() {
                     cache.insert(clean_slug.clone(), game.clone());
                 }
@@ -289,7 +327,7 @@ fn game_page(
             }
         }
         for s in extra.screenshots {
-            if !game.screenshots.contains(&s) {
+            if !game.screenshots.contains(&s) && game.screenshots.len() < 10 {
                 game.screenshots.push(s);
             }
         }

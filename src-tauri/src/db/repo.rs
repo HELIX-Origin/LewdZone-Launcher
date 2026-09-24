@@ -61,11 +61,17 @@ pub fn upsert_game(
     } else {
         None
     };
+    let screenshots_json = if !game.screenshots.is_empty() {
+        let limited: Vec<String> = game.screenshots.iter().take(10).cloned().collect();
+        serde_json::to_string(&limited).ok()
+    } else {
+        None
+    };
     tx.execute(
         r#"
         INSERT INTO game (post_id, slug, title, developer, engine, size_label,
-                          censorship, description, updated_at, thumbnail_url)
-        VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)
+                          censorship, description, updated_at, thumbnail_url, screenshots)
+        VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)
         ON CONFLICT(slug) DO UPDATE SET
             post_id = excluded.post_id,
             title = excluded.title,
@@ -75,7 +81,8 @@ pub fn upsert_game(
             censorship = excluded.censorship,
             description = excluded.description,
             updated_at = excluded.updated_at,
-            thumbnail_url = coalesce(excluded.thumbnail_url, game.thumbnail_url)
+            thumbnail_url = coalesce(excluded.thumbnail_url, game.thumbnail_url),
+            screenshots = coalesce(excluded.screenshots, game.screenshots)
         "#,
         params![
             post_id,
@@ -88,6 +95,7 @@ pub fn upsert_game(
             game.description,
             card_updated_at,
             thumbnail,
+            screenshots_json,
         ],
     )?;
 
@@ -211,10 +219,11 @@ pub fn game_by_slug(tx: &Connection, slug: &str) -> Result<Option<Game>, Error> 
         censorship: Option<String>,
         description: Option<String>,
         thumbnail_url: Option<String>,
+        screenshots: Option<String>,
     }
 
     let meta = tx.query_row(
-        "SELECT title, developer, engine, size_label, censorship, description, thumbnail_url
+        "SELECT title, developer, engine, size_label, censorship, description, thumbnail_url, screenshots
          FROM game WHERE post_id = ?1",
         [post_id],
         |row| {
@@ -226,6 +235,7 @@ pub fn game_by_slug(tx: &Connection, slug: &str) -> Result<Option<Game>, Error> 
                 censorship: row.get(4)?,
                 description: row.get(5)?,
                 thumbnail_url: row.get(6)?,
+                screenshots: row.get(7)?,
             })
         },
     )?;
@@ -300,17 +310,31 @@ pub fn game_by_slug(tx: &Connection, slug: &str) -> Result<Option<Game>, Error> 
         genres,
         size_label: meta.size_label,
         censorship: meta.censorship,
-        screenshots: meta
-            .thumbnail_url
-            .as_deref()
-            .map(|t| {
-                if t.starts_with('[') && t.ends_with(']') {
-                    serde_json::from_str::<Vec<String>>(t).unwrap_or_else(|_| vec![t.to_string()])
+        screenshots: {
+            let mut shots: Vec<String> = if let Some(ref s) = meta.screenshots {
+                if s.starts_with('[') && s.ends_with(']') {
+                    serde_json::from_str::<Vec<String>>(s).unwrap_or_default()
+                } else if !s.trim().is_empty() {
+                    vec![s.clone()]
                 } else {
-                    vec![t.to_string()]
+                    Vec::new()
                 }
-            })
-            .unwrap_or_default(),
+            } else {
+                Vec::new()
+            };
+            if shots.is_empty() {
+                if let Some(ref t) = meta.thumbnail_url {
+                    if t.starts_with('[') && t.ends_with(']') {
+                        shots = serde_json::from_str::<Vec<String>>(t)
+                            .unwrap_or_else(|_| vec![t.clone()]);
+                    } else if !t.trim().is_empty() {
+                        shots.push(t.clone());
+                    }
+                }
+            }
+            shots.truncate(10);
+            shots
+        },
         description: meta.description,
         versions,
         download_entries,

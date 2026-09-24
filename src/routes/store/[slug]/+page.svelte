@@ -6,6 +6,7 @@
   import { listen, type UnlistenFn } from "@tauri-apps/api/event";
   import { page } from "$app/state";
   import { goto } from "$app/navigation";
+  import MediaCarousel from "$lib/components/MediaCarousel.svelte";
 
   type LoadState = "loading" | "ready" | "error";
 
@@ -101,9 +102,7 @@
   let downloading = $state(false);
   let feedback = $state("");
 
-  // Preview Carousel State
-  let activeImageIndex = $state(0);
-  let isLightboxOpen = $state(false);
+
 
   const platformLabel: Record<string, string> = {
     pc: "Windows PC",
@@ -165,7 +164,6 @@
         versions: data.versions ?? [],
         download_entries: data.download_entries ?? [],
       };
-      activeImageIndex = 0;
       if (data.versions && data.versions.length > 0) {
         const found =
           data.versions.find(
@@ -185,6 +183,9 @@
         version = "latest";
       }
       status = "ready";
+      if (game) {
+        enrichGame(game);
+      }
     } catch (err) {
       if (activeSlug !== s) return;
       status = "error";
@@ -349,37 +350,74 @@
     return groups;
   });
 
-  // Carousel controls
-  function nextImage() {
-    if (!game || game.screenshots.length === 0) return;
-    activeImageIndex = (activeImageIndex + 1) % game.screenshots.length;
+  interface Enrichment {
+    description?: string | null;
+    developer?: string | null;
+    rating?: number | null;
+    tags: string[];
+    genres: string[];
+    screenshots: string[];
   }
 
-  function prevImage() {
-    if (!game || game.screenshots.length === 0) return;
-    activeImageIndex = (activeImageIndex - 1 + game.screenshots.length) % game.screenshots.length;
-  }
+  async function enrichGame(g: GameData) {
+    try {
+      const enrichment = await invoke<Enrichment>("content_enrich", {
+        card: {
+          slug: g.slug,
+          post_id: g.post_id,
+          title: g.title,
+          developer: g.developer,
+          genres: g.genres ?? [],
+          external_genres: [],
+          description: g.description,
+          thumb_url: g.screenshots?.[0] ?? null,
+        },
+      }).catch(() => null);
 
-  function selectImage(index: number) {
-    activeImageIndex = index;
-  }
-
-  function toggleLightbox() {
-    isLightboxOpen = !isLightboxOpen;
-  }
-
-  function handleKeydown(e: KeyboardEvent) {
-    if (e.key === "ArrowRight") nextImage();
-    if (e.key === "ArrowLeft") prevImage();
-    if (e.key === "Escape" && isLightboxOpen) isLightboxOpen = false;
+      if (enrichment && game && game.slug === g.slug) {
+        if ((!game.description || game.description.trim().length === 0) && enrichment.description) {
+          game.description = enrichment.description;
+        }
+        if ((!game.developer || game.developer.trim().length === 0) && enrichment.developer) {
+          game.developer = enrichment.developer;
+        }
+        if ((!game.rating || game.rating === 0) && enrichment.rating) {
+          game.rating = enrichment.rating;
+        }
+        if (enrichment.genres) {
+          for (const item of enrichment.genres) {
+            if (!game.genres.includes(item)) {
+              game.genres.push(item);
+            }
+          }
+        }
+        if (enrichment.tags) {
+          for (const item of enrichment.tags) {
+            if (!game.genres.includes(item)) {
+              game.genres.push(item);
+            }
+          }
+        }
+        if (enrichment.screenshots) {
+          for (const s of enrichment.screenshots) {
+            if (!game.screenshots.includes(s) && game.screenshots.length < 10) {
+              game.screenshots.push(s);
+            }
+          }
+          if (game.screenshots.length > 10) {
+            game.screenshots = game.screenshots.slice(0, 10);
+          }
+        }
+      }
+    } catch (e) {
+      console.warn("Store enrichment note:", e);
+    }
   }
 
   function back() {
     goto("/store");
   }
 </script>
-
-<svelte:window onkeydown={handleKeydown} />
 
 <div class="detail">
   {#if status === "loading"}
@@ -419,70 +457,8 @@
     {/if}
 
     <!-- Preview Carousel Section -->
-    {#if game.screenshots.length > 0}
-      <section class="carousel-section" aria-label="Game Preview Images">
-        <div class="carousel-header">
-          <span class="carousel-counter">{activeImageIndex + 1} / {game.screenshots.length}</span>
-        </div>
-
-        <div class="carousel-stage">
-          <button type="button" class="nav-arrow left" onclick={prevImage} aria-label="Previous image">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-              <polyline points="15 18 9 12 15 6"></polyline>
-            </svg>
-          </button>
-
-          <button type="button" class="stage-img-btn" onclick={toggleLightbox} aria-label="Click to enlarge image">
-            <img
-              class="stage-img"
-              src={game.screenshots[activeImageIndex]}
-              alt={`${game.title} preview screenshot ${activeImageIndex + 1}`}
-            />
-            <div class="stage-overlay">
-              <span class="zoom-badge">🔍 Click for Fullscreen</span>
-            </div>
-          </button>
-
-          <button type="button" class="nav-arrow right" onclick={nextImage} aria-label="Next image">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-              <polyline points="9 18 15 12 9 6"></polyline>
-            </svg>
-          </button>
-        </div>
-
-        <!-- Thumbnail Strip -->
-        <div class="thumbnail-strip" role="tablist" aria-label="Thumbnails">
-          {#each game.screenshots as thumbUrl, idx (thumbUrl)}
-            <button
-              type="button"
-              class="thumb-btn"
-              class:active={idx === activeImageIndex}
-              onclick={() => selectImage(idx)}
-              aria-label={`View image ${idx + 1}`}
-              role="tab"
-              aria-selected={idx === activeImageIndex}
-            >
-              <img src={thumbUrl} alt="" loading="lazy" />
-            </button>
-          {/each}
-        </div>
-      </section>
-    {/if}
-
-    <!-- Lightbox Modal -->
-    {#if isLightboxOpen && game.screenshots.length > 0}
-      <div class="lightbox" role="dialog" aria-modal="true">
-        <button class="lightbox-close" onclick={toggleLightbox} aria-label="Close fullscreen view">✕</button>
-        <button class="lightbox-nav left" onclick={prevImage} aria-label="Previous">❮</button>
-        <img
-          class="lightbox-img"
-          src={game.screenshots[activeImageIndex]}
-          alt={`${game.title} full view`}
-        />
-        <button class="lightbox-nav right" onclick={nextImage} aria-label="Next">❯</button>
-        <div class="lightbox-caption">{activeImageIndex + 1} of {game.screenshots.length}</div>
-      </div>
-    {/if}
+    <!-- Shared Artwork & Media Carousel (Up to 10 Images) -->
+    <MediaCarousel title={game.title} screenshots={game.screenshots} />
 
     <!-- LewdZone-Style Downloads Section -->
     <div class="dl-panel">
@@ -667,212 +643,6 @@
     color: var(--lz-text-dim);
     line-height: 1.5;
     margin: var(--lz-gap) 0;
-  }
-
-  /* Carousel Styles */
-  .carousel-section {
-    background: var(--lz-surface);
-    border: 1px solid var(--lz-surface-2);
-    border-radius: var(--lz-radius);
-    padding: var(--lz-gap);
-    margin: var(--lz-gap) 0;
-  }
-
-  .carousel-header {
-    display: flex;
-    align-items: center;
-    justify-content: flex-end;
-    margin-bottom: 8px;
-  }
-
-  .carousel-counter {
-    font-size: 12px;
-    color: var(--lz-text-dim);
-    background: var(--lz-surface-2);
-    padding: 3px 8px;
-    border-radius: 12px;
-  }
-
-  .carousel-stage {
-    position: relative;
-    width: 100%;
-    height: 380px;
-    background: #000;
-    border-radius: var(--lz-radius);
-    overflow: hidden;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .stage-img-btn {
-    appearance: none;
-    border: none;
-    background: transparent;
-    padding: 0;
-    margin: 0;
-    width: 100%;
-    height: 100%;
-    cursor: zoom-in;
-    position: relative;
-  }
-
-  .stage-img {
-    width: 100%;
-    height: 100%;
-    object-fit: contain;
-    transition: transform 0.2s ease;
-  }
-
-  .stage-overlay {
-    position: absolute;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.2);
-    opacity: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: opacity 0.2s ease;
-  }
-
-  .stage-img-btn:hover .stage-overlay {
-    opacity: 1;
-  }
-
-  .zoom-badge {
-    background: rgba(0, 0, 0, 0.7);
-    color: #fff;
-    padding: 6px 14px;
-    border-radius: 20px;
-    font-size: 13px;
-    border: 1px solid rgba(255, 255, 255, 0.2);
-  }
-
-  .nav-arrow {
-    position: absolute;
-    top: 50%;
-    transform: translateY(-50%);
-    width: 44px;
-    height: 44px;
-    border-radius: 50%;
-    background: rgba(15, 17, 23, 0.75);
-    border: 1px solid rgba(255, 255, 255, 0.15);
-    color: #fff;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 2;
-    transition: background 0.15s ease, transform 0.1s ease;
-  }
-
-  .nav-arrow:hover {
-    background: rgba(0, 238, 255, 0.85);
-    color: #0f1117;
-  }
-
-  .nav-arrow.left { left: 12px; }
-  .nav-arrow.right { right: 12px; }
-
-  .nav-arrow svg {
-    width: 22px;
-    height: 22px;
-  }
-
-  .thumbnail-strip {
-    display: flex;
-    gap: 8px;
-    margin-top: 12px;
-    overflow-x: auto;
-    padding-bottom: 4px;
-  }
-
-  .thumb-btn {
-    appearance: none;
-    border: 2px solid transparent;
-    border-radius: 6px;
-    padding: 0;
-    background: #000;
-    cursor: pointer;
-    flex-shrink: 0;
-    width: 80px;
-    height: 52px;
-    overflow: hidden;
-    opacity: 0.6;
-    transition: opacity 0.15s ease, border-color 0.15s ease;
-  }
-
-  .thumb-btn:hover {
-    opacity: 0.9;
-  }
-
-  .thumb-btn.active {
-    opacity: 1;
-    border-color: var(--lz-cyan);
-  }
-
-  .thumb-btn img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-  }
-
-  /* Lightbox Modal */
-  .lightbox {
-    position: fixed;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.92);
-    z-index: 1000;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .lightbox-img {
-    max-width: 90vw;
-    max-height: 85vh;
-    object-fit: contain;
-    border-radius: 4px;
-  }
-
-  .lightbox-close {
-    position: absolute;
-    top: 20px;
-    right: 24px;
-    background: rgba(255, 255, 255, 0.1);
-    border: none;
-    color: #fff;
-    font-size: 24px;
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    cursor: pointer;
-  }
-
-  .lightbox-nav {
-    position: absolute;
-    top: 50%;
-    transform: translateY(-50%);
-    background: rgba(255, 255, 255, 0.1);
-    border: none;
-    color: #fff;
-    font-size: 32px;
-    width: 50px;
-    height: 70px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .lightbox-nav.left { left: 16px; }
-  .lightbox-nav.right { right: 16px; }
-
-  .lightbox-caption {
-    position: absolute;
-    bottom: 20px;
-    color: #a0aec0;
-    font-size: 14px;
   }
 
   /* Download Panel & LewdZone Style */
