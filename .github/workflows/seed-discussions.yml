@@ -1,0 +1,116 @@
+name: Seed Discussions
+
+on:
+  workflow_dispatch:
+    inputs:
+      category_filter:
+        description: 'Category to seed (or all)'
+        type: choice
+        default: 'all'
+        options:
+          - 'all'
+          - 'announcements'
+          - 'general'
+          - 'q-a'
+          - 'ideas'
+          - 'show-and-tell'
+        required: false
+      dry_run:
+        description: 'Dry run (preview discussion topics without creating them)'
+        type: boolean
+        default: false
+        required: false
+
+permissions:
+  discussions: write
+  contents: read
+
+jobs:
+  seed-discussions:
+    name: Seed Community Discussions
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Seed Starter Discussions
+        env:
+          GH_TOKEN: ${{ secrets.PAT_TOKEN || secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          CATEGORY_FILTER: ${{ inputs.category_filter }}
+          DRY_RUN: ${{ inputs.dry_run }}
+        run: |
+          set -e
+
+          echo "=========================================="
+          echo " Seed Community Discussions"
+          echo " Repository:      $GH_REPO"
+          echo " Category Filter: $CATEGORY_FILTER"
+          echo " Dry Run:         $DRY_RUN"
+          echo "=========================================="
+
+          create_discussion_if_missing() {
+            local category="$1"
+            local title="$2"
+            local body_file="$3"
+
+            echo ""
+            echo "------------------------------------------"
+            echo "Target Category:  $category"
+            echo "Discussion Title: $title"
+            echo "Body File:        $body_file"
+
+            if [ ! -f "$body_file" ]; then
+              echo "Error: Body file '$body_file' not found!"
+              return 1
+            fi
+
+            # Check if a discussion with this title already exists in the repository
+            EXISTING_TITLES=$(gh discussion list -R "$GH_REPO" -L 100 --json title -q '.[].title' 2>/dev/null || echo "")
+            if echo "$EXISTING_TITLES" | grep -Fxq "$title"; then
+              echo "Discussion with this title already exists. Skipping to prevent duplicate."
+              return 0
+            fi
+
+            if [ "$DRY_RUN" = "true" ]; then
+              echo "[DRY RUN] Would create discussion: \"$title\" in category \"$category\""
+              return 0
+            fi
+
+            echo "Creating discussion in \"$category\"..."
+            gh discussion create -R "$GH_REPO" \
+              --category "$category" \
+              --title "$title" \
+              --body-file "$body_file"
+            echo "Successfully created discussion: \"$title\""
+          }
+
+          # 1. Announcements
+          if [ "$CATEGORY_FILTER" = "all" ] || [ "$CATEGORY_FILTER" = "announcements" ]; then
+            create_discussion_if_missing "Announcements" "🚀 Welcome to the LewdZone Launcher Community & v0.1.0 Initial Release!" ".github/discussions/announcements.md"
+          fi
+
+          # 2. General
+          if [ "$CATEGORY_FILTER" = "all" ] || [ "$CATEGORY_FILTER" = "general" ]; then
+            create_discussion_if_missing "General" "👋 Welcome & Community Introductions" ".github/discussions/general.md"
+          fi
+
+          # 3. Q&A
+          if [ "$CATEGORY_FILTER" = "all" ] || [ "$CATEGORY_FILTER" = "q-a" ]; then
+            create_discussion_if_missing "Q&A" "❓ Frequently Asked Questions (FAQ) & Getting Help" ".github/discussions/q_a.md"
+          fi
+
+          # 4. Ideas
+          if [ "$CATEGORY_FILTER" = "all" ] || [ "$CATEGORY_FILTER" = "ideas" ]; then
+            create_discussion_if_missing "Ideas" "💡 Feature Ideas & Community Wishlist" ".github/discussions/ideas.md"
+          fi
+
+          # 5. Show and tell
+          if [ "$CATEGORY_FILTER" = "all" ] || [ "$CATEGORY_FILTER" = "show-and-tell" ]; then
+            create_discussion_if_missing "Show and tell" "🎨 Community Themes & Customization Showcase" ".github/discussions/show_and_tell.md"
+          fi
+
+          echo ""
+          echo "=========================================="
+          echo " Seeding completed successfully!"
+          echo "=========================================="

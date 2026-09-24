@@ -1,0 +1,105 @@
+name: Cleanup Failed Runs
+
+on:
+  workflow_dispatch:
+    inputs:
+      include_cancelled:
+        description: 'Include cancelled and timed-out runs'
+        type: boolean
+        default: true
+        required: false
+      max_runs:
+        description: 'Maximum number of runs to inspect and delete'
+        type: number
+        default: 100
+        required: false
+      dry_run:
+        description: 'Dry run (list matching runs without deleting)'
+        type: boolean
+        default: false
+        required: false
+
+permissions:
+  actions: write
+  contents: read
+
+jobs:
+  cleanup-failed-runs:
+    name: Cleanup Failed Runs
+    runs-on: ubuntu-latest
+    steps:
+      - name: Delete Failed Workflow Runs
+        env:
+          GH_TOKEN: ${{ secrets.PAT_TOKEN || secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          INCLUDE_CANCELLED: ${{ inputs.include_cancelled }}
+          MAX_RUNS: ${{ inputs.max_runs }}
+          DRY_RUN: ${{ inputs.dry_run }}
+        run: |
+          echo "=========================================="
+          echo " Cleanup Failed GitHub Actions Runs"
+          echo " Repository:        $GH_REPO"
+          echo " Max Runs:          $MAX_RUNS"
+          echo " Include Cancelled: $INCLUDE_CANCELLED"
+          echo " Dry Run:           $DRY_RUN"
+          echo "=========================================="
+
+          TARGET_STATUSES=("failure" "startup_failure")
+          if [ "$INCLUDE_CANCELLED" = "true" ]; then
+            TARGET_STATUSES+=("cancelled" "timed_out")
+          fi
+
+          TOTAL_FOUND=0
+          TOTAL_DELETED=0
+
+          for STATUS in "${TARGET_STATUSES[@]}"; do
+            echo ""
+            echo "--- Checking status: $STATUS ---"
+            
+            # Fetch runs with databaseId, displayTitle, and createdAt
+            RUNS_JSON=$(gh run list -R "$GH_REPO" -s "$STATUS" -L "$MAX_RUNS" --json databaseId,displayTitle,createdAt,workflowName 2>/dev/null || echo "[]")
+            RUN_COUNT=$(echo "$RUNS_JSON" | jq 'length')
+
+            if [ "$RUN_COUNT" -eq 0 ]; then
+              echo "No runs found with status: $STATUS"
+              continue
+            fi
+
+            echo "Found $RUN_COUNT run(s) with status: $STATUS"
+            TOTAL_FOUND=$((TOTAL_FOUND + RUN_COUNT))
+
+            echo "$RUNS_JSON" | jq -c '.[]' | while read -r RUN; do
+              RUN_ID=$(echo "$RUN" | jq -r '.databaseId')
+              TITLE=$(echo "$RUN" | jq -r '.displayTitle // "unknown"')
+              WF_NAME=$(echo "$RUN" | jq -r '.workflowName // "workflow"')
+              CREATED=$(echo "$RUN" | jq -r '.createdAt // "unknown"')
+
+              echo "Run #$RUN_ID | $WF_NAME | \"$TITLE\" | $CREATED"
+
+              if [ "$DRY_RUN" = "true" ]; then
+                echo "  [DRY RUN] Would delete run $RUN_ID"
+              else
+                echo "  Deleting run $RUN_ID..."
+                if gh run delete "$RUN_ID" -R "$GH_REPO" 2>&1; then
+                  echo "  Successfully deleted run $RUN_ID"
+                else
+                  echo "  Warning: Failed to delete run $RUN_ID"
+                fi
+              fi
+            done
+
+            if [ "$DRY_RUN" != "true" ]; then
+              TOTAL_DELETED=$((TOTAL_DELETED + RUN_COUNT))
+            fi
+          done
+
+          echo ""
+          echo "=========================================="
+          echo " Summary"
+          echo " Total Matching Runs: $TOTAL_FOUND"
+          if [ "$DRY_RUN" = "true" ]; then
+            echo " Status: Completed in DRY RUN mode (no runs deleted)."
+          else
+            echo " Status: Successfully processed and deleted."
+          fi
+          echo "=========================================="
