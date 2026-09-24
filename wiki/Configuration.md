@@ -58,11 +58,14 @@ lewdzone settings set download-grace-seconds 10
 lewdzone settings set home-page "library"
 lewdzone settings set theme "Nord"
 
-# Store sensitive API keys securely
+# Store sensitive API keys securely in SQLite (never written to config.json)
 lewdzone settings set sgdb-api-key "your-steamgriddb-key" --secret
 lewdzone settings set igdb-client-id "your-twitch-client-id" --secret
 lewdzone settings set igdb-client-secret "your-twitch-client-secret" --secret
 ```
+
+> **GUI Tip:** Sensitive keys like `sgdb-api-key` can also be configured directly in the application under **Settings → Content Providers**. The key is masked, stored in the SQLite `secret` table, and never written to plain-text configuration files.
+
 
 ---
 
