@@ -5,9 +5,17 @@ use std::process::ExitCode;
 
 fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().collect();
-    if args
-        .iter()
-        .any(|a| a == "--installer" || a == "--setup" || a == "--uninstall" || a == "--maintenance")
+    let exe_name = std::env::current_exe()
+        .ok()
+        .and_then(|p| p.file_name().map(|n| n.to_string_lossy().to_lowercase()))
+        .unwrap_or_default();
+
+    // Auto-launch unified installer wizard if named *installer* or *setup*, or passed flags
+    if exe_name.contains("installer")
+        || exe_name.contains("setup")
+        || args
+            .iter()
+            .any(|a| a == "--installer" || a == "--setup" || a == "--uninstall" || a == "--maintenance")
     {
         lewdzone_lib::run_installer();
         return ExitCode::SUCCESS;

@@ -87,6 +87,24 @@
     }
   }
 
+  function cleanDisplayTitle(raw: string | null | undefined): string {
+    if (!raw) return "";
+    let clean = raw;
+    while (clean.includes("[") && clean.includes("]")) {
+      clean = clean.replace(/\[[^\]]*\]/g, " ");
+    }
+    while (clean.includes("(") && clean.includes(")")) {
+      clean = clean.replace(/\([^)]*\)/g, " ");
+    }
+    clean = clean.replace(/_/g, " ");
+    clean = clean.replace(/\s*-\s*Version:?.*$/i, "");
+    clean = clean.replace(/\s+Version:?.*$/i, "");
+    clean = clean.replace(/\s*-\s*v\d+.*$/i, "");
+    clean = clean.replace(/\s*-\s*(PC|Mac|Linux|Android|Windows).*$/i, "");
+    const res = clean.replace(/\s+/g, " ").trim();
+    return res || raw;
+  }
+
   function formatPlaytime(seconds: number | undefined): string {
     if (!seconds || seconds <= 0) return "Unplayed";
     if (seconds < 60) return `${seconds}s`;
@@ -386,7 +404,7 @@
       </button>
 
       <div class="hero-meta">
-        <h1>{game.title}</h1>
+        <h1>{cleanDisplayTitle(game.title)}</h1>
         <div class="meta-row">
           {#if game.developer}<span>by {game.developer}</span>{/if}
           {#if game.current_version}<span>v{game.current_version}</span>{/if}

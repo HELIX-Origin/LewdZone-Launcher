@@ -279,6 +279,56 @@ impl Queue {
         Ok(job)
     }
 
+    /// Add a browser-intercepted direct archive URL to the queue.
+    /// The URL is already resolved (no go-link hop needed). The worker
+    /// streams it in-app with byte progress, saves it to the download root
+    /// under the site's naming scheme, then auto-enqueues extraction.
+    ///
+    /// * `slug`    — game slug (e.g. `"wild-life"`)
+    /// * `url`     — the direct download URL intercepted from the child window
+    /// * `title`   — display title for the game (e.g. `"Wild Life [Ongoing]"`)
+    /// * `version` — version string (e.g. `"v2026-06-15"`)
+    /// * `platform`— platform tag (e.g. `"pc"`)
+    pub fn enqueue_intercept(
+        &self,
+        slug: String,
+        url: String,
+        title: String,
+        version: String,
+        platform: String,
+    ) -> Result<QueueJob, Error> {
+        let mut g = self.inner.lock().unwrap_or_else(|p| p.into_inner());
+        if g.jobs.len() >= MAX_QUEUED {
+            return Err(Error::Usage(
+                "queue is full — wait for active jobs to finish".to_string(),
+            ));
+        }
+        let id = g.next_id;
+        g.next_id += 1;
+        let now = now_secs();
+        let job = QueueJob {
+            id,
+            slug,
+            version,
+            platform,
+            tab: "intercept".to_string(),
+            source: Some(url),
+            status: Status::Queued,
+            // message stores the display title for archive naming
+            message: Some(title),
+            bytes_done: 0,
+            bytes_total: 0,
+            created_at: now,
+            updated_at: now,
+        };
+        g.jobs.push(job.clone());
+        drop(g);
+        self.persist(&job)?;
+        self.wake.notify_one();
+        Ok(job)
+    }
+
+
     /// All jobs, newest first (the Downloads page's view).
     pub fn snapshot(&self) -> Vec<QueueJob> {
         let g = self.inner.lock().unwrap_or_else(|p| p.into_inner());
@@ -418,8 +468,121 @@ pub fn process(
     if entry.status != Status::Queued {
         return;
     }
+    // ── Intercepted direct-stream download ──────────────────────────────────
+    // A URL captured from the child resolver window — already fully resolved,
+    // no go-link hop needed. We stream it straight to <download_root>/<archive>
+    // then auto-queue extraction into <lzapps_root>/<slug>/.
+    if entry.tab == "intercept" {
+        let direct_url = match &entry.source {
+            Some(u) => u.clone(),
+            None => {
+                queue.update(id, |j| {
+                    j.status = Status::Failed;
+                    j.message = Some("missing direct URL for intercepted download".to_string());
+                });
+                return;
+            }
+        };
+
+        // Title stored in message during enqueue_intercept
+        let raw_title = entry.message.clone().unwrap_or_else(|| entry.slug.clone());
+        let clean_title = crate::core::library::clean_folder_title(&raw_title);
+        let display_title = if clean_title.is_empty() { &raw_title } else { &clean_title };
+
+        // Derive archive filename from the URL tail
+        let url_tail = direct_url.rsplit('/').next().unwrap_or("archive");
+        // Strip query string
+        let url_basename = url_tail.split('?').next().unwrap_or(url_tail);
+        let ext = crate::core::folder::file_ext(url_basename);
+        let archive_name = if ext.is_empty() {
+            format!("{display_title} - Version {}.zip", entry.version)
+        } else {
+            format!("{display_title} - Version {}.{ext}", entry.version)
+        };
+
+        let download_root = match crate::core::folder::download_root(ctx) {
+            Ok(p) => p,
+            Err(e) => {
+                queue.update(id, |j| {
+                    j.status = Status::Failed;
+                    j.message = Some(format!("cannot resolve download root: {e}"));
+                });
+                return;
+            }
+        };
+
+        let archive_path = crate::core::folder::archive_download_target(&download_root, &archive_name);
+        if let Some(parent) = archive_path.parent() {
+            let _ = std::fs::create_dir_all(parent);
+        }
+
+        queue.update(id, |j| {
+            j.status = Status::Downloading;
+            j.bytes_done = 0;
+            j.bytes_total = 0;
+        });
+
+        // Stream via the injected download seam (testable)
+        let mut progress_cb = |done: u64, total: u64| -> Result<(), Error> {
+            let mut cancelled = false;
+            queue.update(id, |j| {
+                if j.status == Status::Failed {
+                    cancelled = true;
+                } else {
+                    j.status = Status::Downloading;
+                    j.bytes_done = done;
+                    j.bytes_total = total;
+                }
+            });
+            if cancelled || queue.get(id).is_none() {
+                return Err(Error::Usage("download cancelled by user".to_string()));
+            }
+            Ok(())
+        };
+
+        // Build a synthetic Job so we can reuse stream_target
+        let lzapps = crate::core::folder::lzapps_root(ctx).ok();
+        let install_dir = lzapps.map(|r| crate::core::folder::install_dir(&r, &entry.slug));
+        let job = Job {
+            game: entry.slug.clone(),
+            title: display_title.to_string(),
+            post_id: None,
+            engine: None,
+            version: entry.version.clone(),
+            platform: entry.platform.clone(),
+            tab: "intercept".to_string(),
+            url: direct_url.clone(),
+            target: Some(archive_path.clone()),
+            install_dir,
+        };
+
+        match crate::core::download::stream_target(&job, &mut |url| crate::scraper::download_stream(url), &mut progress_cb) {
+            Ok(_) => {
+                if let Some(j) = queue.get(id) {
+                    if j.status != Status::Failed {
+                        queue.update(id, |j| {
+                            j.status = Status::Completed;
+                            j.message = Some(format!("Saved to {}", archive_path.display()));
+                        });
+                    }
+                }
+            }
+            Err(err) => {
+                if let Some(j) = queue.get(id) {
+                    if j.status != Status::Failed {
+                        queue.update(id, |j| {
+                            j.status = Status::Failed;
+                            j.message = Some(err.to_string());
+                        });
+                    }
+                }
+            }
+        }
+        return;
+    }
 
     if entry.tab == "extract" {
+
         queue.update(id, |j| {
             j.status = Status::Extracting;
             j.bytes_done = 0;
@@ -474,7 +637,13 @@ pub fn process(
             (None, None, None)
         };
 
-        let title = clean_title.as_deref().unwrap_or(&entry.slug);
+        let raw_title = clean_title.as_deref().unwrap_or(&entry.slug);
+        let cleaned_title = crate::core::library::clean_folder_title(raw_title);
+        let title = if cleaned_title.is_empty() {
+            raw_title
+        } else {
+            &cleaned_title
+        };
 
         let meta = crate::core::extract::InstallMeta {
             slug: &entry.slug,

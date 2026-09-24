@@ -6,6 +6,7 @@
 # --------------------------------------------------
 node_modules/
 .svelte-kit/
+dist/*
 src-tauri/out/
 src-tauri/target/
 src-tauri/build/
@@ -76,3 +77,4 @@ logs/
 # they would normally be ignored by other rules.
 # --------------------------------------------------
 !logs/.gitkeep
+!dist/.gitkeep

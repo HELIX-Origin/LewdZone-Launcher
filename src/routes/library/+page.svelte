@@ -117,6 +117,24 @@
     return map[p.toLowerCase()] ?? p;
   }
 
+  function cleanDisplayTitle(raw: string): string {
+    if (!raw) return "";
+    let clean = raw;
+    while (clean.includes("[") && clean.includes("]")) {
+      clean = clean.replace(/\[[^\]]*\]/g, " ");
+    }
+    while (clean.includes("(") && clean.includes(")")) {
+      clean = clean.replace(/\([^)]*\)/g, " ");
+    }
+    clean = clean.replace(/_/g, " ");
+    clean = clean.replace(/\s*-\s*Version:?.*$/i, "");
+    clean = clean.replace(/\s+Version:?.*$/i, "");
+    clean = clean.replace(/\s*-\s*v\d+.*$/i, "");
+    clean = clean.replace(/\s*-\s*(PC|Mac|Linux|Android|Windows).*$/i, "");
+    const res = clean.replace(/\s+/g, " ").trim();
+    return res || raw;
+  }
+
   async function load() {
     status = "loading";
     error = "";
@@ -326,8 +344,8 @@
             class="tile"
             role="button"
             tabindex="0"
-            aria-label={`View details for ${game.title}`}
-            title={`View details for ${game.title}`}
+            aria-label={`View details for ${cleanDisplayTitle(game.title)}`}
+            title={`View details for ${cleanDisplayTitle(game.title)}`}
             onclick={(e) => {
               const target = e.target as HTMLElement | null;
               if (target?.closest(".heart-btn")) return;
@@ -365,8 +383,8 @@
                 }}
                 disabled={togglingFavorite[game.slug]}
                 aria-label={favorites[game.slug]
-                  ? `Remove ${game.title} from favorites`
-                  : `Add ${game.title} to favorites`}
+                  ? `Remove ${cleanDisplayTitle(game.title)} from favorites`
+                  : `Add ${cleanDisplayTitle(game.title)} to favorites`}
                 title={favorites[game.slug] ? "Remove favorite" : "Add favorite"}
               >
                 <svg viewBox="0 0 24 24" fill={favorites[game.slug] ? "currentColor" : "none"} stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
@@ -375,7 +393,7 @@
               </button>
             </div>
             <div class="tile-body">
-              <div class="tile-name">{game.title}</div>
+              <div class="tile-name">{cleanDisplayTitle(game.title)}</div>
               <div class="tile-meta">
                 <span>{game.version}</span>
                 <span>·</span>

@@ -824,9 +824,13 @@ pub struct ResolvedDownloadPayload {
 
 /// Open a child webview window running our own custom in-app redirect page,
 /// ensuring no third-party malicious ads, popups, or tracking scripts run.
+/// The child window's `on_download` hook intercepts archive links (.zip, .7z,
+/// .rar, .exe, .tar.gz …) and routes them to the in-app download queue
+/// instead of the OS save dialog. Everything else passes through.
 #[tauri::command]
 async fn open_resolver_window(
     app: tauri::AppHandle,
+    state: tauri::State<'_, AppState>,
     slug: String,
     url: String,
     host: Option<String>,
@@ -847,6 +851,14 @@ async fn open_resolver_window(
 
     let path = format!("resolver?slug={enc_slug}&url={enc_url}&host={enc_host}&title={enc_title}");
 
+    // Clone what we need into the hook closure
+    let queue = Arc::clone(&state.queue);
+    let hook_slug = slug.clone();
+    let hook_title = title.clone().unwrap_or_else(|| slug.clone());
+    let hook_app = app.clone();
+
+    const ARCHIVE_EXTS: &[&str] = &[".zip", ".7z", ".rar", ".exe", ".tar.gz", ".tar.bz2", ".tar.xz"];
+
     let builder =
         WebviewWindowBuilder::new(&app, "download-resolver", WebviewUrl::App(path.into()))
             .title(format!(
@@ -855,11 +867,65 @@ async fn open_resolver_window(
             ))
             .inner_size(700.0, 560.0)
             .min_inner_size(520.0, 420.0)
-            .center();
+            .center()
+            .on_download(move |_webview, event| {
+                use tauri::webview::DownloadEvent;
+                if let DownloadEvent::Requested { url, .. } = event {
+                    let url_str = url.to_string();
+                    let lower = url_str.to_lowercase();
+                    // Strip query string for extension matching
+                    let path_part = lower.split('?').next().unwrap_or(&lower);
+                    if ARCHIVE_EXTS.iter().any(|ext| path_part.ends_with(ext)) {
+                        // Intercept: enqueue in-app and close the child window
+                        let _ = queue.enqueue_intercept(
+                            hook_slug.clone(),
+                            url_str,
+                            hook_title.clone(),
+                            "latest".to_string(),
+                            "pc".to_string(),
+                        );
+                        // Emit event to main window so store page shows feedback
+                        use tauri::Emitter;
+                        let _ = hook_app.emit("archive-intercepted", &hook_slug);
+                        // Close the resolver window
+                        if let Some(win) = hook_app.get_webview_window("download-resolver") {
+                            let _ = win.close();
+                        }
+                        // Return false = cancel the OS browser download
+                        return false;
+                    }
+                }
+                true // allow all other navigations/downloads
+            });
 
     builder.build().map_err(|e| e.to_string())?;
     Ok(())
 }
+
+/// Manually enqueue a browser-intercepted archive URL for in-app streaming.
+/// Called from the frontend when it receives a resolved direct URL it wants
+/// to route to the download queue rather than open in the browser.
+#[tauri::command]
+fn queue_intercepted_download(
+    state: tauri::State<'_, AppState>,
+    slug: String,
+    url: String,
+    title: Option<String>,
+    version: Option<String>,
+    platform: Option<String>,
+) -> Result<crate::core::queue::QueueJob, String> {
+    state
+        .queue
+        .enqueue_intercept(
+            slug.clone(),
+            url,
+            title.unwrap_or(slug),
+            version.unwrap_or_else(|| "latest".to_string()),
+            platform.unwrap_or_else(|| "pc".to_string()),
+        )
+        .map_err(|e| e.to_string())
+}
+
 
 /// `settings.get()` — one value or the whole snapshot as JSON for the page.
 #[tauri::command]
@@ -1190,6 +1256,7 @@ pub fn run() {
             content_enrich,
             artwork_url,
             open_resolver_window,
+            queue_intercepted_download,
             download_cancel,
             download_delete,
             downloads_clear,
@@ -1276,6 +1343,7 @@ pub fn run_installer() {
             content_enrich,
             artwork_url,
             open_resolver_window,
+            queue_intercepted_download,
             download_cancel,
             download_delete,
             downloads_clear,

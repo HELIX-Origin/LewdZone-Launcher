@@ -319,7 +319,14 @@ pub fn list_installed(ctx: &Context) -> Result<Vec<InstalledApp>, Error> {
                             apps.push(InstalledApp {
                                 slug: manifest.slug,
                                 post_id: manifest.post_id,
-                                title: manifest.title,
+                                title: {
+                                    let clean = clean_folder_title(&manifest.title);
+                                    if clean.is_empty() {
+                                        manifest.title
+                                    } else {
+                                        clean
+                                    }
+                                },
                                 version: manifest.version,
                                 platform: manifest.platform,
                                 tab: manifest.tab,
@@ -375,7 +382,14 @@ pub fn list_installed(ctx: &Context) -> Result<Vec<InstalledApp>, Error> {
                                     apps.push(InstalledApp {
                                         slug: manifest.slug,
                                         post_id: manifest.post_id,
-                                        title: manifest.title,
+                                        title: {
+                                            let clean = clean_folder_title(&manifest.title);
+                                            if clean.is_empty() {
+                                                manifest.title
+                                            } else {
+                                                clean
+                                            }
+                                        },
                                         version: manifest.version,
                                         platform: manifest.platform,
                                         tab: manifest.tab,
@@ -402,9 +416,24 @@ pub fn list_installed(ctx: &Context) -> Result<Vec<InstalledApp>, Error> {
     Ok(apps)
 }
 
-/// Clean folder name to isolate canonical game title.
-fn clean_folder_title(raw: &str) -> String {
-    let mut cleaned = raw.to_string();
+/// Strip archive extension from a filename or path stem.
+pub fn clean_archive_stem(file_name: &str) -> String {
+    let mut s = file_name.to_string();
+    let lower = s.to_lowercase();
+    for ext in &[
+        ".tar.gz", ".tar.bz2", ".tar.xz", ".tgz", ".tbz2", ".txz", ".zip", ".7z", ".rar", ".exe",
+    ] {
+        if lower.ends_with(ext) {
+            s.truncate(s.len() - ext.len());
+            break;
+        }
+    }
+    s
+}
+
+/// Clean folder name, archive name, or raw site title to isolate canonical game title.
+pub fn clean_folder_title(raw: &str) -> String {
+    let mut cleaned = clean_archive_stem(raw);
     while let Some(start) = cleaned.find('[') {
         if let Some(end) = cleaned[start..].find(']') {
             cleaned.replace_range(start..start + end + 1, " ");
@@ -430,6 +459,11 @@ fn clean_folder_title(raw: &str) -> String {
         cleaned.truncate(idx);
     } else if let Some(idx) = lower.find(" - v") {
         cleaned.truncate(idx);
+    } else if let Some(idx) = lower.find("-v") {
+        let rest = &lower[idx + 2..];
+        if rest.starts_with(|c: char| c.is_ascii_digit() || c == '.') {
+            cleaned.truncate(idx);
+        }
     } else if let Some(idx) = lower.find(" v") {
         let rest = &lower[idx + 2..];
         if rest.starts_with(|c: char| c.is_ascii_digit() || c == '.') {
@@ -439,7 +473,7 @@ fn clean_folder_title(raw: &str) -> String {
 
     // Strip trailing platform markers if present
     let lower_trim = cleaned.trim().to_lowercase();
-    for suffix in &[" - pc", " - mac", " - linux", " pc", " mac", " linux"] {
+    for suffix in &[" - pc", " - mac", " - linux", " pc", " mac", " linux", " - windows"] {
         if lower_trim.ends_with(suffix) {
             let new_len = cleaned.trim().len() - suffix.len();
             cleaned = cleaned.trim()[..new_len].to_string();
@@ -447,12 +481,18 @@ fn clean_folder_title(raw: &str) -> String {
         }
     }
 
-    cleaned
+    let result = cleaned
         .split_whitespace()
         .collect::<Vec<_>>()
         .join(" ")
         .trim()
-        .to_string()
+        .to_string();
+
+    if result.is_empty() {
+        raw.trim().to_string()
+    } else {
+        result
+    }
 }
 
 /// Check if an .exe file contains an embedded SFX archive (7z, RAR, or Zip).
@@ -496,19 +536,7 @@ pub fn is_supported_archive(path: &Path) -> bool {
         || (name.ends_with(".exe") && is_sfx_archive(path))
 }
 
-fn clean_archive_stem(file_name: &str) -> String {
-    let mut s = file_name.to_string();
-    let lower = s.to_lowercase();
-    for ext in &[
-        ".tar.gz", ".tar.bz2", ".tar.xz", ".tgz", ".tbz2", ".txz", ".zip", ".7z", ".rar", ".exe",
-    ] {
-        if lower.ends_with(ext) {
-            s.truncate(s.len() - ext.len());
-            break;
-        }
-    }
-    s
-}
+
 
 /// Extract clean title, version, and platform from an archive's filename.
 fn parse_archive_filename(file_name: &str) -> (String, String, String) {

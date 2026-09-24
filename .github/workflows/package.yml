@@ -64,28 +64,24 @@ jobs:
       - name: Install frontend dependencies
         run: npm ci
 
-      - name: Build Tauri release bundle
-        uses: tauri-apps/tauri-action@v0
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tagName: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || '' }}
-          releaseName: 'LewdZone Launcher ${{ github.ref_name }}'
-          releaseBody: 'See CHANGELOG.md for release details.'
-          releaseDraft: false
-          prerelease: false
+      - name: Build Modern Unified Installer
+        run: npm run build:installer
 
       - name: Upload installer artifacts
-        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.artifact-name }}
-          path: |
-            src-tauri/target/release/bundle/**/*.exe
-            src-tauri/target/release/bundle/**/*.msi
-            src-tauri/target/release/bundle/**/*.dmg
-            src-tauri/target/release/bundle/**/*.app
-            src-tauri/target/release/bundle/**/*.AppImage
-            src-tauri/target/release/bundle/**/*.deb
-            src-tauri/target/release/bundle/**/*.rpm
-          if-no-files-found: warn
+          path: dist/installer/*
+          if-no-files-found: error
+
+      - name: Attach installer to GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          name: 'LewdZone Launcher ${{ github.ref_name }}'
+          body: 'See CHANGELOG.md for release details.'
+          draft: false
+          prerelease: false
+          files: dist/installer/*

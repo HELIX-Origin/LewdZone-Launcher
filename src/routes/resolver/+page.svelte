@@ -86,6 +86,9 @@
       resolved = result;
       status = "resolved";
 
+      // Open the direct link in the default browser
+      await openExternal();
+
       // Auto-notify launcher of resolved URL
       try {
         await emit("download-url-resolved", {

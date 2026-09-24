@@ -6,6 +6,7 @@
   import { listen, type UnlistenFn } from "@tauri-apps/api/event";
   import { page } from "$app/state";
   import { goto } from "$app/navigation";
+  import { openUrl } from "@tauri-apps/plugin-opener";
   import MediaCarousel from "$lib/components/MediaCarousel.svelte";
 
   type LoadState = "loading" | "ready" | "error";
@@ -41,21 +42,6 @@
     rating?: number | null;
     versions: Version[];
     download_entries: DownloadEntry[];
-  }
-
-  interface Job {
-    id: number;
-    slug: string;
-    version: string;
-    platform: string;
-    tab: string;
-    source: string | null;
-    status: "queued" | "resolving" | "dispatching" | "downloading" | "dispatched" | "failed";
-    message: string | null;
-    bytes_done: number;
-    bytes_total: number;
-    created_at: number;
-    updated_at: number;
   }
 
   interface HostSource {
@@ -98,11 +84,67 @@
 
   let version = $state("latest");
   let tab = $state("official");
-  let activeDownloadEntry: DownloadEntry | null = $state(null);
-  let downloading = $state(false);
   let feedback = $state("");
+  let copiedLink = $state(false);
 
+  function parseGameMetadata(g: GameData | null) {
+    if (!g) return { title: "", state: "", version: "" };
+    let raw = g.title || "";
+    let state = "";
+    const bracketMatch = raw.match(/\[([^\]]+)\]/);
+    if (bracketMatch) {
+      state = bracketMatch[1].trim();
+    }
 
+    // Clean title
+    let title = raw;
+    while (title.includes("[") && title.includes("]")) {
+      title = title.replace(/\[[^\]]*\]/g, " ");
+    }
+    while (title.includes("(") && title.includes(")")) {
+      title = title.replace(/\([^)]*\)/g, " ");
+    }
+    title = title.replace(/_/g, " ");
+    title = title.replace(/\s*-\s*Version:?.*$/i, "");
+    title = title.replace(/\s+Version:?.*$/i, "");
+    title = title.replace(/\s*-\s*v\d+.*$/i, "");
+    title = title.replace(/\s*-\s*(PC|Mac|Linux|Android|Windows).*$/i, "");
+    title = title.replace(/\s+/g, " ").trim();
+    if (!title) title = g.slug;
+
+    // Clean version
+    let ver = g.current_version || "";
+    ver = ver.replace(/\([^)]*\)/g, "").replace(/^v/i, "").replace(/version:?/i, "").trim();
+
+    return {
+      title,
+      state: state || (g.current_version?.toLowerCase().includes("finished") ? "Finished" : ""),
+      version: ver,
+    };
+  }
+
+  const metaInfo = $derived(parseGameMetadata(game));
+
+  async function openExternalLink(url: string) {
+    try {
+      await openUrl(url);
+    } catch {
+      window.open(url, "_blank");
+    }
+  }
+
+  async function copyPageUrl() {
+    if (!game) return;
+    try {
+      await navigator.clipboard.writeText(`https://lewdzone.com/game/${game.slug}/`);
+      copiedLink = true;
+      setTimeout(() => {
+        copiedLink = false;
+      }, 2000);
+    } catch (e) {
+      console.warn("Clipboard failed:", e);
+    }
+  }
 
   const platformLabel: Record<string, string> = {
     pc: "Windows PC",
@@ -115,23 +157,34 @@
   let activeSlug = "";
   let inFlightSlug: string | null = null;
   let unlistenResolved: UnlistenFn | undefined;
+  let unlistenIntercepted: UnlistenFn | undefined;
 
   onMount(async () => {
     if (typeof window !== "undefined" && "__TAURI_INTERNALS__" in window) {
       try {
         unlistenResolved = await listen<{ slug: string; url: string }>(
           "download-url-resolved",
-          async (event) => {
+          (event) => {
             if (event.payload.slug === game?.slug) {
-              feedback = `Captured verified link: ${event.payload.url}. Starting download…`;
-              if (activeDownloadEntry) {
-                await queueDownload(activeDownloadEntry);
-              }
+              feedback = "Link verified and opened in browser.";
             }
           }
         );
       } catch (e) {
         console.warn("Could not attach download-url-resolved listener:", e);
+      }
+
+      try {
+        unlistenIntercepted = await listen<string>(
+          "archive-intercepted",
+          (event) => {
+            if (event.payload === game?.slug) {
+              feedback = "✓ Archive captured! Downloading in-app — check the Downloads tab for progress.";
+            }
+          }
+        );
+      } catch (e) {
+        console.warn("Could not attach archive-intercepted listener:", e);
       }
     }
   });
@@ -140,7 +193,11 @@
     if (unlistenResolved) {
       unlistenResolved();
     }
+    if (unlistenIntercepted) {
+      unlistenIntercepted();
+    }
   });
+
 
   async function load(targetSlug?: string) {
     const s = targetSlug !== undefined ? targetSlug : slug;
@@ -204,29 +261,8 @@
     });
   });
 
-  async function queueDownload(entry: DownloadEntry) {
-    if (!game) return;
-    downloading = true;
-    feedback = "";
-    try {
-      const job = await invoke<Job>("game_download", {
-        slug: game.slug,
-        version: currentVersionObj?.label ?? (version === "latest" ? "latest" : version),
-        platform: entry.platform ? entry.platform.toUpperCase() : "PC",
-        tab,
-        source: entry.host || null,
-      });
-      feedback = `Queued download #${job.id} (${formatHostName(entry.host)}). Watch the Downloads page for progress.`;
-    } catch (err) {
-      feedback = `Download failed: ${String(err)}`;
-    } finally {
-      downloading = false;
-    }
-  }
-
   async function startDirectEntryDownload(entry: DownloadEntry) {
     if (!game) return;
-    activeDownloadEntry = entry;
     feedback = `Opening secure resolver for ${entry.label} (${formatHostName(entry.host)})…`;
     try {
       await invoke("open_resolver_window", {
@@ -435,14 +471,16 @@
         Back to Store
       </button>
       <div class="hero-meta">
-        <h1>{game.title}</h1>
+        <div class="title-status-line">
+          <h1>{metaInfo.title}</h1>
+          {#if metaInfo.state}
+            <span class="status-badge {metaInfo.state.toLowerCase()}">{metaInfo.state}</span>
+          {/if}
+        </div>
         <div class="meta-row">
           {#if game.developer}<span>by {game.developer}</span>{/if}
-          {#if game.current_version}<span>v{game.current_version}</span>{/if}
+          {#if metaInfo.version}<span>v{metaInfo.version}</span>{/if}
           {#if game.engine}<span>{game.engine}</span>{/if}
-          {#if game.size_label}<span>{game.size_label}</span>{/if}
-          {#if game.censorship}<span>{game.censorship}</span>{/if}
-          {#if typeof game.rating === "number" && game.rating > 0}<span>★ {game.rating.toFixed(1)}</span>{/if}
         </div>
         <div class="genre-row">
           {#each game.genres as genre (genre)}
@@ -452,98 +490,220 @@
       </div>
     </div>
 
-    {#if game.description}
-      <p class="desc">{game.description}</p>
-    {/if}
-
-    <!-- Preview Carousel Section -->
-    <!-- Shared Artwork & Media Carousel (Up to 10 Images) -->
-    <MediaCarousel title={game.title} screenshots={game.screenshots} />
-
-    <!-- LewdZone-Style Downloads Section -->
-    <div class="dl-panel">
-      <div class="dl-header-row">
-        <h2>Download Game</h2>
-        {#if availableVersions.length > 1}
-          <div class="version-select-box">
-            <label for="version-select">Choose Version:</label>
-            <select id="version-select" bind:value={version}>
-              {#each availableVersions as v (v.label)}
-                <option value={v.label}>{v.label}{v.is_latest ? " (Latest)" : ""}</option>
-              {/each}
-            </select>
-          </div>
-        {:else if availableVersions.length === 1}
-          <div class="version-badge">
-            <span class="version-label">Version:</span>
-            <span class="version-value">{availableVersions[0].label}</span>
+    <!-- 2-Column Store Layout -->
+    <div class="game-content-layout">
+      <!-- Left Column: Main Content -->
+      <div class="main-column">
+        {#if game.description}
+          <div class="about-card">
+            <h3>About This Game</h3>
+            <p class="desc">{game.description}</p>
           </div>
         {/if}
+
+        <!-- Shared Artwork & Media Carousel (Up to 10 Images) -->
+        <MediaCarousel title={metaInfo.title} screenshots={game.screenshots} />
+
+        <!-- LewdZone-Style Downloads Section -->
+        <div class="dl-panel">
+          <div class="dl-header-row">
+            <h2>Download Game</h2>
+            {#if availableVersions.length > 1}
+              <div class="version-select-box">
+                <label for="version-select">Choose Version:</label>
+                <select id="version-select" bind:value={version}>
+                  {#each availableVersions as v (v.label)}
+                    <option value={v.label}>{v.label}{v.is_latest ? " (Latest)" : ""}</option>
+                  {/each}
+                </select>
+              </div>
+            {:else if availableVersions.length === 1}
+              <div class="version-badge">
+                <span class="version-label">Version:</span>
+                <span class="version-value">{availableVersions[0].label}</span>
+              </div>
+            {/if}
+          </div>
+
+          <!-- Official vs Community Tabs -->
+          <div class="tab-pills" role="tablist">
+            <button
+              class="tab-pill"
+              class:active={tab === "official"}
+              onclick={() => { tab = "official"; }}
+              role="tab"
+              aria-selected={tab === "official"}
+            >
+              Official Links ({currentVersionObj?.official?.filter((e) => isSupportedHost(e.host))?.length ?? 0})
+            </button>
+            {#if (currentVersionObj?.community?.filter((e) => isSupportedHost(e.host))?.length ?? 0) > 0}
+              <button
+                class="tab-pill"
+                class:active={tab === "community"}
+                onclick={() => { tab = "community"; }}
+                role="tab"
+                aria-selected={tab === "community"}
+              >
+                Community Links ({currentVersionObj?.community?.filter((e) => isSupportedHost(e.host))?.length ?? 0})
+              </button>
+            {/if}
+          </div>
+
+          {#if feedback}
+            <p class="feedback" role="status">{feedback}</p>
+          {/if}
+
+          <!-- LewdZone Grouped Per-Source Download Buttons -->
+          <div class="lz-downloads-container">
+            <h3>Available Download Sources ({tab === "official" ? "Official" : "Community"})</h3>
+            {#if activeDownloadGroups.length === 0}
+              <p class="empty-sources-notice">No supported download links available for this version and tab.</p>
+            {:else}
+              <div class="lz-groups-list">
+                {#each activeDownloadGroups as group (group.platform + group.variant)}
+                  <div class="lz-group-card">
+                    <div class="lz-group-header">
+                      <span class="group-platform-tag">{group.platform}</span>
+                      {#if group.variant && group.variant !== "Standard"}
+                        <span class="group-variant-tag">{group.variant}</span>
+                      {/if}
+                    </div>
+                    <div class="lz-source-buttons">
+                      {#each group.entries as entry (entry.go_link + entry.host)}
+                        <button
+                          class="lz-source-btn"
+                          onclick={() => startDirectEntryDownload(entry)}
+                          title={`Download via ${formatHostName(entry.host)}`}
+                          aria-label={`Download via ${formatHostName(entry.host)}`}
+                        >
+                          <span class="provider-icon">
+                            {@html getHostIcon(entry.host)}
+                          </span>
+                          <span class="host-text">{formatHostName(entry.host)}</span>
+                        </button>
+                      {/each}
+                    </div>
+                  </div>
+                {/each}
+              </div>
+            {/if}
+          </div>
+        </div>
       </div>
 
-      <!-- Official vs Community Tabs -->
-      <div class="tab-pills" role="tablist">
-        <button
-          class="tab-pill"
-          class:active={tab === "official"}
-          onclick={() => { tab = "official"; }}
-          role="tab"
-          aria-selected={tab === "official"}
-        >
-          Official Links ({currentVersionObj?.official?.filter((e) => isSupportedHost(e.host))?.length ?? 0})
-        </button>
-        {#if (currentVersionObj?.community?.filter((e) => isSupportedHost(e.host))?.length ?? 0) > 0}
-          <button
-            class="tab-pill"
-            class:active={tab === "community"}
-            onclick={() => { tab = "community"; }}
-            role="tab"
-            aria-selected={tab === "community"}
-          >
-            Community Links ({currentVersionObj?.community?.filter((e) => isSupportedHost(e.host))?.length ?? 0})
-          </button>
-        {/if}
-      </div>
+      <!-- Right Column: Metadata & Links Card -->
+      <aside class="sidebar-column">
+        <div class="metadata-card">
+          <div class="card-header">
+            <h3>Game Information</h3>
+          </div>
 
-      {#if feedback}
-        <p class="feedback" role="status">{feedback}</p>
-      {/if}
+          <div class="meta-data-table">
+            {#if metaInfo.state}
+              <div class="meta-entry">
+                <span class="entry-label">Status</span>
+                <span class="status-pill {metaInfo.state.toLowerCase()}">{metaInfo.state}</span>
+              </div>
+            {/if}
 
-      <!-- LewdZone Grouped Per-Source Download Buttons -->
-      <div class="lz-downloads-container">
-        <h3>Available Download Sources ({tab === "official" ? "Official" : "Community"})</h3>
-        {#if activeDownloadGroups.length === 0}
-          <p class="empty-sources-notice">No supported download links available for this version and tab.</p>
-        {:else}
-          <div class="lz-groups-list">
-            {#each activeDownloadGroups as group (group.platform + group.variant)}
-              <div class="lz-group-card">
-                <div class="lz-group-header">
-                  <span class="group-platform-tag">{group.platform}</span>
-                  {#if group.variant && group.variant !== "Standard"}
-                    <span class="group-variant-tag">{group.variant}</span>
-                  {/if}
-                </div>
-                <div class="lz-source-buttons">
-                  {#each group.entries as entry (entry.go_link + entry.host)}
-                    <button
-                      class="lz-source-btn"
-                      onclick={() => startDirectEntryDownload(entry)}
-                      title={`Download via ${formatHostName(entry.host)}`}
-                      aria-label={`Download via ${formatHostName(entry.host)}`}
-                    >
-                      <span class="provider-icon">
-                        {@html getHostIcon(entry.host)}
-                      </span>
-                      <span class="host-text">{formatHostName(entry.host)}</span>
-                    </button>
+            {#if game.developer}
+              <div class="meta-entry">
+                <span class="entry-label">Developer</span>
+                <span class="entry-value highlight">{game.developer}</span>
+              </div>
+            {/if}
+
+            {#if metaInfo.version}
+              <div class="meta-entry">
+                <span class="entry-label">Version</span>
+                <span class="entry-value">v{metaInfo.version}</span>
+              </div>
+            {/if}
+
+            {#if game.engine}
+              <div class="meta-entry">
+                <span class="entry-label">Engine</span>
+                <span class="entry-value">{game.engine}</span>
+              </div>
+            {/if}
+
+            {#if game.size_label}
+              <div class="meta-entry">
+                <span class="entry-label">File Size</span>
+                <span class="entry-value">{game.size_label}</span>
+              </div>
+            {/if}
+
+            {#if game.censorship}
+              <div class="meta-entry">
+                <span class="entry-label">Censorship</span>
+                <span class="entry-value">{game.censorship}</span>
+              </div>
+            {/if}
+
+            {#if typeof game.rating === "number" && game.rating > 0}
+              <div class="meta-entry">
+                <span class="entry-label">User Rating</span>
+                <span class="entry-value rating">★ {game.rating.toFixed(1)} / 5</span>
+              </div>
+            {/if}
+
+            {#if game.platforms && game.platforms.length > 0}
+              <div class="meta-entry">
+                <span class="entry-label">Platforms</span>
+                <div class="platform-tags">
+                  {#each game.platforms as p}
+                    <span class="platform-tag">{platformLabel[p.toLowerCase()] ?? p}</span>
                   {/each}
                 </div>
               </div>
-            {/each}
+            {/if}
           </div>
-        {/if}
-      </div>
+
+          <div class="card-divider"></div>
+
+          <div class="card-header">
+            <h3>Metadata & Links</h3>
+          </div>
+
+          <div class="meta-links-group">
+            <button class="ext-link-btn primary" onclick={() => openExternalLink(`https://lewdzone.com/game/${game?.slug}/`)}>
+              <span class="link-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+              </span>
+              <span>View on LewdZone</span>
+            </button>
+
+            <button class="ext-link-btn" onclick={() => openExternalLink(`https://vndb.org/v?q=${encodeURIComponent(metaInfo.title)}`)}>
+              <span class="link-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              </span>
+              <span>Search on VNDB</span>
+            </button>
+
+            <button class="ext-link-btn" onclick={() => openExternalLink(`https://store.steampowered.com/search/?term=${encodeURIComponent(metaInfo.title)}`)}>
+              <span class="link-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m10 15 5-3-5-3v6Z"/></svg>
+              </span>
+              <span>Search on Steam</span>
+            </button>
+
+            <button class="ext-link-btn" onclick={() => openExternalLink(`https://itch.io/search?q=${encodeURIComponent(metaInfo.title)}`)}>
+              <span class="link-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M10 10l4 2-4 2v-4z"/></svg>
+              </span>
+              <span>Search on itch.io</span>
+            </button>
+
+            <button class="ext-link-btn copy" onclick={copyPageUrl}>
+              <span class="link-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+              </span>
+              <span>{copiedLink ? "Link Copied!" : "Copy Page URL"}</span>
+            </button>
+          </div>
+        </div>
+      </aside>
     </div>
   {/if}
 </div>
@@ -551,8 +711,229 @@
 <style>
   .detail {
     padding: var(--lz-gap);
-    max-width: 960px;
+    max-width: 1200px;
     margin: 0 auto;
+  }
+
+  .title-status-line {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 6px;
+  }
+
+  .title-status-line h1 {
+    margin: 0;
+  }
+
+  .status-badge {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 3px 10px;
+    border-radius: 6px;
+    background: rgba(0, 238, 255, 0.16);
+    color: #00eeff;
+    border: 1px solid rgba(0, 238, 255, 0.35);
+  }
+
+  .status-badge.finished {
+    background: rgba(46, 204, 113, 0.16);
+    color: #2ecc71;
+    border-color: rgba(46, 204, 113, 0.35);
+  }
+
+  .game-content-layout {
+    display: grid;
+    grid-template-columns: 1fr 320px;
+    gap: 20px;
+    margin-top: var(--lz-gap);
+    align-items: start;
+  }
+
+  @media (max-width: 960px) {
+    .game-content-layout {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .main-column {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--lz-gap);
+  }
+
+  .sidebar-column {
+    min-width: 0;
+  }
+
+  .about-card {
+    background: var(--lz-surface);
+    border: 1px solid var(--lz-surface-2);
+    border-radius: var(--lz-radius);
+    padding: var(--lz-gap);
+  }
+
+  .about-card h3 {
+    margin: 0 0 10px;
+    font-size: 15px;
+    color: var(--lz-text);
+  }
+
+  .about-card .desc {
+    margin: 0;
+  }
+
+  .metadata-card {
+    background: var(--lz-surface);
+    border: 1px solid var(--lz-surface-2);
+    border-radius: var(--lz-radius);
+    padding: 16px;
+    position: sticky;
+    top: 16px;
+  }
+
+  .card-header h3 {
+    margin: 0 0 12px;
+    font-size: 13px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    color: var(--lz-cyan);
+  }
+
+  .meta-data-table {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .meta-entry {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 13px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  }
+
+  .meta-entry:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+  }
+
+  .entry-label {
+    color: var(--lz-text-dim);
+    font-size: 12px;
+  }
+
+  .entry-value {
+    color: var(--lz-text);
+    font-weight: 600;
+    text-align: right;
+  }
+
+  .entry-value.highlight {
+    color: var(--lz-cyan);
+  }
+
+  .entry-value.rating {
+    color: #ffb800;
+  }
+
+  .status-pill {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 2px 8px;
+    border-radius: 4px;
+    background: rgba(0, 238, 255, 0.15);
+    color: #00eeff;
+    border: 1px solid rgba(0, 238, 255, 0.3);
+  }
+
+  .status-pill.finished {
+    background: rgba(46, 204, 113, 0.15);
+    color: #2ecc71;
+    border-color: rgba(46, 204, 113, 0.3);
+  }
+
+  .platform-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    justify-content: flex-end;
+  }
+
+  .platform-tag {
+    font-size: 11px;
+    background: var(--lz-surface-2);
+    padding: 2px 6px;
+    border-radius: 4px;
+    color: var(--lz-text-dim);
+  }
+
+  .card-divider {
+    height: 1px;
+    background: var(--lz-border);
+    margin: 16px 0;
+  }
+
+  .meta-links-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .ext-link-btn {
+    appearance: none;
+    border: 1px solid var(--lz-border);
+    background: var(--lz-surface-2);
+    color: var(--lz-text);
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: background 0.15s, border-color 0.15s, transform 0.1s;
+    width: 100%;
+    text-align: left;
+  }
+
+  .ext-link-btn:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: var(--lz-cyan);
+    transform: translateY(-1px);
+  }
+
+  .ext-link-btn.primary {
+    background: rgba(0, 238, 255, 0.12);
+    border-color: rgba(0, 238, 255, 0.35);
+    color: #00eeff;
+  }
+
+  .ext-link-btn.primary:hover {
+    background: rgba(0, 238, 255, 0.2);
+    border-color: #00eeff;
+  }
+
+  .link-icon svg {
+    width: 14px;
+    height: 14px;
+    display: block;
+  }
+
+  .desc {
+    color: var(--lz-text-dim);
+    line-height: 1.5;
+    margin: var(--lz-gap) 0;
   }
 
   .hero {
