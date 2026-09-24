@@ -12,19 +12,6 @@ the top; the current development state lives under `Unreleased`.
 
 ---
 
-## [v0.2.2](https://github.com/HELIX-Origin/LewdZone-Launcher/releases/tag/v0.2.2) — 2026-09-24
-
-Patch release fixing game artwork display in the Library and Favorites views, implementing robust SQLite thumbnail caching fallbacks and re-enabling SteamGridDB provider artwork fetching.
-
-### 🐛 Bug Fixes
-
-- **Library Artwork Display:** Fixed missing cover artwork in the Library view by exposing `thumb_url` on `LibraryGame`, querying SQLite for cached thumbnails by `slug` or `post_id`, and rendering them properly in the Svelte view with `convertFileSrc` support.
-- **Favorites Artwork Display:** Resolved artwork in Favorites by passing `thumb_url` into the `artwork_url` Tauri command and adding direct fallback to `game.thumb_url` in Svelte templates.
-- **SQLite Artwork Fallback in Rust Core:** Updated `artwork_url` in the Tauri core to query SQLite `thumbnail_by_slug` and `thumbnail_by_post_id` when the requested `card.thumb_url` is absent.
-- **SteamGridDB Provider Re-enabled:** Implemented the `Provider` trait for `SteamGridDb`, querying SteamGridDB's grids API using the SQLite-stored API key and caching downloaded grid artwork to disk and the `artwork_cache` table.
-
----
-
 ## [v0.2.1](https://github.com/HELIX-Origin/LewdZone-Launcher/releases/tag/v0.2.1) — 2026-09-24
 
 Patch release fixing cross-platform CI packaging builds for Linux and macOS, aligning workflow configuration with the official Tauri v2 GitHub Actions guide, and adding SteamGridDB API key settings persistence to the SQLite secret table.
