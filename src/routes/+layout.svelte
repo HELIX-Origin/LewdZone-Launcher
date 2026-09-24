@@ -53,11 +53,7 @@
       id: "file",
       label: "File",
       items: [
-        { label: "Store", action: () => goto("/store") },
-        { label: "Favorites", action: () => goto("/favorites") },
-        { label: "Library", action: () => goto("/library") },
         { label: "Settings", action: () => goto("/settings") },
-        { label: "Minimize to Tray", action: () => getCurrentWindow().hide() },
         { label: "Quit", action: quitApp },
       ],
     },

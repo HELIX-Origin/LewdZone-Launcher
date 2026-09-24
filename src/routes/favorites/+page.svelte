@@ -159,8 +159,8 @@
             <div class="tile-cover">
               <button
                 class="cover-btn"
-                onclick={() => goto(`/store/${game.slug}`)}
-                aria-label={`Open ${game.title} in the Store`}
+                onclick={() => goto(`/library/${game.slug}`)}
+                aria-label={`Open details for ${game.title}`}
               >
                 <div class="cover">
                   {#if coverUrls[game.slug]}
@@ -189,8 +189,8 @@
             </div>
             <button
               class="tile-title-btn"
-              onclick={() => goto(`/store/${game.slug}`)}
-              aria-label={`Open ${game.title} in the Store`}
+              onclick={() => goto(`/library/${game.slug}`)}
+              aria-label={`Open details for ${game.title}`}
             >
               {game.title}
             </button>

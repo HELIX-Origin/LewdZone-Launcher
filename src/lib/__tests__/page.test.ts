@@ -26,11 +26,15 @@ vi.mock("@tauri-apps/api/window", () => {
   return { getCurrentWindow: vi.fn(() => win) };
 });
 
+import { goto } from "$app/navigation";
+import { page } from "$app/state";
+
 import Layout from "../../routes/+layout.svelte";
 import SettingsPage from "../../routes/settings/+page.svelte";
 import StorePage from "../../routes/store/+page.svelte";
 import GamePage from "../../routes/store/[slug]/+page.svelte";
 import LibraryPage from "../../routes/library/+page.svelte";
+import InstalledGamePage from "../../routes/library/[slug]/+page.svelte";
 import FavoritesPage from "../../routes/favorites/+page.svelte";
 import DownloadsPage from "../../routes/downloads/+page.svelte";
 
@@ -365,14 +369,12 @@ describe("library page", () => {
     render(LibraryPage);
     expect(await screen.findByText("Wild Life")).toBeInTheDocument();
     expect(screen.getByText("Treasure of Nadia")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Launch Wild Life/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /View details for Wild Life/ })).toBeInTheDocument();
   });
 
-  it("invokes game_launch when the Launch button is clicked", async () => {
+  it("navigates to installed game details when the card is clicked", async () => {
     const user = userEvent.setup();
-    const invocations: Array<{ cmd: string; args?: InvokeArgs }> = [];
-    mockInvoke(async (cmd: string, args?: InvokeArgs) => {
-      invocations.push({ cmd, args });
+    mockInvoke(async (cmd: string) => {
       if (cmd === "library_list") {
         return {
           root: "/fake/library",
@@ -398,9 +400,9 @@ describe("library page", () => {
       return [];
     });
     render(LibraryPage);
-    const btn = await screen.findByRole("button", { name: /Launch Wild Life/ });
-    await user.click(btn);
-    expect(invocations.some((i) => i.cmd === "game_launch" && i.args?.slug === "wild-life")).toBe(true);
+    const card = await screen.findByRole("button", { name: /View details for Wild Life/ });
+    await user.click(card);
+    expect(goto).toHaveBeenCalledWith("/library/wild-life");
   });
 
   it("shows a heart button on each installed game", async () => {
@@ -469,7 +471,8 @@ describe("library page", () => {
     expect(invocations.some((i) => i.cmd === "favorite_add" && i.args?.slug === "wild-life")).toBe(true);
   });
 
-  it("renders a desktop shortcut button and invokes create_shortcut", async () => {
+  it("renders an installed game page with launch and manage buttons, invoking create_shortcut", async () => {
+    (page as { url: URL }).url = new URL("http://localhost/library/wild-life");
     const user = userEvent.setup();
     const invocations: Array<{ cmd: string; args?: InvokeArgs }> = [];
     mockInvoke(async (cmd: string, args?: InvokeArgs) => {
@@ -496,12 +499,17 @@ describe("library page", () => {
         };
       }
       if (cmd === "favorites_list") return [];
+      if (cmd === "game_page") return sampleGameData;
+      if (cmd === "content_enrich") return { description: null, developer: null, rating: null, tags: [], screenshots: [], genres: [] };
+      if (cmd === "artwork_url") return null;
       if (cmd === "create_shortcut") return "/fake/Desktop/Wild Life.lnk";
       return [];
     });
-    render(LibraryPage);
-    const shortcutBtn = await screen.findByRole("button", { name: "Create shortcut for Wild Life" });
-    expect(shortcutBtn).toBeInTheDocument();
+    render(InstalledGamePage);
+    expect(await screen.findByRole("button", { name: "Play Wild Life" })).toBeInTheDocument();
+    const manageBtn = await screen.findByRole("button", { name: /Manage/ });
+    await user.click(manageBtn);
+    const shortcutBtn = await screen.findByRole("menuitem", { name: "Create Shortcut" });
     await user.click(shortcutBtn);
     expect(invocations.some((i) => i.cmd === "create_shortcut" && i.args?.slug === "wild-life")).toBe(true);
   });

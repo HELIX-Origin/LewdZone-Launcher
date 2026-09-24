@@ -508,6 +508,70 @@ fn game_launch(state: tauri::State<'_, AppState>, slug: String) -> Result<(), St
     Ok(())
 }
 
+/// Open an installed game's directory in the native file manager.
+#[tauri::command]
+fn open_game_folder(state: tauri::State<'_, AppState>, slug: String) -> Result<(), String> {
+    let ctx = state
+        .context
+        .lock()
+        .map_err(|_| "state lock poisoned".to_string())?;
+    let listing = crate::core::list::library_listing(&ctx).map_err(|e| e.to_string())?;
+    if let Some(game) = listing.games.into_iter().find(|g| g.slug == slug) {
+        let path = std::path::PathBuf::from(&game.install_path);
+        if path.exists() {
+            #[cfg(target_os = "windows")]
+            {
+                std::process::Command::new("explorer")
+                    .arg(&path)
+                    .spawn()
+                    .map_err(|e| e.to_string())?;
+                return Ok(());
+            }
+            #[cfg(target_os = "macos")]
+            {
+                std::process::Command::new("open")
+                    .arg(&path)
+                    .spawn()
+                    .map_err(|e| e.to_string())?;
+                return Ok(());
+            }
+            #[cfg(all(unix, not(target_os = "macos")))]
+            {
+                std::process::Command::new("xdg-open")
+                    .arg(&path)
+                    .spawn()
+                    .map_err(|e| e.to_string())?;
+                return Ok(());
+            }
+        }
+    }
+    Err("Game install folder not found".to_string())
+}
+
+/// Uninstall an installed game by deleting its install directory and manifest.
+#[tauri::command]
+fn uninstall_game(state: tauri::State<'_, AppState>, slug: String) -> Result<(), String> {
+    let ctx = state
+        .context
+        .lock()
+        .map_err(|_| "state lock poisoned".to_string())?;
+    let listing = crate::core::list::library_listing(&ctx).map_err(|e| e.to_string())?;
+    if let Some(game) = listing.games.into_iter().find(|g| g.slug == slug) {
+        let path = std::path::PathBuf::from(&game.install_path);
+        if path.exists() {
+            let _ = std::fs::remove_dir_all(&path);
+        }
+        if let Ok(lz_root) = crate::core::folder::lzapps_root(&ctx) {
+            let manifest_dir = lz_root.join(&slug);
+            if manifest_dir.exists() {
+                let _ = std::fs::remove_dir_all(&manifest_dir);
+            }
+        }
+        return Ok(());
+    }
+    Err("Game not found in library".to_string())
+}
+
 /// Best-effort enrichment for a game card from external content providers.
 #[tauri::command]
 fn content_enrich(
@@ -1101,7 +1165,9 @@ pub fn run() {
             installer_disk_space,
             installer_install,
             installer_uninstall,
-            open_installer_window
+            open_installer_window,
+            open_game_folder,
+            uninstall_game
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
@@ -1185,7 +1251,9 @@ pub fn run_installer() {
             installer_disk_space,
             installer_install,
             installer_uninstall,
-            open_installer_window
+            open_installer_window,
+            open_game_folder,
+            uninstall_game
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri installer application");

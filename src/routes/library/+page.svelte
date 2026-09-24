@@ -2,6 +2,7 @@
 
 <script lang="ts">
   import { onMount } from "svelte";
+  import { goto } from "$app/navigation";
   import { invoke, convertFileSrc } from "@tauri-apps/api/core";
 
   type LoadState = "loading" | "ready" | "error";
@@ -38,7 +39,6 @@
   let error = $state("");
   let games: LibraryGame[] = $state([]);
   let root: string | null = $state(null);
-  let launching = $state<Record<string, boolean>>({});
   let coverUrls: Record<string, string | null> = $state({});
   let favorites: Record<string, boolean> = $state({});
   let togglingFavorite = $state<Record<string, boolean>>({});
@@ -206,35 +206,6 @@
     );
   }
 
-  async function launch(game: LibraryGame) {
-    launching[game.slug] = true;
-    try {
-      await invoke("game_launch", { slug: game.slug });
-    } catch (err) {
-      error = String(err);
-    } finally {
-      launching[game.slug] = false;
-    }
-  }
-
-  let creatingShortcut = $state<Record<string, boolean>>({});
-  let shortcutToast = $state<string | null>(null);
-
-  async function makeShortcut(game: LibraryGame) {
-    creatingShortcut[game.slug] = true;
-    try {
-      await invoke<string>("create_shortcut", { slug: game.slug });
-      shortcutToast = `Created shortcut for ${game.title}`;
-      setTimeout(() => {
-        if (shortcutToast?.includes(game.title)) shortcutToast = null;
-      }, 4000);
-    } catch (err) {
-      error = `Failed to create shortcut: ${err}`;
-    } finally {
-      creatingShortcut[game.slug] = false;
-    }
-  }
-
   async function toggleFavorite(game: LibraryGame) {
     if (togglingFavorite[game.slug]) return;
     togglingFavorite[game.slug] = true;
@@ -282,6 +253,10 @@
     } finally {
       scanning = false;
     }
+  }
+
+  function openDetails(slug: string) {
+    goto(`/library/${slug}`);
   }
 
   onMount(() => {
@@ -339,13 +314,6 @@
       </div>
     {/if}
 
-    {#if shortcutToast}
-      <div class="shortcut-toast" role="status">
-        <span>{shortcutToast}</span>
-        <button type="button" class="toast-close" onclick={() => (shortcutToast = null)} aria-label="Dismiss">×</button>
-      </div>
-    {/if}
-
     {#if games.length === 0}
       <p class="note">
         Nothing installed yet. Pick a game in the Store and download it — it will
@@ -354,7 +322,26 @@
     {:else}
       <div class="grid" role="list">
         {#each sortedGames as game (game.slug)}
-          <div class="tile" role="listitem" title={game.install_path}>
+          <div
+            class="tile"
+            role="button"
+            tabindex="0"
+            aria-label={`View details for ${game.title}`}
+            title={`View details for ${game.title}`}
+            onclick={(e) => {
+              const target = e.target as HTMLElement | null;
+              if (target?.closest(".heart-btn")) return;
+              openDetails(game.slug);
+            }}
+            onkeydown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                const target = e.target as HTMLElement | null;
+                if (target?.closest(".heart-btn")) return;
+                e.preventDefault();
+                openDetails(game.slug);
+              }
+            }}
+          >
             <div class="tile-cover">
               <div
                 class="icon"
@@ -372,7 +359,10 @@
               <button
                 class="heart-btn"
                 class:filled={favorites[game.slug]}
-                onclick={() => toggleFavorite(game)}
+                onclick={(e) => {
+                  e.stopPropagation();
+                  toggleFavorite(game);
+                }}
                 disabled={togglingFavorite[game.slug]}
                 aria-label={favorites[game.slug]
                   ? `Remove ${game.title} from favorites`
@@ -399,29 +389,6 @@
                   <span class="meta-dot">·</span>
                   <span class="last-played" title={game.last_played_at}>Played {formatLastPlayed(game.last_played_at)}</span>
                 {/if}
-              </div>
-              <div class="btn-row">
-                <button
-                  class="launch-btn"
-                  onclick={() => launch(game)}
-                  disabled={launching[game.slug]}
-                  aria-label={`Launch ${game.title}`}
-                >
-                  {launching[game.slug] ? "Launching…" : "Launch"}
-                </button>
-                <button
-                  class="shortcut-btn"
-                  onclick={() => makeShortcut(game)}
-                  disabled={creatingShortcut[game.slug]}
-                  title="Create Desktop / Start menu shortcut"
-                  aria-label={`Create shortcut for ${game.title}`}
-                >
-                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
-                    <polyline points="15 3 21 3 21 9"></polyline>
-                    <line x1="10" y1="14" x2="21" y2="3"></line>
-                  </svg>
-                </button>
               </div>
             </div>
           </div>
@@ -579,6 +546,7 @@
     overflow: hidden;
     display: flex;
     flex-direction: column;
+    cursor: pointer;
   }
 
   .tile-cover {
@@ -702,71 +670,6 @@
     color: var(--lz-text-dim);
   }
 
-  .btn-row {
-    display: flex;
-    gap: 6px;
-    margin-top: 4px;
-  }
-
-  .launch-btn {
-    flex: 1;
-    padding: 6px 10px;
-    border: none;
-    border-radius: var(--lz-radius);
-    background: var(--lz-primary);
-    color: var(--lz-bg);
-    font-weight: 600;
-    font-size: 12px;
-    cursor: pointer;
-    transition: opacity 0.15s ease;
-  }
-
-  .launch-btn:hover:not(:disabled) {
-    opacity: 0.85;
-  }
-
-  .launch-btn:disabled {
-    opacity: 0.6;
-    cursor: default;
-  }
-
-  .shortcut-btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    padding: 6px 9px;
-    border: 1px solid var(--lz-border);
-    border-radius: var(--lz-radius);
-    background: var(--lz-surface-2);
-    color: var(--lz-text-dim);
-    cursor: pointer;
-    transition: all 0.15s ease;
-  }
-
-  .shortcut-btn:hover:not(:disabled) {
-    color: var(--lz-cyan);
-    border-color: var(--lz-cyan);
-    background: var(--lz-surface);
-  }
-
-  .shortcut-btn:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
-
-  .shortcut-toast {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    padding: 10px 14px;
-    margin-bottom: var(--lz-gap);
-    background: var(--lz-surface-2);
-    border: 1px solid var(--lz-cyan);
-    border-radius: var(--lz-radius);
-    font-size: 13px;
-    color: var(--lz-text);
-  }
 
   .note {
     color: var(--lz-text-dim);
