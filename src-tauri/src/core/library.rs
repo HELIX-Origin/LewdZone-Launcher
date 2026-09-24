@@ -239,6 +239,9 @@ pub struct InstalledApp {
     pub launch_exe: String,
     pub installed_at: Option<String>,
     pub size_on_disk: u64,
+    pub playtime_seconds: i64,
+    pub play_count: i64,
+    pub last_played_at: Option<String>,
 }
 
 /// Result summary of scanning an extracted games directory.
@@ -267,6 +270,18 @@ pub fn list_installed(ctx: &Context) -> Result<Vec<InstalledApp>, Error> {
     let mut apps = Vec::new();
     let mut seen_slugs = std::collections::HashSet::new();
 
+    let stats_map: std::collections::HashMap<String, crate::db::repo::GameStats> =
+        if let Ok(conn) = crate::db::open(&ctx.db_path) {
+            let _ = crate::db::migrate(&conn);
+            crate::db::repo::game_stats_all(&conn)
+                .unwrap_or_default()
+                .into_iter()
+                .map(|s| (s.slug.clone(), s))
+                .collect()
+        } else {
+            std::collections::HashMap::new()
+        };
+
     for root in roots {
         let Ok(entries) = fs::read_dir(&root) else {
             continue;
@@ -293,6 +308,14 @@ pub fn list_installed(ctx: &Context) -> Result<Vec<InstalledApp>, Error> {
                                 path.clone()
                             };
 
+                            let stats = stats_map.get(&manifest.slug);
+                            let (playtime_seconds, play_count, last_played_at) = match stats {
+                                Some(s) => {
+                                    (s.playtime_seconds, s.play_count, s.last_played_at.clone())
+                                }
+                                None => (0, 0, None),
+                            };
+
                             apps.push(InstalledApp {
                                 slug: manifest.slug,
                                 post_id: manifest.post_id,
@@ -306,6 +329,9 @@ pub fn list_installed(ctx: &Context) -> Result<Vec<InstalledApp>, Error> {
                                 launch_exe: manifest.launch_exe,
                                 installed_at: Some(manifest.installed_at),
                                 size_on_disk: dir_size(&install_path).unwrap_or(0),
+                                playtime_seconds,
+                                play_count,
+                                last_played_at,
                             });
                         }
                     }
@@ -335,6 +361,17 @@ pub fn list_installed(ctx: &Context) -> Result<Vec<InstalledApp>, Error> {
                                         sub_path.clone()
                                     };
 
+                                    let stats = stats_map.get(&manifest.slug);
+                                    let (playtime_seconds, play_count, last_played_at) = match stats
+                                    {
+                                        Some(s) => (
+                                            s.playtime_seconds,
+                                            s.play_count,
+                                            s.last_played_at.clone(),
+                                        ),
+                                        None => (0, 0, None),
+                                    };
+
                                     apps.push(InstalledApp {
                                         slug: manifest.slug,
                                         post_id: manifest.post_id,
@@ -348,6 +385,9 @@ pub fn list_installed(ctx: &Context) -> Result<Vec<InstalledApp>, Error> {
                                         launch_exe: manifest.launch_exe,
                                         installed_at: Some(manifest.installed_at),
                                         size_on_disk: dir_size(&install_path).unwrap_or(0),
+                                        playtime_seconds,
+                                        play_count,
+                                        last_played_at,
                                     });
                                 }
                             }

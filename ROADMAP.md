@@ -27,14 +27,15 @@ machine output).
 
 ```mermaid
 flowchart TD
-    ROAD["🗺️ Roadmap Issue #1"]
+    ROAD["🗺️ Roadmap Issue #7"]
     ROAD --> M1["Milestone v0.1.0: Core Launcher & CLI"]
-    ROAD --> M2["Milestone v0.2.0: CI/CD Packaging & Shortcuts"]
+    ROAD --> M2["Milestone v0.2.0: Packaging, Shortcuts & Session Tracking"]
     ROAD --> M3["Milestone v0.3.0: Catalog Offline Sync & Version Tracking"]
     M1 --> M2
     M2 --> M3
     style ROAD fill:#e11,color:#fff
     style M1 fill:#090,color:#fff
+    style M2 fill:#07c,color:#fff
 ```
 
 ---
@@ -57,27 +58,26 @@ All foundational architecture, core engine, desktop GUI, CLI, and v0.1.0 release
 - [x] **Metadata & Artwork Enrichment:** Multi-provider enrichment via SteamGridDB, VNDB, IGDB, itch.io, Steam, and IndieDB with secure SQLite secret storage.
 - [x] **Comprehensive Documentation:** Full 17-page GitHub Wiki suite covering Getting Started, 7-Zip CLI guide, CLI reference, and architecture.
 - [x] **GitHub Community Governance:** Detailed YAML issue forms suite (9 templates + config) and automation workflows (failed run cleanup and discussion seeding).
-- [x] **Test Suites & Verification Gate:** 183 passing Rust unit and integration tests, 31 passing frontend Vitest tests, clippy and svelte-check green.
+- [x] **Test Suites & Verification Gate:** 184 passing Rust unit and integration tests, 31 passing frontend Vitest tests, clippy and svelte-check green.
 - [x] **Official Initial Release:** Tagged [`v0.1.0`](https://github.com/HELIX-Origin/LewdZone-Launcher/releases/tag/v0.1.0) with published showcase release notes.
 
 ---
 
-## Now 🚧 (Milestone v0.2.0 — Packaging & Integrations)
+## Now 🚧 (Milestone v0.2.0 — Packaging, Shortcuts & Session Tracking)
 
-- [ ] **Cross-Platform Automated Packaging**:
-  - Windows: NSIS installer (`.exe`) + MSI package (`.msi`)
-  - macOS: Application bundle (`.app`) + Apple Disk Image (`.dmg`)
-  - Linux: AppImage (`.AppImage`) + Debian package (`.deb`) + RPM (`.rpm`)
+- [x] **Playtime & Session Tracking**:
+  - SQLite `game_stats` tracking (`playtime_seconds`, `play_count`, `last_played_at`).
+  - Detached background process monitoring in `launch.rs` recording elapsed session duration.
+  - Svelte Library sort modes (A–Z, Recently Played, Most Played, Recently Installed) and playtime badges.
+- [x] **Native Desktop & Start Menu Shortcuts**:
+  - Windows: `.lnk` shortcut creation pointing to game exe with embedded icon.
+  - Linux: FreeDesktop `.desktop` launcher entry generation in `~/Desktop/` and `~/.local/share/applications/`.
+  - macOS: Application command alias generation in `~/Desktop/`.
+  - Full CLI parity (`lewdzone shortcuts <slug>`) and 1-click GUI shortcut button on library cards.
+- [x] **Cross-Platform Automated Packaging**:
+  - Automated GitHub Actions matrix workflow (`.github/workflows/package.yml`) packaging Windows (MSI + NSIS), Linux (AppImage + DEB), and macOS (.app + DMG) on release tags and workflow dispatch.
 - [ ] **Application Self-Updater**:
   - Configure Tauri updater (`@tauri-apps/plugin-updater`) for automated background updates from GitHub Releases.
-- [ ] **Native Desktop & Start Menu Shortcuts**:
-  - Windows: `.lnk` shortcut creation with custom game icon.
-  - Linux: `.desktop` launcher entry generation in `~/.local/share/applications/`.
-  - macOS: Application alias generation in `~/Applications`.
-- [ ] **Steam Library Export**:
-  - Generate non-Steam shortcuts (`shortcuts.vdf`) with custom artwork from SteamGridDB.
-- [ ] **Playtime & Session Tracking**:
-  - Record playtime duration, session history, and last-played timestamps in SQLite.
 
 ---
 

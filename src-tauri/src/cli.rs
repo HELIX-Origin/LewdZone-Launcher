@@ -182,6 +182,8 @@ struct SetArgs {
 
 #[derive(clap::Args, Debug, Default)]
 struct ShortcutsArgs {
+    /// The installed game slug.
+    slug: Option<String>,
     /// Rebuild shortcuts for one game.
     #[arg(long)]
     game: Option<String>,
@@ -268,7 +270,8 @@ fn dispatch(cli: Cli) -> Result<ExitCode, crate::core::Error> {
             None => core::settings::get(&ctx, None),
         },
         Command::Shortcuts(args) => {
-            core::shortcuts::run(&ctx, args.game.as_deref(), args.skip_artwork)
+            let slug = args.slug.as_deref().or(args.game.as_deref());
+            core::shortcuts::run(&ctx, slug, args.skip_artwork)
         }
         Command::Launch(args) => core::launch::run(&ctx, &args.game),
         Command::Favorites(args) => match args.command {

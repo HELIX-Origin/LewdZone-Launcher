@@ -1141,4 +1141,3 @@ mod tests {
         assert_eq!(all[0].slug, "nadia");
     }
 }
-

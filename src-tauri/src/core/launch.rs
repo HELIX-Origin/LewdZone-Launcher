@@ -1,11 +1,11 @@
 //! `launch` — start an installed game from its `lzapps/<slug>/app.json` manifest.
 
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::process::Command;
 
 use crate::core::{Context, Error};
 
-fn locate_manifest(
+pub fn locate_manifest(
     ctx: &Context,
     game: &str,
 ) -> Result<(crate::core::extract::AppJson, PathBuf), Error> {
@@ -73,23 +73,27 @@ pub fn run(ctx: &Context, game: &str) -> Result<crate::cli::ExitCode, Error> {
         )));
     }
 
-    launch_exe(&exe_path, &base_dir)?;
-    Ok(crate::cli::ExitCode::Ok)
-}
+    // 1. Record launch in SQLite database (increments play_count, updates last_played_at)
+    let slug = manifest.slug.clone();
+    if let Ok(conn) = crate::db::open(&ctx.db_path) {
+        let _ = crate::db::migrate(&conn);
+        let _ = crate::db::repo::record_game_launch(&conn, &slug);
+    }
 
-fn launch_exe(exe: &Path, cwd: &Path) -> Result<(), Error> {
+    // 2. Spawn the game process and monitor session playtime in a detached thread
+    let db_path = ctx.db_path.clone();
     let is_mac_app =
-        cfg!(target_os = "macos") && exe.extension().and_then(|e| e.to_str()) == Some("app");
+        cfg!(target_os = "macos") && exe_path.extension().and_then(|e| e.to_str()) == Some("app");
 
     let mut cmd = if is_mac_app {
         let mut c = Command::new("open");
-        c.arg(exe);
+        c.arg(&exe_path);
         c
     } else {
-        Command::new(exe)
+        Command::new(&exe_path)
     };
 
-    cmd.current_dir(cwd);
+    cmd.current_dir(&base_dir);
 
     #[cfg(target_os = "windows")]
     {
@@ -97,9 +101,23 @@ fn launch_exe(exe: &Path, cwd: &Path) -> Result<(), Error> {
         cmd.creation_flags(0x0800_0000); // CREATE_NO_WINDOW
     }
 
-    cmd.spawn()
-        .map_err(|e| Error::Runtime(format!("failed to launch {}: {e}", exe.display())))?;
-    Ok(())
+    let mut child = cmd
+        .spawn()
+        .map_err(|e| Error::Runtime(format!("failed to launch {}: {e}", exe_path.display())))?;
+
+    // Background thread monitors child exit to record elapsed playtime
+    std::thread::spawn(move || {
+        let start = std::time::Instant::now();
+        let _ = child.wait();
+        let elapsed_secs = start.elapsed().as_secs() as i64;
+        if elapsed_secs > 0 {
+            if let Ok(conn) = crate::db::open(&db_path) {
+                let _ = crate::db::repo::add_game_playtime(&conn, &slug, elapsed_secs);
+            }
+        }
+    });
+
+    Ok(crate::cli::ExitCode::Ok)
 }
 
 /// Resolve the executable that would be launched for `slug` without running it.
@@ -140,7 +158,7 @@ mod tests {
     use super::*;
     use crate::core::extract::AppJson;
     use std::fs;
-    use std::path::PathBuf;
+    use std::path::{Path, PathBuf};
 
     fn temp_ctx(tag: &str) -> (Context, PathBuf) {
         let tmp = std::env::temp_dir().join(format!(

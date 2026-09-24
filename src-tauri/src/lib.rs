@@ -415,8 +415,18 @@ fn create_shortcut(state: tauri::State<'_, AppState>, slug: String) -> Result<St
         .context
         .lock()
         .map_err(|_| "state lock poisoned".to_string())?;
-    let path = crate::core::shortcuts::create(&ctx, &slug).map_err(|e| e.to_string())?;
-    Ok(path.to_string_lossy().to_string())
+    let paths = crate::core::shortcuts::create(
+        &ctx,
+        &slug,
+        crate::core::shortcuts::ShortcutOptions::default(),
+    )
+    .map_err(|e| e.to_string())?;
+    let summary = paths
+        .iter()
+        .map(|p| p.to_string_lossy().to_string())
+        .collect::<Vec<_>>()
+        .join(", ");
+    Ok(summary)
 }
 
 /// Installed games from the library manifests (ADR-0005).

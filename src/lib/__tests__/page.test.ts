@@ -469,8 +469,11 @@ describe("library page", () => {
     expect(invocations.some((i) => i.cmd === "favorite_add" && i.args?.slug === "wild-life")).toBe(true);
   });
 
-  it("does not render a desktop shortcut button in the library actions", async () => {
-    mockInvoke(async (cmd: string) => {
+  it("renders a desktop shortcut button and invokes create_shortcut", async () => {
+    const user = userEvent.setup();
+    const invocations: Array<{ cmd: string; args?: InvokeArgs }> = [];
+    mockInvoke(async (cmd: string, args?: InvokeArgs) => {
+      invocations.push({ cmd, args });
       if (cmd === "library_list") {
         return {
           root: "/fake/library",
@@ -493,11 +496,14 @@ describe("library page", () => {
         };
       }
       if (cmd === "favorites_list") return [];
+      if (cmd === "create_shortcut") return "/fake/Desktop/Wild Life.lnk";
       return [];
     });
     render(LibraryPage);
-    expect(await screen.findByRole("button", { name: "Launch Wild Life" })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /shortcut/i })).not.toBeInTheDocument();
+    const shortcutBtn = await screen.findByRole("button", { name: "Create shortcut for Wild Life" });
+    expect(shortcutBtn).toBeInTheDocument();
+    await user.click(shortcutBtn);
+    expect(invocations.some((i) => i.cmd === "create_shortcut" && i.args?.slug === "wild-life")).toBe(true);
   });
 });
 

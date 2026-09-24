@@ -19,6 +19,9 @@
     launch_exe: string;
     installed_at: string | null;
     size_on_disk: number;
+    playtime_seconds?: number;
+    play_count?: number;
+    last_played_at?: string | null;
   }
 
   interface LibraryListing {
@@ -38,6 +41,59 @@
   let coverUrls: Record<string, string | null> = $state({});
   let favorites: Record<string, boolean> = $state({});
   let togglingFavorite = $state<Record<string, boolean>>({});
+  let sortBy = $state<"alpha" | "recent" | "playtime" | "installed">("alpha");
+
+  let sortedGames = $derived.by(() => {
+    const list = [...games];
+    if (sortBy === "alpha") {
+      return list.sort((a, b) => a.title.localeCompare(b.title));
+    } else if (sortBy === "recent") {
+      return list.sort((a, b) => {
+        const timeA = a.last_played_at ? new Date(a.last_played_at).getTime() : 0;
+        const timeB = b.last_played_at ? new Date(b.last_played_at).getTime() : 0;
+        return timeB - timeA;
+      });
+    } else if (sortBy === "playtime") {
+      return list.sort((a, b) => (b.playtime_seconds ?? 0) - (a.playtime_seconds ?? 0));
+    } else if (sortBy === "installed") {
+      return list.sort((a, b) => {
+        const timeA = a.installed_at ? new Date(a.installed_at).getTime() : 0;
+        const timeB = b.installed_at ? new Date(b.installed_at).getTime() : 0;
+        return timeB - timeA;
+      });
+    }
+    return list;
+  });
+
+  function formatPlaytime(seconds: number | undefined): string {
+    if (!seconds || seconds <= 0) return "Unplayed";
+    if (seconds < 60) return `${seconds}s`;
+    const mins = Math.floor(seconds / 60);
+    if (mins < 60) return `${mins}m`;
+    const hours = (seconds / 3600).toFixed(1);
+    return `${hours}h`;
+  }
+
+  function formatLastPlayed(iso: string | null | undefined): string {
+    if (!iso) return "Never";
+    try {
+      const date = new Date(iso);
+      const now = new Date();
+      const diffMs = now.getTime() - date.getTime();
+      const diffSecs = Math.floor(diffMs / 1000);
+      if (diffSecs < 60) return "Just now";
+      const diffMins = Math.floor(diffSecs / 60);
+      if (diffMins < 60) return `${diffMins}m ago`;
+      const diffHours = Math.floor(diffMins / 60);
+      if (diffHours < 24) return `${diffHours}h ago`;
+      const diffDays = Math.floor(diffHours / 24);
+      if (diffDays === 1) return "Yesterday";
+      if (diffDays < 7) return `${diffDays}d ago`;
+      return date.toLocaleDateString();
+    } catch {
+      return iso;
+    }
+  }
 
   function formatSize(bytes: number): string {
     if (bytes <= 0) return "—";
@@ -121,6 +177,24 @@
     }
   }
 
+  let creatingShortcut = $state<Record<string, boolean>>({});
+  let shortcutToast = $state<string | null>(null);
+
+  async function makeShortcut(game: LibraryGame) {
+    creatingShortcut[game.slug] = true;
+    try {
+      await invoke<string>("create_shortcut", { slug: game.slug });
+      shortcutToast = `Created shortcut for ${game.title}`;
+      setTimeout(() => {
+        if (shortcutToast?.includes(game.title)) shortcutToast = null;
+      }, 4000);
+    } catch (err) {
+      error = `Failed to create shortcut: ${err}`;
+    } finally {
+      creatingShortcut[game.slug] = false;
+    }
+  }
+
   async function toggleFavorite(game: LibraryGame) {
     if (togglingFavorite[game.slug]) return;
     togglingFavorite[game.slug] = true;
@@ -196,6 +270,15 @@
         {/if}
       </div>
       <div class="head-actions">
+        <div class="sort-box">
+          <label for="sort-select" class="sort-label">Sort:</label>
+          <select id="sort-select" class="sort-select" bind:value={sortBy}>
+            <option value="alpha">A – Z</option>
+            <option value="recent">Recently Played</option>
+            <option value="playtime">Most Played</option>
+            <option value="installed">Recently Installed</option>
+          </select>
+        </div>
         <button
           type="button"
           class="scan-btn"
@@ -216,6 +299,13 @@
       </div>
     {/if}
 
+    {#if shortcutToast}
+      <div class="shortcut-toast" role="status">
+        <span>{shortcutToast}</span>
+        <button type="button" class="toast-close" onclick={() => (shortcutToast = null)} aria-label="Dismiss">×</button>
+      </div>
+    {/if}
+
     {#if games.length === 0}
       <p class="note">
         Nothing installed yet. Pick a game in the Store and download it — it will
@@ -223,7 +313,7 @@
       </p>
     {:else}
       <div class="grid" role="list">
-        {#each games as game (game.slug)}
+        {#each sortedGames as game (game.slug)}
           <div class="tile" role="listitem" title={game.install_path}>
             <div class="tile-cover">
               <div
@@ -263,6 +353,13 @@
                 <span>·</span>
                 <span>{formatSize(game.size_on_disk)}</span>
               </div>
+              <div class="tile-stats">
+                <span class="badge-playtime">{formatPlaytime(game.playtime_seconds)}</span>
+                {#if game.last_played_at}
+                  <span class="meta-dot">·</span>
+                  <span class="last-played" title={game.last_played_at}>Played {formatLastPlayed(game.last_played_at)}</span>
+                {/if}
+              </div>
               <div class="btn-row">
                 <button
                   class="launch-btn"
@@ -271,6 +368,19 @@
                   aria-label={`Launch ${game.title}`}
                 >
                   {launching[game.slug] ? "Launching…" : "Launch"}
+                </button>
+                <button
+                  class="shortcut-btn"
+                  onclick={() => makeShortcut(game)}
+                  disabled={creatingShortcut[game.slug]}
+                  title="Create Desktop / Start menu shortcut"
+                  aria-label={`Create shortcut for ${game.title}`}
+                >
+                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                    <polyline points="15 3 21 3 21 9"></polyline>
+                    <line x1="10" y1="14" x2="21" y2="3"></line>
+                  </svg>
                 </button>
               </div>
             </div>
@@ -306,7 +416,38 @@
   .head-actions {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 12px;
+  }
+
+  .sort-box {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--lz-surface-2);
+    border: 1px solid var(--lz-border);
+    border-radius: var(--lz-radius);
+    padding: 3px 8px;
+  }
+
+  .sort-label {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--lz-text-dim);
+  }
+
+  .sort-select {
+    background: transparent;
+    border: none;
+    color: var(--lz-text);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    outline: none;
+  }
+
+  .sort-select option {
+    background: var(--lz-bg);
+    color: var(--lz-text);
   }
 
   .scan-btn {
@@ -495,6 +636,32 @@
     flex-wrap: wrap;
   }
 
+  .tile-stats {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 10.5px;
+    color: var(--lz-text-dim);
+    flex-wrap: wrap;
+  }
+
+  .badge-playtime {
+    display: inline-block;
+    padding: 1px 6px;
+    border-radius: 4px;
+    background: var(--lz-surface-2);
+    color: var(--lz-cyan);
+    font-weight: 600;
+  }
+
+  .meta-dot {
+    opacity: 0.5;
+  }
+
+  .last-played {
+    color: var(--lz-text-dim);
+  }
+
   .btn-row {
     display: flex;
     gap: 6px;
@@ -521,6 +688,44 @@
   .launch-btn:disabled {
     opacity: 0.6;
     cursor: default;
+  }
+
+  .shortcut-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 6px 9px;
+    border: 1px solid var(--lz-border);
+    border-radius: var(--lz-radius);
+    background: var(--lz-surface-2);
+    color: var(--lz-text-dim);
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+
+  .shortcut-btn:hover:not(:disabled) {
+    color: var(--lz-cyan);
+    border-color: var(--lz-cyan);
+    background: var(--lz-surface);
+  }
+
+  .shortcut-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .shortcut-toast {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 14px;
+    margin-bottom: var(--lz-gap);
+    background: var(--lz-surface-2);
+    border: 1px solid var(--lz-cyan);
+    border-radius: var(--lz-radius);
+    font-size: 13px;
+    color: var(--lz-text);
   }
 
   .note {
