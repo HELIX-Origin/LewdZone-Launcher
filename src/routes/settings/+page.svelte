@@ -15,16 +15,21 @@
   let activeTheme = $state("(default)");
   let busy = $state(false);
   let toast = $state("");
+  let logPath = $state<string | null>(null);
+  let showLogPreview = $state(false);
+  let logPreview = $state("");
 
   async function load() {
     status = "loading";
     try {
-      const [cfg, list] = await Promise.all([
+      const [cfg, list, path] = await Promise.all([
         invoke<Record<string, unknown>>("settings_get"),
         invoke<string[]>("themes_list"),
+        invoke<string | null>("get_debug_log_path"),
       ]);
       snapshot = cfg;
       themes = list;
+      logPath = path;
       const t = cfg["theme"];
       activeTheme = typeof t === "string" && t.trim() ? t : "(default)";
       status = "ready";
@@ -110,6 +115,37 @@
   async function clearIgdbClientSecret() {
     await save("igdb-client-secret", "", true);
     await load();
+  }
+
+  async function openLogFolder() {
+    try {
+      await invoke("open_debug_log_folder");
+    } catch (err) {
+      toast = `could not open folder: ${err}`;
+    }
+  }
+
+  async function clearLog() {
+    try {
+      await invoke("clear_debug_log");
+      logPreview = "";
+      toast = "Log file cleared";
+    } catch (err) {
+      toast = `clear failed: ${err}`;
+    }
+  }
+
+  async function toggleViewLog() {
+    if (showLogPreview) {
+      showLogPreview = false;
+      return;
+    }
+    try {
+      logPreview = await invoke<string>("read_debug_log");
+      showLogPreview = true;
+    } catch (err) {
+      toast = `could not read log: ${err}`;
+    }
   }
 </script>
 
@@ -364,6 +400,57 @@
       </span>
     </label>
 
+    <div class="section-divider">
+      <span>Diagnostics & Support</span>
+    </div>
+
+    <label class="field checkbox-field">
+      <div class="checkbox-row">
+        <input
+          type="checkbox"
+          id="debug-logging-toggle"
+          checked={Boolean(snapshot["debug-logging"])}
+          onchange={(e) => save("debug-logging", (e.currentTarget as HTMLInputElement).checked)}
+        />
+        <label for="debug-logging-toggle" class="checkbox-label">
+          Enable Debug Logging
+        </label>
+        {#if snapshot["debug-logging"]}
+          <span class="secret-status set">● Active</span>
+        {:else}
+          <span class="secret-status unset">○ Disabled</span>
+        {/if}
+      </div>
+      <span class="field-hint">
+        Log detailed runtime operations and errors to assist with troubleshooting and support requests.
+      </span>
+    </label>
+
+    {#if logPath}
+      <div class="log-card">
+        <div class="log-path-row">
+          <span class="log-label">Log File:</span>
+          <code class="log-path" title={logPath}>{logPath}</code>
+        </div>
+        <div class="log-actions">
+          <button type="button" class="log-btn" onclick={openLogFolder} disabled={busy}>
+            Open Log Folder
+          </button>
+          <button type="button" class="log-btn" onclick={toggleViewLog} disabled={busy}>
+            {showLogPreview ? "Hide Log Preview" : "View Recent Logs"}
+          </button>
+          <button type="button" class="log-btn danger" onclick={clearLog} disabled={busy}>
+            Clear Log
+          </button>
+        </div>
+        {#if showLogPreview}
+          <div class="log-preview-box">
+            <pre class="log-content">{logPreview || "(log file is empty)"}</pre>
+          </div>
+        {/if}
+      </div>
+    {/if}
+
     {#if toast}<p class="toast" aria-live="polite">{toast}</p>{/if}
   </div>
 {/if}
@@ -547,5 +634,104 @@
 
   .secret-status.unset {
     color: var(--lz-text-dim);
+  }
+
+  .checkbox-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .checkbox-label {
+    font-weight: 600;
+    font-size: 13px;
+    cursor: pointer;
+    user-select: none;
+  }
+
+  .log-card {
+    background: var(--lz-surface);
+    border: 1px solid var(--lz-surface-2);
+    border-radius: var(--lz-radius);
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .log-path-row {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .log-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--lz-text-dim);
+    font-weight: 600;
+  }
+
+  .log-path {
+    font-size: 12px;
+    background: var(--lz-surface-2);
+    padding: 4px 8px;
+    border-radius: 4px;
+    word-break: break-all;
+    user-select: all;
+  }
+
+  .log-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .log-btn {
+    padding: 6px 12px;
+    font-size: 12px;
+    font-weight: 600;
+    border-radius: var(--lz-radius);
+    border: 1px solid var(--lz-surface-2);
+    background: var(--lz-surface-2);
+    color: var(--lz-text);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .log-btn:hover:not(:disabled) {
+    border-color: var(--lz-cyan);
+    color: var(--lz-cyan);
+  }
+
+  .log-btn.danger {
+    color: var(--lz-danger);
+    border-color: rgba(255, 92, 92, 0.3);
+  }
+
+  .log-btn.danger:hover:not(:disabled) {
+    background: var(--lz-danger);
+    color: var(--lz-bg);
+  }
+
+  .log-preview-box {
+    margin-top: 4px;
+    max-height: 240px;
+    overflow-y: auto;
+    background: #0d1117;
+    border: 1px solid var(--lz-surface-2);
+    border-radius: 4px;
+    padding: 8px 12px;
+  }
+
+  .log-content {
+    margin: 0;
+    font-family: monospace;
+    font-size: 11px;
+    line-height: 1.4;
+    color: #c9d1d9;
+    white-space: pre-wrap;
+    word-break: break-all;
   }
 </style>

@@ -43,8 +43,47 @@ pub fn appcache_dir() -> Option<PathBuf> {
     data_root().map(|root| root.join("appcache"))
 }
 
+/// Platform-standard log directory:
+/// - Windows: `%LOCALAPPDATA%\lewdzone`
+/// - macOS:   `~/Library/Logs/lewdzone`
+/// - Linux:   `$XDG_STATE_HOME/lewdzone` (or `~/.local/state/lewdzone`)
 pub fn logs_dir() -> Option<PathBuf> {
-    data_root().map(|root| root.join("logs"))
+    #[cfg(target_os = "windows")]
+    {
+        std::env::var_os("LOCALAPPDATA")
+            .map(PathBuf::from)
+            .map(|b| b.join(DATA_DIR))
+            .or_else(|| data_root().map(|root| root.join("logs")))
+    }
+    #[cfg(target_os = "macos")]
+    {
+        std::env::var_os("HOME")
+            .map(PathBuf::from)
+            .map(|h| h.join("Library").join("Logs").join(DATA_DIR))
+            .or_else(|| data_root().map(|root| root.join("logs")))
+    }
+    #[cfg(all(unix, not(target_os = "macos")))]
+    {
+        std::env::var_os("XDG_STATE_HOME")
+            .map(PathBuf::from)
+            .or_else(|| {
+                std::env::var_os("HOME").map(|h| PathBuf::from(h).join(".local").join("state"))
+            })
+            .map(|b| b.join(DATA_DIR))
+            .or_else(|| data_root().map(|root| root.join("logs")))
+    }
+    #[cfg(not(any(unix, windows, target_os = "macos")))]
+    {
+        data_root().map(|root| root.join("logs"))
+    }
+}
+
+/// The log file path in the platform-standard logs directory:
+/// - Windows: `%LOCALAPPDATA%\lewdzone\lewdzone.log`
+/// - macOS:   `~/Library/Logs/lewdzone/lewdzone.log`
+/// - Linux:   `~/.local/state/lewdzone/lewdzone.log` (or `$XDG_STATE_HOME/lewdzone/lewdzone.log`)
+pub fn log_file_path() -> Option<PathBuf> {
+    logs_dir().map(|dir| dir.join("lewdzone.log"))
 }
 
 /// The library root — holds libraryfolders.json, app manifests,
@@ -325,11 +364,27 @@ mod tests {
         assert!(root.is_absolute());
         assert_eq!(root.join("lewdzone.db"), default_db_path().expect("db"));
         assert!(appcache_dir().expect("appcache").starts_with(&root));
-        assert!(logs_dir().expect("logs").starts_with(&root));
         assert!(library_dir().expect("library").starts_with(&root));
         assert!(library_common_dir().expect("common").starts_with(&root));
         assert!(library_artwork_dir().expect("artwork").starts_with(&root));
         assert!(libraryfolders_path().expect("folders").starts_with(&root));
+    }
+
+    #[test]
+    fn platform_standard_log_path() {
+        let log_file = log_file_path().expect("log file path");
+        assert!(log_file.is_absolute());
+        assert!(log_file.ends_with("lewdzone.log"));
+        #[cfg(target_os = "windows")]
+        {
+            if let Some(l) = std::env::var_os("LOCALAPPDATA").map(PathBuf::from) {
+                assert!(log_file.starts_with(&l));
+            }
+        }
+        #[cfg(target_os = "macos")]
+        {
+            assert!(log_file.to_string_lossy().contains("Library/Logs"));
+        }
     }
 
     #[test]

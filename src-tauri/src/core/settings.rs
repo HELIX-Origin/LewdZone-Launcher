@@ -38,6 +38,8 @@ pub struct Settings {
     pub home_page: Option<String>,
     /// Path to 7-Zip CLI console executable (7za.exe / 7z.exe / 7za).
     pub seven_zip_path: Option<String>,
+    /// Optional debug logging to file for support diagnostics.
+    pub debug_logging: Option<bool>,
     /// Extra user-provided keys, kept un-echoed (Rule 10).
     #[serde(flatten)]
     pub extra: BTreeMap<String, serde_json::Value>,
@@ -76,6 +78,7 @@ impl Settings {
             "7z-path" | "seven-zip-path" => {
                 self.seven_zip_path.clone().map(serde_json::Value::String)
             }
+            "debug-logging" | "debug" => self.debug_logging.map(serde_json::Value::Bool),
             other => self.extra.get(other).cloned(),
         };
         s
@@ -121,6 +124,9 @@ impl Settings {
             "7z-path" | "seven-zip-path" => {
                 self.seven_zip_path = Some(take_string(key, value)?);
             }
+            "debug-logging" | "debug" => {
+                self.debug_logging = Some(take_bool(key, value)?);
+            }
             other => {
                 self.extra.insert(other.to_string(), value);
             }
@@ -159,6 +165,7 @@ const KNOWN_KEYS: &[&str] = &[
     "source-priority",
     "home-page",
     "7z-path",
+    "debug-logging",
 ];
 
 /// Keys whose values are secrets: stored in the SQLite `secret` table, never
@@ -303,6 +310,11 @@ pub fn apply(
     };
     s.set_value(key, parsed.clone())?;
     s.save(&ctx.config_path)?;
+    if key == "debug-logging" || key == "debug" {
+        if let Some(b) = parsed.as_bool() {
+            crate::core::logging::set_debug(b);
+        }
+    }
     Ok(parsed)
 }
 

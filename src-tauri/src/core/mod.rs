@@ -15,6 +15,7 @@ pub mod info;
 pub mod launch;
 pub mod library;
 pub mod list;
+pub mod logging;
 pub mod models;
 pub mod native;
 pub mod paths;

@@ -846,9 +846,67 @@ fn tokens_for(ctx: &Context) -> Result<BTreeMap<String, String>, Error> {
     crate::core::skins::resolve(s.theme.as_deref())
 }
 
+/// Get the full path to the debug log file.
+#[tauri::command]
+fn get_debug_log_path() -> Option<String> {
+    crate::core::paths::log_file_path().map(|p| p.to_string_lossy().to_string())
+}
+
+/// Open the platform-standard logs folder in the OS file manager.
+#[tauri::command]
+fn open_debug_log_folder() -> Result<(), String> {
+    if let Some(dir) = crate::core::paths::logs_dir() {
+        let _ = std::fs::create_dir_all(&dir);
+        #[cfg(target_os = "windows")]
+        {
+            std::process::Command::new("explorer")
+                .arg(&dir)
+                .spawn()
+                .map_err(|e| e.to_string())?;
+            return Ok(());
+        }
+        #[cfg(target_os = "macos")]
+        {
+            std::process::Command::new("open")
+                .arg(&dir)
+                .spawn()
+                .map_err(|e| e.to_string())?;
+            return Ok(());
+        }
+        #[cfg(all(unix, not(target_os = "macos")))]
+        {
+            std::process::Command::new("xdg-open")
+                .arg(&dir)
+                .spawn()
+                .map_err(|e| e.to_string())?;
+            return Ok(());
+        }
+    }
+    Err("Logs directory could not be determined".to_string())
+}
+
+/// Clear the debug log file.
+#[tauri::command]
+fn clear_debug_log() -> Result<(), String> {
+    crate::core::logging::clear_log().map_err(|e| e.to_string())
+}
+
+/// Read recent lines from the debug log.
+#[tauri::command]
+fn read_debug_log() -> Result<String, String> {
+    crate::core::logging::read_log_tail(200).map_err(|e| e.to_string())
+}
+
 /// CLI entry point called from `main.rs` when argv has subcommands.
 pub fn cli_main() -> std::process::ExitCode {
     use clap::Parser;
+
+    let (_db, config) = default_context();
+    let initial_debug = crate::core::settings::Settings::load(&config)
+        .ok()
+        .and_then(|s| s.debug_logging)
+        .unwrap_or(false);
+    crate::core::logging::init(crate::core::paths::log_file_path(), initial_debug);
 
     let cli = cli::Cli::parse();
     let code = cli::run(cli);
@@ -858,6 +916,11 @@ pub fn cli_main() -> std::process::ExitCode {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let (db, config) = default_context();
+    let initial_debug = crate::core::settings::Settings::load(&config)
+        .ok()
+        .and_then(|s| s.debug_logging)
+        .unwrap_or(false);
+    crate::core::logging::init(crate::core::paths::log_file_path(), initial_debug);
     let ctx = Context::new(db.clone(), config.clone());
     let queue = Arc::new(
         crate::core::queue::Queue::load(&ctx).expect("queue should load from the local database"),
@@ -976,7 +1039,11 @@ pub fn run() {
             download_delete,
             downloads_clear,
             resolve_go_link,
-            app_quit
+            app_quit,
+            get_debug_log_path,
+            open_debug_log_folder,
+            clear_debug_log,
+            read_debug_log
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -737,11 +737,22 @@ describe("settings page", () => {
   it("saves the capture-aware sync setting when toggled", async () => {
     const user = userEvent.setup();
     render(SettingsPage);
-    const checkbox = await screen.findByRole("checkbox");
+    const checkbox = await screen.findByRole("checkbox", { name: /Capture-aware/i });
     await user.click(checkbox);
     expect(invoke).toHaveBeenCalledWith(
       "settings_set",
       expect.objectContaining({ key: "capture-aware", value: "true" }),
+    );
+  });
+
+  it("saves the debug logging setting when toggled", async () => {
+    const user = userEvent.setup();
+    render(SettingsPage);
+    const checkbox = await screen.findByRole("checkbox", { name: /Debug Logging/i });
+    await user.click(checkbox);
+    expect(invoke).toHaveBeenCalledWith(
+      "settings_set",
+      expect.objectContaining({ key: "debug-logging", value: "true" }),
     );
   });
 
