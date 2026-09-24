@@ -1,13 +1,11 @@
 name: Cross-Platform Packaging
 
-# Builds native installers on all three platforms.
-# tauri-action handles the full Rust + frontend build and produces bundles in
-# src-tauri/target/release/bundle/ — Tauri's own native output location.
-# No intermediate copy step is needed; artifacts are uploaded directly from there.
+# Builds native installers on all three platforms following official Tauri v2 guide:
+# https://v2.tauri.app/distribute/pipelines/github/
 #
-# Triggers
+# Triggers:
 #   • Version-tag push  — v*  (also attaches installers to the matching release)
-#   • workflow_dispatch — manual build, no release attachment
+#   • workflow_dispatch — manual build, creates downloadable workflow artifacts
 
 on:
   push:
@@ -40,11 +38,13 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: lts/*
           cache: 'npm'
 
-      - name: Setup Rust toolchain
+      - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
 
       - name: Rust cache
         uses: swatinem/rust-cache@v2
@@ -59,29 +59,22 @@ jobs:
             libwebkit2gtk-4.1-dev \
             libappindicator3-dev \
             librsvg2-dev \
-            patchelf \
-            xdg-utils
+            patchelf
 
       - name: Install frontend dependencies
         run: npm ci
 
       - name: Build Tauri release bundle
-        # tauri-action builds the Rust binary + frontend, runs the bundler,
-        # and (when triggered by a tag push) attaches the installers to the
-        # existing GitHub Release for that tag.
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tagName: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || '' }}
+          tagName: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || '' }}
           releaseName: 'LewdZone Launcher ${{ github.ref_name }}'
           releaseBody: 'See CHANGELOG.md for release details.'
           releaseDraft: false
           prerelease: false
-          updaterJsonKeepUniversal: true
 
-      # Upload the installers Tauri produced as workflow artifacts.
-      # Paths are Tauri v2's native bundle output structure.
       - name: Upload installer artifacts
         if: always()
         uses: actions/upload-artifact@v4
@@ -91,7 +84,7 @@ jobs:
             src-tauri/target/release/bundle/**/*.exe
             src-tauri/target/release/bundle/**/*.msi
             src-tauri/target/release/bundle/**/*.dmg
-            src-tauri/target/release/bundle/**/*.app.tar.gz
+            src-tauri/target/release/bundle/**/*.app
             src-tauri/target/release/bundle/**/*.AppImage
             src-tauri/target/release/bundle/**/*.deb
             src-tauri/target/release/bundle/**/*.rpm

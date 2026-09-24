@@ -26,8 +26,9 @@ const write = (chunk) => {
   writeFileSync(logPath, text, { flag: "a" });
 };
 
-const shell = process.platform === "win32";
-const child = spawn(command, { shell, stdio: ["inherit", "pipe", "pipe"] });
+// shell:true is required on all platforms: `npm` is a shell script on
+// Linux/macOS and a .cmd batch file on Windows — it can't be spawned directly.
+const child = spawn(command, { shell: true, stdio: ["inherit", "pipe", "pipe"] });
 child.stdout.on("data", write);
 child.stderr.on("data", write);
 child.on("error", (err) => {
