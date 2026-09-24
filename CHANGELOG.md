@@ -12,6 +12,28 @@ the top; the current development state lives under `Unreleased`.
 
 ---
 
+## [v0.2.0](https://github.com/HELIX-Origin/LewdZone-Launcher/releases/tag/v0.2.0) — 2026-09-24
+
+Milestone v0.2.0 release introducing native operating system desktop shortcuts, gameplay playtime and session tracking, library sort controls, and automated cross-platform CI/CD packaging.
+
+### ✨ Highlights
+
+- **Native Per-OS Shortcuts:** Generate desktop and start menu shortcuts with a single click in the Library or via `lewdzone shortcuts <slug>` from the terminal. On Windows, shortcuts point directly to the game binary with the executable's embedded icon index.
+- **Playtime & Session Tracking:** The launcher monitors game child processes in detached background worker threads, calculating elapsed playtime upon exit and persisting metrics to SQLite (`game_stats`).
+- **Library Sorting:** Sort games by A–Z, Recently Played, Most Played, or Recently Installed, accompanied by formatted playtime badges and last-played timestamps.
+- **Automated Multi-Platform Packaging:** Multi-OS CI/CD packaging workflow (`.github/workflows/package.yml`) building Windows (NSIS + MSI), macOS (.app + DMG), and Linux (AppImage + DEB) packages.
+
+### 🚀 Key Improvements & Features
+
+- **Database:** Added migration `006_game_playtime` creating `game_stats` table tracking `playtime_seconds`, `play_count`, and `last_played_at`.
+- **Core Engine:** Updated `launch.rs` with child process wait listener, and updated `library.rs` (`InstalledApp`) with playtime statistics loading.
+- **Shortcuts Generator:** Added `shortcuts.rs` implementing cross-platform shortcut generation for Windows (`.lnk`), Linux (`.desktop`), and macOS (`.command`).
+- **CLI Commands:** Added `lewdzone shortcuts [SLUG]` command and updated CLI parser with full feature parity.
+- **UI / Svelte Frontend:** Added shortcut button on game cards, shortcut toast alert, sort dropdown, and playtime badges.
+- **Documentation:** Added `Shortcuts & Playtime Tracking` guide to the GitHub Wiki and updated CLI reference.
+
+---
+
 ## [v0.1.0](https://github.com/HELIX-Origin/LewdZone-Launcher/releases/tag/v0.1.0) — 2026-09-24
 
 Initial release of LewdZone Launcher — a cross-platform desktop game launcher and native CLI engine for lewdzone.com.

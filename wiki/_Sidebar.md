@@ -8,6 +8,7 @@
 
 - [Architecture](Architecture)
 - [CLI Reference](CLI-Reference)
+- [Shortcuts & Playtime Tracking](Shortcuts-and-Sessions)
 - [Download Managers & Streaming](Download-Managers)
 - [Archive Extraction & 7-Zip](Archive-Extraction)
 - [Content Providers](Content-Providers)

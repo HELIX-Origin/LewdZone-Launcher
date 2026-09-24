@@ -38,7 +38,9 @@ lewdzone <command> [options]
 | `download` | Resolve download token, stream direct-file hosts in-app, extract with 7-Zip CLI, or dispatch to OS handler. |
 | `list` | Query the catalog, installed game library, or the download queue. |
 | `settings` | Read and write persistent configuration settings (`get` / `set`). |
-| `launch` | Launch an installed game executable from its `app.json` manifest. |
+| `shortcuts` | Create native per-OS desktop and start menu shortcuts with embedded game icons. |
+| `launch` | Launch an installed game executable, recording play count, last played timestamp, and session playtime. |
+| `favorites` | Manage favorite games list (`list`, `add`, `remove`). |
 
 ---
 
@@ -133,13 +135,46 @@ lewdzone settings set sgdb-api-key "<YOUR_KEY>" --secret
 
 ---
 
+### `shortcuts`
+
+Generates working native operating system desktop and start menu shortcuts for an installed game:
+- **Windows:** `.lnk` shortcut files generated with Windows Script Host automation, targeted directly to the game binary with the embedded `.exe` icon index.
+- **Linux:** FreeDesktop `.desktop` entry files placed in `~/Desktop/` and `~/.local/share/applications/`.
+- **macOS:** Native executable command aliases located on `~/Desktop/`.
+
+```bash
+# Create desktop and start menu shortcuts
+lewdzone shortcuts treasure-of-nadia
+lewdzone shortcuts --game harem-hotel
+```
+
+---
+
 ### `launch`
 
-Launches an installed game by reading `<installed>/<slug>/app.json` (or legacy `<lzapps>/<slug>/app.json`). Spawns the executable candidate safely without shell injection.
+Launches an installed game by reading `<installed>/<slug>/app.json` (or legacy `<lzapps>/<slug>/app.json`). Spawns the executable candidate safely without shell injection. Also records game launch history, increments `play_count`, updates `last_played_at`, and asynchronously computes session duration upon process exit to accumulate `playtime_seconds`.
 
 ```bash
 lewdzone launch treasure-of-nadia
 lewdzone launch --game harem-hotel
+```
+
+---
+
+### `favorites`
+
+Manages games marked as favorites for quick access in both GUI and CLI:
+
+```bash
+# List all favorited games
+lewdzone favorites list
+lewdzone favorites list --json
+
+# Add a game to favorites
+lewdzone favorites add wild-life
+
+# Remove a game from favorites
+lewdzone favorites remove wild-life
 ```
 
 ---

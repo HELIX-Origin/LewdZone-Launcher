@@ -26,6 +26,8 @@ The GUI and the CLI call the same Rust core functions; every GUI action maps
 - **7-Zip Multi-Format Extraction:** Fast, multi-threaded decompression of `.zip`, `.7z`, `.rar`, `.tar`, and SFX archives using the standalone 7-Zip CLI with real-time progress tracking.
 - **Flat Library Organization:** Downloads land directly under `<library-root>/downloads/` and installs unpack to `<library-root>/installed/<slug>/` with an `app.json` manifest.
 - **System Tray Integration:** Runs silently in the background with tray icon controls (Open, Library, Downloads, Store, Settings, Check for Updates, Quit) and minimize-to-tray capability.
+- **Playtime & Session Tracking:** Accurately tracks gameplay duration, play count, and last played timestamps, with full library sort controls and CLI inspection.
+- **Native Desktop & Start Menu Shortcuts:** One-click generation of native operating system shortcuts for Windows (`.lnk` with embedded executable icons), Linux (`.desktop`), and macOS.
 - **External Enrichment:** Augments thin LewdZone listings with external metadata and artwork from SteamGridDB, VNDB, IGDB, itch.io, Steam, and IndieDB.
 
 ---

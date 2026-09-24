@@ -46,9 +46,12 @@ lewdzone info treasure-of-nadia
 # 7. Download and automatically extract a game
 lewdzone download --game treasure-of-nadia --version latest --platform PC --tab official
 
-# 8. List installed games and launch
+# 8. List installed games and launch (session playtime automatically tracked)
 lewdzone list --library
 lewdzone launch treasure-of-nadia
+
+# 9. Create native desktop & Start menu shortcuts
+lewdzone shortcuts treasure-of-nadia
 ```
 
 ---
@@ -69,8 +72,10 @@ lewdzone launch treasure-of-nadia
    - Head to the **Downloads** view to monitor real-time streaming and extraction progress.
    - You can cancel or delete active and queued items at any time.
 5. **Play in Library:**
-   - Once extracted, the game appears in the **Library** with its cover art.
-   - Click **Play** to launch the game executable directly from its `app.json` manifest.
+   - Once extracted, the game appears in the **Library** with its cover art, playtime badges, and last-played info.
+   - Click **Launch** to launch the game executable directly from its `app.json` manifest. Play duration is automatically tracked in SQLite.
+   - Click the **Shortcut** button next to Launch to create a native desktop or start menu shortcut with the game's embedded icon.
+   - Use the **Sort** dropdown to sort games by A–Z, Recently Played, Most Played, or Recently Installed.
    - Use **Scan Games** to discover any games you previously extracted manually into your configured games directory.
 6. **System Tray:**
    - Minimizing or closing the window minimizes to the system tray so downloads continue in the background. Right-click the tray icon to quickly navigate to Store, Library, Downloads, Settings, or Quit.
