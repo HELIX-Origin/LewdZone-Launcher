@@ -1,0 +1,117 @@
+name: "🐛 Bug Report"
+description: "Report a bug or unexpected behavior in LewdZone Launcher (GUI, CLI, or Core)"
+title: "🐛 [Bug]: "
+labels: ["bug", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for reporting an issue with **LewdZone Launcher**!
+        Please search existing issues before submitting to avoid duplicates.
+  - type: dropdown
+    id: component
+    attributes:
+      label: "Affected Component"
+      description: "Select the subsystem where the problem occurs."
+      options:
+        - "GUI (Desktop Svelte UI & Views)"
+        - "CLI (Native Rust Command-Line Interface)"
+        - "Scraper (LewdZone Catalog / Game Page Parsing)"
+        - "Resolver (Go-Link Token Prober / Webview Challenge Solver)"
+        - "Download / Streaming (Fileknot In-App Stream / OS Dispatch)"
+        - "Archive Extraction (7-Zip CLI / Unpacking)"
+        - "Library & Scanner (Game Discovery / Manifest / Launching)"
+        - "Database & Queue (SQLite / Download Queue Persistence)"
+        - "Metadata & Art Enrichment (SteamGridDB / VNDB / IGDB / itch / Steam)"
+        - "System Tray & Window Management"
+        - "Theming & Styling (Nord / Dracula / Material)"
+        - "Other / Unsure"
+    validations:
+      required: true
+  - type: dropdown
+    id: os
+    attributes:
+      label: "Operating System"
+      description: "Which operating system are you running?"
+      options:
+        - "Windows 11 (x86_64)"
+        - "Windows 10 (x86_64)"
+        - "Linux - Ubuntu / Debian (x86_64 / arm64)"
+        - "Linux - Fedora / RHEL (x86_64)"
+        - "Linux - Arch / Manjaro (x86_64)"
+        - "macOS - Apple Silicon (M1/M2/M3/M4)"
+        - "macOS - Intel (x86_64)"
+        - "Other"
+    validations:
+      required: true
+  - type: input
+    id: app_version
+    attributes:
+      label: "LewdZone Launcher Version"
+      description: "Run `lewdzone --version` or check the Settings page in GUI."
+      placeholder: "e.g. 0.1.0"
+    validations:
+      required: true
+  - type: input
+    id: sevenzip_config
+    attributes:
+      label: "7-Zip CLI Executable & Path"
+      description: "If relevant, what 7-Zip CLI executable and path is configured in Settings?"
+      placeholder: "e.g. 7za 26.03 at C:\\Utilities\\7z\\7za.exe"
+    validations:
+      required: false
+  - type: textarea
+    id: description
+    attributes:
+      label: "Bug Description"
+      description: "A clear and concise description of what the bug is."
+      placeholder: "When attempting to..."
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction_steps
+    attributes:
+      label: "Steps to Reproduce"
+      description: "Numbered steps to reproduce the behavior."
+      value: |
+        1. Open '...'
+        2. Click on '....'
+        3. Scroll down to '....'
+        4. See error
+    validations:
+      required: true
+  - type: textarea
+    id: expected_behavior
+    attributes:
+      label: "Expected Behavior"
+      description: "A clear and concise description of what you expected to happen."
+      placeholder: "The game archive should extract silently into the installed/<slug>/ folder..."
+    validations:
+      required: true
+  - type: textarea
+    id: logs_or_cli_output
+    attributes:
+      label: "Console Logs or CLI Output"
+      description: "Include relevant terminal output, CLI JSON response, or Webview DevTools console logs."
+      render: shell
+      placeholder: "lewdzone download <slug> --json\nError: ..."
+    validations:
+      required: false
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: "Screenshots / Media"
+      description: "Attach screenshots or screen recordings showing the issue (drag and drop files here)."
+    validations:
+      required: false
+  - type: checkboxes
+    id: confirmation
+    attributes:
+      label: "Pre-submission Checklist"
+      options:
+        - label: "I have searched open and closed issues and confirmed this is not a duplicate."
+          required: true
+        - label: "I am using a supported release or verified source build."
+          required: true
+        - label: "I have verified my 7-Zip CLI configuration and tested extraction manually if applicable."
+          required: false

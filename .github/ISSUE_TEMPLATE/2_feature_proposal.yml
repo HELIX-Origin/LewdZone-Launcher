@@ -1,0 +1,77 @@
+name: "✨ Feature Proposal"
+description: "Suggest a new idea or capability for LewdZone Launcher"
+title: "✨ [Feature]: "
+labels: ["enhancement", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Have an idea to make **LewdZone Launcher** even better? We welcome feature proposals!
+        Please review our [Roadmap](https://github.com/HELIX-Origin/LewdZone-Launcher/blob/main/ROADMAP.md) and [Design Conventions](https://github.com/HELIX-Origin/LewdZone-Launcher/wiki/Design-Conventions) first.
+  - type: dropdown
+    id: scope
+    attributes:
+      label: "Component Scope"
+      description: "Which domain does this proposal affect?"
+      options:
+        - "GUI (Desktop Svelte UI & Views)"
+        - "CLI (Native Rust Command-Line Interface)"
+        - "Scraper (LewdZone Catalog / Game Page Parsing)"
+        - "Resolver (Go-Link Token Prober / Webview Challenge Solver)"
+        - "Download / Streaming (Fileknot In-App Stream / OS Dispatch)"
+        - "Archive Extraction (7-Zip CLI / Unpacking)"
+        - "Library & Scanner (Game Discovery / Manifest / Launching)"
+        - "Database & Queue (SQLite / Download Queue Persistence)"
+        - "Metadata & Art Enrichment (SteamGridDB / VNDB / IGDB / itch / Steam)"
+        - "System Tray & Window Management"
+        - "Theming & Styling (Themes / CSS Engine)"
+        - "General / Cross-Cutting"
+    validations:
+      required: true
+  - type: textarea
+    id: problem_statement
+    attributes:
+      label: "Problem or Need"
+      description: "What problem are you trying to solve or what user need is currently unmet?"
+      placeholder: "I'm always frustrated when..."
+    validations:
+      required: true
+  - type: textarea
+    id: proposed_solution
+    attributes:
+      label: "Proposed Solution"
+      description: "Describe the desired capability or workflow you would like to see."
+      placeholder: "Add an option to..."
+    validations:
+      required: true
+  - type: textarea
+    id: parity_plan
+    attributes:
+      label: "GUI / CLI Parity Plan (Rule 03 & Rule 13)"
+      description: "LewdZone Launcher follows the 'One core, two entry points' rule. How will this feature be exposed in the CLI (`lewdzone <subcommand> --json`) and the GUI?"
+      placeholder: "CLI: `lewdzone ... --json`\nGUI: A button/modal in the ... view calling the same Rust core function."
+    validations:
+      required: false
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: "Alternative Solutions Considered"
+      description: "Did you consider any alternative approaches or workarounds?"
+    validations:
+      required: false
+  - type: textarea
+    id: context
+    attributes:
+      label: "Additional Context / Mockups"
+      description: "Add any other context, UI wireframes, screenshots, or code snippets."
+    validations:
+      required: false
+  - type: checkboxes
+    id: agreement
+    attributes:
+      label: "Design Principles Agreement"
+      options:
+        - label: "I understand that logic lives in the Rust core, not in the webview (Rule 03 & Rule 13)."
+          required: true
+        - label: "I have checked the current ROADMAP.md and open issues to ensure this is not already planned."
+          required: true

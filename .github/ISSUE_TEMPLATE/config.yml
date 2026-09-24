@@ -1,0 +1,14 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 📖 LewdZone Launcher Wiki
+    url: https://github.com/HELIX-Origin/LewdZone-Launcher/wiki
+    about: Read our comprehensive guides, CLI reference, and architecture documentation.
+  - name: 📦 7-Zip CLI Extraction Setup Guide
+    url: https://github.com/HELIX-Origin/LewdZone-Launcher/wiki/Archive-Extraction
+    about: Instructions on downloading and configuring standalone 7-Zip console binaries for Windows, Linux, and macOS.
+  - name: 💬 GitHub Discussions
+    url: https://github.com/HELIX-Origin/LewdZone-Launcher/discussions
+    about: Ask general questions, share theme ideas, or engage with the community.
+  - name: 🔒 Security & Privacy Policy
+    url: https://github.com/HELIX-Origin/LewdZone-Launcher/wiki/Security
+    about: Guidelines on secret storage, sandboxed webview security, and threat modeling.

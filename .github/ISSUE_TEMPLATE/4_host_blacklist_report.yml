@@ -1,0 +1,65 @@
+name: "🚫 Dead or Malicious Host Blacklist Report"
+description: "Report a dead, defunct, malware, or phishing file host to add to the resolver blacklist"
+title: "🚫 [Blacklist]: "
+labels: ["resolver", "security", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        LewdZone Launcher uses an active blacklist (`src-tauri/src/resolver.rs:BLOCKED_HOSTS`) to protect users from defunct, dead, malware-distributing, or scam file hosting domains.
+        Use this form to propose adding a problematic host to the blacklist.
+  - type: input
+    id: host_domain
+    attributes:
+      label: "Host Name / Domain"
+      description: "The primary domain name and service name of the host."
+      placeholder: "e.g. badhost.com, badmirror.net"
+    validations:
+      required: true
+  - type: input
+    id: host_slug
+    attributes:
+      label: "LewdZone Host Slug / Identifier"
+      description: "How this host appears in LewdZone download tables if known (e.g. `gofile`, `zippyshare`, `cdnclick`)."
+      placeholder: "e.g. badhost"
+    validations:
+      required: false
+  - type: dropdown
+    id: reason
+    attributes:
+      label: "Reason for Blacklisting"
+      description: "Why should this host be blocked?"
+      options:
+        - "Dead Domain / NXDOMAIN (DNS no longer resolves)"
+        - "Defunct Service / HTTP 410 / Permanently Shut Down"
+        - "Known Malware / Adware / Phishing Distribution"
+        - "Requires Installing Malicious Executables / Extensions"
+        - "Aggressive Deceptive Redirects / Popup Hijacking"
+        - "Other"
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: "Evidence & Verification"
+      description: "Provide DNS lookups, curl HTTP response headers, VirusTotal links, or security advisory URLs proving the host is dead or malicious."
+      placeholder: "curl -I https://badhost.example/ -> HTTP 404/410, or VirusTotal scan URL: ..."
+    validations:
+      required: true
+  - type: textarea
+    id: games_affected
+    attributes:
+      label: "Affected LewdZone Games (Optional)"
+      description: "List any game pages where you encountered this dead or malicious mirror."
+      placeholder: "https://lewdzone.com/game/... has mirror links to this dead host"
+    validations:
+      required: false
+  - type: checkboxes
+    id: verification
+    attributes:
+      label: "Verification"
+      options:
+        - label: "I have confirmed this host is permanently dead or malicious, not experiencing temporary maintenance."
+          required: true
+        - label: "I have checked that this host is not already present in `BLOCKED_HOSTS`."
+          required: true

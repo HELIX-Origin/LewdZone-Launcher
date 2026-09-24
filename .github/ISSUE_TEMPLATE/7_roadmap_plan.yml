@@ -1,0 +1,100 @@
+name: "🗺️ Roadmap / Epic Plan"
+description: "Propose or track a major architectural initiative or milestone roadmap (Rule 04 & Rule 09)"
+title: "🗺️ "
+labels: ["roadmap", "epic"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ### Rule 04: Remote Issue Protocol
+        Every major plan gets **ONE roadmap issue** whose first post is the **COMPLETE LIVING ROADMAP**.
+        The first post is edited in place as work progresses.
+        See [Rule 04](https://github.com/HELIX-Origin/LewdZone-Launcher/blob/main/.agents/rules/rule-04-remote-issue-protocol.md) and [Rule 09 (Mermaid Standards)](https://github.com/HELIX-Origin/LewdZone-Launcher/blob/main/.agents/rules/rule-09-mermaid-standards.md).
+  - type: dropdown
+    id: agent_family
+    attributes:
+      label: "Governing Agent Family (Rule 00)"
+      description: "Which agent family has primary ownership of this roadmap?"
+      options:
+        - "architect (System design, module topology, ADRs)"
+        - "scraper (lewdzone.com page scraping, fixtures)"
+        - "resolver (Token resolution, webview solver, host dispatch)"
+        - "database (SQLite schema, migrations, queue sync)"
+        - "dm (Streaming routing, OS dispatch, 7-Zip extraction, folders)"
+        - "cli (Native Rust CLI, commands, output formatting)"
+        - "gui (Tauri 2 desktop app, Svelte views, shared core)"
+        - "content (SteamGridDB, VNDB, IGDB, itch, Steam, IndieDB)"
+        - "testing (Test layers, fakes, coverage floors)"
+        - "review (Security, threat modeling, perf budgets)"
+    validations:
+      required: true
+  - type: textarea
+    id: strategic_objective
+    attributes:
+      label: "Strategic Objective & Context"
+      description: "Explain why this roadmap exists, what architectural milestone it achieves, and target user benefits."
+      placeholder: "This roadmap tracks the implementation of..."
+    validations:
+      required: true
+  - type: textarea
+    id: mermaid_diagram
+    attributes:
+      label: "Mermaid Architecture / Lifecycle Diagram (Rule 09)"
+      description: "Include a valid GitHub-compatible Mermaid diagram (≤12 nodes, quoted labels, standard flowchart TD/LR)."
+      render: markdown
+      value: |
+        ```mermaid
+        flowchart TD
+            P["🗺️ plan roadmap issue"]
+            P --> S1["Sub-Issue 1: diagnostics + architecture"]
+            P --> S2["Sub-Issue 2: core implementation"]
+            P --> S3["Sub-Issue 3: test suite + regression"]
+            P --> S4["Sub-Issue 4: verification + docs sync"]
+            S1 --> S2
+            S2 --> S3
+            S3 --> S4
+            style P fill:#e11,color:#fff
+        ```
+    validations:
+      required: true
+  - type: textarea
+    id: sub_issue_1
+    attributes:
+      label: "Sub-Issue 1 Scope: Diagnostics & Architecture"
+      description: "Baseline diagnostics, ADR filing (`.agents/adr/`), contract locking, schema designs."
+      placeholder: "- [ ] File ADR 000X\n- [ ] Define Rust traits & data types"
+    validations:
+      required: true
+  - type: textarea
+    id: sub_issue_2
+    attributes:
+      label: "Sub-Issue 2 Scope: Core Implementation"
+      description: "Rust core logic, CLI subcommands, Tauri GUI invoke handlers, Svelte views."
+      placeholder: "- [ ] Implement Rust core controller\n- [ ] Wire CLI subcommand\n- [ ] Update Svelte UI"
+    validations:
+      required: true
+  - type: textarea
+    id: sub_issue_3
+    attributes:
+      label: "Sub-Issue 3 Scope: Test Suite & Regression"
+      description: "Unit tests, integration tests, mock fixtures, Vitest suite, coverage verification."
+      placeholder: "- [ ] Unit tests for core functions\n- [ ] Frontend Vitest test coverage\n- [ ] Coverage verification"
+    validations:
+      required: true
+  - type: textarea
+    id: sub_issue_4
+    attributes:
+      label: "Sub-Issue 4 Scope: Verification Gate & Docs Sync"
+      description: "Cargo clippy/fmt checks, wiki documentation sync, CHANGELOG.md update, release prep."
+      placeholder: "- [ ] Verification gate: clippy + fmt + tests\n- [ ] Update Wiki pages\n- [ ] Sync CHANGELOG.md"
+    validations:
+      required: true
+  - type: checkboxes
+    id: rule_check
+    attributes:
+      label: "Governance Checklist"
+      options:
+        - label: "I will edit the first post of this issue in place as sub-issues progress (Rule 04)."
+          required: true
+        - label: "I understand that any cross-layer interface change requires an ADR filed in `.agents/adr/` before implementation (Rule 00)."
+          required: true

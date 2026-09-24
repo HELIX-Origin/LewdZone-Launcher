@@ -1,0 +1,73 @@
+name: "🔨 Sub-Issue Execution"
+description: "Track execution of one of the 4 standard sub-issues tied to a parent roadmap issue (Rule 04)"
+title: "Sub-Issue :  (#)"
+labels: ["sub-issue"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ### Rule 04: Sub-Issue Lifecycle
+        Every pull request mirrors a sub-issue with `Part of #parent` / `Closes #sub-issue`.
+        Work strictly within the phase boundaries defined in the parent roadmap.
+  - type: input
+    id: parent_roadmap
+    attributes:
+      label: "Parent Roadmap Issue"
+      description: "URL or issue number of the parent roadmap issue (e.g. `#10` or full URL)."
+      placeholder: "#10"
+    validations:
+      required: true
+  - type: dropdown
+    id: sub_issue_phase
+    attributes:
+      label: "Sub-Issue Phase"
+      description: "Which phase of the 4-phase lifecycle does this issue execute?"
+      options:
+        - "Sub-Issue 1: Diagnostics + Architecture (ADRs, schemas, interfaces)"
+        - "Sub-Issue 2: Core Implementation (Rust core, CLI, GUI, migrations)"
+        - "Sub-Issue 3: Test Suite + Regression (Rust unit/integration, Vitest)"
+        - "Sub-Issue 4: Verification + Docs Sync (Rule 08 verification, Wiki sync)"
+    validations:
+      required: true
+  - type: input
+    id: owning_agent
+    attributes:
+      label: "Owning Sub-Agent / Component"
+      description: "Specific agent or module owner (e.g. `systems-designer`, `token-prober`, `folder-organizer`)."
+      placeholder: "e.g. folder-organizer"
+    validations:
+      required: true
+  - type: textarea
+    id: tasks
+    attributes:
+      label: "Implementation Tasks"
+      description: "Actionable checklist of tasks for this sub-issue."
+      value: |
+        - [ ] Task 1
+        - [ ] Task 2
+        - [ ] Task 3
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance_criteria
+    attributes:
+      label: "Acceptance Criteria"
+      description: "Conditions that must be satisfied to close this sub-issue."
+      value: |
+        - [ ] Criteria 1
+        - [ ] Criteria 2
+    validations:
+      required: true
+  - type: checkboxes
+    id: verification_gate
+    attributes:
+      label: "Phase Verification Gate"
+      options:
+        - label: "Code adheres to Rust standards (`cargo fmt --check`, `cargo clippy -- -D warnings`)."
+          required: true
+        - label: "Frontend adheres to Svelte standards (`npm run check`, `npm run test`)."
+          required: true
+        - label: "All new and existing Rust tests pass (`cargo test`)."
+          required: true
+        - label: "Parent roadmap first post updated with link to this sub-issue."
+          required: true

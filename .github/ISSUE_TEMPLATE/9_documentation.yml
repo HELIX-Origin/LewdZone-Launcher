@@ -1,0 +1,53 @@
+name: "📖 Documentation or Wiki Improvement"
+description: "Suggest improvements, report errors, or propose new guides for the Wiki and repo documentation"
+title: "📖 [Docs]: "
+labels: ["documentation", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Accurate, high-quality documentation is a top priority for LewdZone Launcher.
+        Before filing, please review our [GitHub Wiki](https://github.com/HELIX-Origin/LewdZone-Launcher/wiki).
+  - type: dropdown
+    id: doc_target
+    attributes:
+      label: "Documentation Location"
+      description: "Where is the documentation located?"
+      options:
+        - "Wiki - Getting Started & Installation"
+        - "Wiki - Archive Extraction & 7-Zip Guide"
+        - "Wiki - CLI Reference Manual"
+        - "Wiki - Configuration & Settings"
+        - "Wiki - Architecture & Internal Design"
+        - "Wiki - Theme Development"
+        - "Wiki - Troubleshooting & FAQ"
+        - "Repository README.md"
+        - "Agent Rules (.agents/rules/)"
+        - "Other / New Page Proposal"
+    validations:
+      required: true
+  - type: textarea
+    id: issue_description
+    attributes:
+      label: "Description of the Issue or Enhancement"
+      description: "What is inaccurate, outdated, missing, or unclear?"
+      placeholder: "The documentation for... states that... but actually..."
+    validations:
+      required: true
+  - type: textarea
+    id: suggested_content
+    attributes:
+      label: "Suggested Correction or Proposed Content"
+      description: "Provide the updated text, code snippets, or markdown you would like to see."
+      placeholder: "Replace section... with..."
+    validations:
+      required: false
+  - type: checkboxes
+    id: guidelines
+    attributes:
+      label: "Style & Guidelines Checklist"
+      options:
+        - label: "I verified that internal wiki links use `{page}` paths without `.md` extensions."
+          required: false
+        - label: "I verified that external links from the repo root use `../../wiki/{page}` paths."
+          required: false

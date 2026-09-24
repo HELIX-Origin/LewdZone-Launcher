@@ -1,0 +1,82 @@
+name: "🎨 Content & Artwork Provider Issue"
+description: "Report issues with external metadata or artwork enrichment providers (SteamGridDB, VNDB, IGDB, itch.io, Steam, IndieDB)"
+title: "🎨 [Content]: "
+labels: ["content", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        LewdZone Launcher can enrich your library games with external metadata, posters, and hero art from SteamGridDB, VNDB, IGDB, itch.io, Steam, and IndieDB.
+        Use this template if metadata or artwork is failing, missing, or mismatched.
+  - type: dropdown
+    id: provider
+    attributes:
+      label: "Enrichment Provider"
+      description: "Which provider is experiencing an issue?"
+      options:
+        - "SteamGridDB (Posters, Heroes, Grids, Logos)"
+        - "VNDB (Visual Novel Database)"
+        - "IGDB (Internet Game Database)"
+        - "itch.io (Indie game provider)"
+        - "Steam (Store API)"
+        - "IndieDB (Indie game catalog)"
+        - "Multiple / All Providers"
+    validations:
+      required: true
+  - type: input
+    id: game_title
+    attributes:
+      label: "Game Title & Slug"
+      description: "The name of the game in your library or on LewdZone."
+      placeholder: "e.g. My Game (my-game)"
+    validations:
+      required: true
+  - type: input
+    id: external_id
+    attributes:
+      label: "External Provider ID / URL (If Known)"
+      description: "e.g. VNDB ID `v12345`, Steam AppID `480`, SteamGridDB game ID `10521`, or itch.io URL."
+      placeholder: "v12345"
+    validations:
+      required: false
+  - type: dropdown
+    id: problem_type
+    attributes:
+      label: "Problem Type"
+      description: "What is the nature of the provider issue?"
+      options:
+        - "Metadata Mismatch (Matched the wrong game entirely)"
+        - "Artwork Missing (No posters or hero images found despite existing on provider)"
+        - "API Key / Authentication Failure"
+        - "Rate Limit / 429 Error"
+        - "Image Download Failed or Cache Corrupted"
+        - "Provider API Endpoint Changed / Deprecated"
+        - "Other"
+    validations:
+      required: true
+  - type: textarea
+    id: details
+    attributes:
+      label: "Detailed Description"
+      description: "Describe what metadata or artwork was expected versus what was returned or stored."
+      placeholder: "Expected VNDB release date 2024-01-15, but received..."
+    validations:
+      required: true
+  - type: textarea
+    id: cli_output
+    attributes:
+      label: "CLI Command & Output"
+      description: "Run `lewdzone enrich <slug> --provider <provider> --json` and paste the output."
+      render: shell
+      placeholder: "lewdzone enrich my-game --provider steamgriddb --json"
+    validations:
+      required: false
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: "Verification Checklist"
+      options:
+        - label: "If the provider requires an API key (e.g. SteamGridDB, IGDB), I have confirmed the key is set and valid in Settings."
+          required: true
+        - label: "I have confirmed the game exists on the external provider's website."
+          required: true

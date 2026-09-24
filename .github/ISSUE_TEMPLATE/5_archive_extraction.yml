@@ -1,0 +1,89 @@
+name: "📦 Archive Extraction Issue"
+description: "Report issues extracting game archives via 7-Zip CLI (.7z, .zip, .rar, .tar, .tar.xz, etc.)"
+title: "📦 [Extraction]: "
+labels: ["dm", "extract", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        LewdZone Launcher uses standalone 7-Zip console binaries (`7za`, `7z`, `7zz`) to extract archives with real-time percentage progress.
+        Before submitting, please review the [Archive Extraction & 7-Zip Guide](https://github.com/HELIX-Origin/LewdZone-Launcher/wiki/Archive-Extraction).
+  - type: dropdown
+    id: os
+    attributes:
+      label: "Operating System"
+      options:
+        - "Windows 11 (x86_64)"
+        - "Windows 10 (x86_64)"
+        - "Linux (x86_64)"
+        - "Linux (arm64 / Raspberry Pi)"
+        - "macOS (Apple Silicon)"
+        - "macOS (Intel)"
+        - "Other"
+    validations:
+      required: true
+  - type: input
+    id: sevenzip_binary
+    attributes:
+      label: "7-Zip Executable Name & Path"
+      description: "Which executable is configured in Settings (e.g. `7za.exe`, `7z.exe`, `7zz`)?"
+      placeholder: "e.g. C:\\Utilities\\7z\\7za.exe or /usr/local/bin/7zz"
+    validations:
+      required: true
+  - type: input
+    id: sevenzip_version
+    attributes:
+      label: "7-Zip Version"
+      description: "Run `<path-to-7z> --help` in terminal to see version."
+      placeholder: "e.g. 26.03"
+    validations:
+      required: true
+  - type: input
+    id: archive_format
+    attributes:
+      label: "Archive Format & Extension"
+      description: "Format of the problematic file."
+      placeholder: "e.g. .7z, .zip, .rar, .part1.rar, .tar.xz, .tar.gz"
+    validations:
+      required: true
+  - type: dropdown
+    id: failure_stage
+    attributes:
+      label: "Failure Stage"
+      description: "When does the extraction fail?"
+      options:
+        - "Immediately on start (Process failed to spawn / executable not found)"
+        - "During extraction (Crashed or errored partway through)"
+        - "At 100% (Failed to verify / move to installed folder / write app.json)"
+        - "Frozen / Stuck at 0% or a specific percentage"
+        - "Extracted successfully but game executable was not found"
+    validations:
+      required: true
+  - type: textarea
+    id: error_output
+    attributes:
+      label: "7-Zip Console Error / Launcher Logs"
+      description: "Provide the exact error message or exit code."
+      render: shell
+      placeholder: "Exit code: 2\nError: Can not open file as archive..."
+    validations:
+      required: true
+  - type: textarea
+    id: manual_test
+    attributes:
+      label: "Manual Terminal Test Results"
+      description: "What happens if you run `\"<path-to-7z>\" x -bsp1 -y -o\"<target>\" \"<archive>\"` directly in a terminal?"
+      render: shell
+    validations:
+      required: false
+  - type: checkboxes
+    id: verification
+    attributes:
+      label: "Verification Checklist"
+      options:
+        - label: "I have confirmed the 7-Zip CLI path in Settings points to a valid executable and not a folder."
+          required: true
+        - label: "I have confirmed the destination drive has sufficient free disk space."
+          required: true
+        - label: "I tested extracting the archive manually to rule out a corrupt or incomplete download."
+          required: true

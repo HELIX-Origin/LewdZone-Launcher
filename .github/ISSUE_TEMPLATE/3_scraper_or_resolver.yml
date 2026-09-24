@@ -1,0 +1,68 @@
+name: "🌐 Scraper or Go-Link Resolver Issue"
+description: "Report broken catalog pages, failed go-link token resolutions, or captcha challenges on lewdzone.com"
+title: "🌐 [Scraper/Resolver]: "
+labels: ["scraper", "resolver", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this template when LewdZone changes page layouts, a go-link (`#t=v1...`) fails to resolve, or the sandboxed challenge webview fails to solve a captcha/countdown.
+        *Note: If a specific hosting provider is dead or malicious, use the **Malicious or Dead Host Blacklist Report** instead.*
+  - type: dropdown
+    id: issue_type
+    attributes:
+      label: "Issue Type"
+      description: "What stage of the scraping or resolution pipeline failed?"
+      options:
+        - "Catalog / Search Listing Parsing Failed (missing cards, pagination broken)"
+        - "Game Page Detail Parsing Failed (missing versions, tags, descriptions)"
+        - "Go-Link Token (#t=v1...) Resolution Failed (API 500, invalid token, unexpected response)"
+        - "Sandboxed Webview Challenge Failed (Turnstile / Captcha / Countdown stuck)"
+        - "Mirror Link Dispatched Incorrectly"
+        - "Other"
+    validations:
+      required: true
+  - type: input
+    id: game_url
+    attributes:
+      label: "LewdZone Page URL or Slug"
+      description: "The full URL or slug of the game on lewdzone.com."
+      placeholder: "https://lewdzone.com/game/example-game/ or example-game"
+    validations:
+      required: true
+  - type: input
+    id: download_host
+    attributes:
+      label: "Download Host / Mirror Involved"
+      description: "Which mirror or host was being resolved (e.g. Fileknot, Mega, Pixeldrain, Mediafire)?"
+      placeholder: "e.g. Fileknot"
+    validations:
+      required: false
+  - type: textarea
+    id: error_details
+    attributes:
+      label: "Error Description & Observed Output"
+      description: "Describe what went wrong and any error messages displayed."
+      placeholder: "When resolving version 0.5.0 for host fileknot, received 'Resolver error: HTTP 403'..."
+    validations:
+      required: true
+  - type: textarea
+    id: cli_output
+    attributes:
+      label: "CLI Command & Output"
+      description: "Run the CLI equivalent to test isolation: `lewdzone resolve <slug-or-token> --json` or `lewdzone inspect <slug> --json`."
+      render: shell
+      placeholder: "lewdzone resolve \"https://lewdzone.com/go/123#t=v1...\" --json"
+    validations:
+      required: false
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: "Verification Checklist"
+      options:
+        - label: "I verified the page or download link works manually in a normal web browser."
+          required: true
+        - label: "I verified that the host is not already on the blocked hosts blacklist (e.g. Gofile, Zippyshare, Anonfiles, Uptobox)."
+          required: true
+        - label: "I verified that network connectivity to lewdzone.com is active and not blocked by local DNS or firewall."
+          required: true
