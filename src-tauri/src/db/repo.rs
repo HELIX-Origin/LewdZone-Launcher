@@ -831,6 +831,83 @@ pub fn list_catalog(tx: &Connection, limit: Option<i64>) -> Result<Vec<CatalogGa
     Ok(out)
 }
 
+/// Statistics and session metrics for an installed game.
+#[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize, PartialEq, Eq)]
+pub struct GameStats {
+    pub slug: String,
+    pub playtime_seconds: i64,
+    pub play_count: i64,
+    pub last_played_at: Option<String>,
+}
+
+/// Retrieve playtime and launch stats for a specific game slug.
+pub fn game_stats_get(conn: &Connection, slug: &str) -> Result<Option<GameStats>, Error> {
+    conn.query_row(
+        "SELECT slug, playtime_seconds, play_count, last_played_at FROM game_stats WHERE slug = ?1",
+        [slug],
+        |row| {
+            Ok(GameStats {
+                slug: row.get(0)?,
+                playtime_seconds: row.get(1)?,
+                play_count: row.get(2)?,
+                last_played_at: row.get(3)?,
+            })
+        },
+    )
+    .optional()
+    .map_err(Into::into)
+}
+
+/// Retrieve playtime and launch stats for all games.
+pub fn game_stats_all(conn: &Connection) -> Result<Vec<GameStats>, Error> {
+    let mut stmt = conn.prepare(
+        "SELECT slug, playtime_seconds, play_count, last_played_at FROM game_stats ORDER BY last_played_at DESC",
+    )?;
+    let rows = stmt.query_map([], |row| {
+        Ok(GameStats {
+            slug: row.get(0)?,
+            playtime_seconds: row.get(1)?,
+            play_count: row.get(2)?,
+            last_played_at: row.get(3)?,
+        })
+    })?;
+    rows.collect::<Result<Vec<_>, _>>().map_err(Into::into)
+}
+
+/// Record a game launch: increments play count and stamps last_played_at.
+pub fn record_game_launch(conn: &Connection, slug: &str) -> Result<(), Error> {
+    conn.execute(
+        r#"
+        INSERT INTO game_stats (slug, playtime_seconds, play_count, last_played_at, updated_at)
+        VALUES (?1, 0, 1, strftime('%Y-%m-%dT%H:%M:%SZ','now'), strftime('%Y-%m-%dT%H:%M:%SZ','now'))
+        ON CONFLICT(slug) DO UPDATE SET
+            play_count = play_count + 1,
+            last_played_at = strftime('%Y-%m-%dT%H:%M:%SZ','now'),
+            updated_at = strftime('%Y-%m-%dT%H:%M:%SZ','now')
+        "#,
+        [slug],
+    )?;
+    Ok(())
+}
+
+/// Add elapsed playtime seconds to an installed game.
+pub fn add_game_playtime(conn: &Connection, slug: &str, seconds: i64) -> Result<(), Error> {
+    if seconds <= 0 {
+        return Ok(());
+    }
+    conn.execute(
+        r#"
+        INSERT INTO game_stats (slug, playtime_seconds, play_count, last_played_at, updated_at)
+        VALUES (?1, ?2, 1, strftime('%Y-%m-%dT%H:%M:%SZ','now'), strftime('%Y-%m-%dT%H:%M:%SZ','now'))
+        ON CONFLICT(slug) DO UPDATE SET
+            playtime_seconds = playtime_seconds + ?2,
+            updated_at = strftime('%Y-%m-%dT%H:%M:%SZ','now')
+        "#,
+        params![slug, seconds],
+    )?;
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1036,4 +1113,32 @@ mod tests {
         assert_eq!(secret_get(&conn, "sgdb-api-key").unwrap(), None);
         assert!(secret_keys(&conn).unwrap().is_empty());
     }
+
+    #[test]
+    fn game_stats_tracking() {
+        let conn = mem();
+        assert_eq!(game_stats_get(&conn, "nadia").unwrap(), None);
+
+        record_game_launch(&conn, "nadia").unwrap();
+        let stats = game_stats_get(&conn, "nadia").unwrap().unwrap();
+        assert_eq!(stats.play_count, 1);
+        assert_eq!(stats.playtime_seconds, 0);
+        assert!(stats.last_played_at.is_some());
+
+        add_game_playtime(&conn, "nadia", 120).unwrap();
+        let stats2 = game_stats_get(&conn, "nadia").unwrap().unwrap();
+        assert_eq!(stats2.play_count, 1);
+        assert_eq!(stats2.playtime_seconds, 120);
+
+        record_game_launch(&conn, "nadia").unwrap();
+        add_game_playtime(&conn, "nadia", 300).unwrap();
+        let stats3 = game_stats_get(&conn, "nadia").unwrap().unwrap();
+        assert_eq!(stats3.play_count, 2);
+        assert_eq!(stats3.playtime_seconds, 420);
+
+        let all = game_stats_all(&conn).unwrap();
+        assert_eq!(all.len(), 1);
+        assert_eq!(all[0].slug, "nadia");
+    }
 }
+

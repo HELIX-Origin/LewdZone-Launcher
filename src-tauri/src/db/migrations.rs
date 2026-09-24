@@ -150,4 +150,18 @@ CREATE TABLE IF NOT EXISTS favorite (
 CREATE INDEX IF NOT EXISTS idx_favorite_created ON favorite(created_at);
 "#,
     ),
+    (
+        "006_game_playtime",
+        r#"
+CREATE TABLE IF NOT EXISTS game_stats (
+    slug             TEXT PRIMARY KEY,
+    playtime_seconds INTEGER NOT NULL DEFAULT 0,
+    play_count       INTEGER NOT NULL DEFAULT 0,
+    last_played_at   TEXT,
+    created_at       TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now')),
+    updated_at       TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now'))
+);
+CREATE INDEX IF NOT EXISTS idx_game_stats_last_played ON game_stats(last_played_at);
+"#,
+    ),
 ];

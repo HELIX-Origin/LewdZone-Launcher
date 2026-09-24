@@ -2,7 +2,7 @@
 
 **This is the complete, authoritative roadmap for the repository.** Living plan:
 edited in place as work progresses — a tracked twin of the roadmap tracking
-[issue #1](https://github.com/HELIX-Origin/LewdZone-Launcher/issues/1)
+[issue #7](https://github.com/HELIX-Origin/LewdZone-Launcher/issues/7)
 ([Rule 04](.agents/rules/rule-04-remote-issue-protocol.md)).
 
 > **Accuracy contract:** must always be 100% accurate. When a feature is
