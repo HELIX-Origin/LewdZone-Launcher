@@ -2,7 +2,7 @@
 
 **This is the complete, authoritative roadmap for the repository.** Living plan:
 edited in place as work progresses — a tracked twin of the roadmap tracking
-[issue #1](https://github.com/HELIX-Origin/lewdzone/issues/1)
+[issue #1](https://github.com/HELIX-Origin/LewdZone-Launcher/issues/1)
 ([Rule 04](.agents/rules/rule-04-remote-issue-protocol.md)).
 
 > **Accuracy contract:** must always be 100% accurate. When a feature is
@@ -16,9 +16,10 @@ edited in place as work progresses — a tracked twin of the roadmap tracking
 
 Cross-platform desktop game launcher for lewdzone.com: Storefront
 (browse/search/download), Library (icons, covers, descriptions), Downloads
-(queue with live streaming & 7-Zip extraction progress), Favorites, and Settings. **Single Tauri 2 binary** with two faces: a windowed GUI
-(Svelte frontend in `src/`, Rust core in `src-tauri/`) and a native Rust CLI
-(same core, clap commands, `--json` machine output).
+(queue with live streaming & 7-Zip extraction progress), Favorites, and Settings.
+**Single Tauri 2 binary** with two faces: a windowed GUI (Svelte frontend in `src/`,
+Rust core in `src-tauri/`) and a native Rust CLI (same core, clap commands, `--json`
+machine output).
 
 ---
 
@@ -26,57 +27,69 @@ Cross-platform desktop game launcher for lewdzone.com: Storefront
 
 ```mermaid
 flowchart TD
-    ROAD["roadmap tracking issue"]
-    ROAD --> P1["Sub-Issue 1: diagnostics + architecture"]
-    ROAD --> P2["Sub-Issue 2: core implementation"]
-    ROAD --> P3["Sub-Issue 3: test suite + regression"]
-    ROAD --> P4["Sub-Issue 4: verification + docs sync"]
-    P1 --> P2
-    P2 --> P3
-    P3 --> P4
+    ROAD["🗺️ Roadmap Issue #1"]
+    ROAD --> M1["Milestone v0.1.0: Core Launcher & CLI"]
+    ROAD --> M2["Milestone v0.2.0: CI/CD Packaging & Shortcuts"]
+    ROAD --> M3["Milestone v0.3.0: Catalog Offline Sync & Version Tracking"]
+    M1 --> M2
+    M2 --> M3
     style ROAD fill:#e11,color:#fff
+    style M1 fill:#090,color:#fff
 ```
 
 ---
 
-## Done ✅
+## Done ✅ (v0.1.0 Initial Release)
 
-All Phase 1, Phase 2, and Phase 3 milestone items are completed and recorded in `git log`:
+All foundational architecture, core engine, desktop GUI, CLI, and v0.1.0 release milestones are complete:
 
-- [x] **Base system & architecture:** Tauri 2 desktop shell with Svelte 5 frontend and native Rust CLI (Rule 03, Rule 13).
-- [x] **LewdZone Scraper:** Catalog archive pagination, game detail extraction, version tabs, and genre cloud parsing.
-- [x] **Resolver:** Go-link `#t=v1...` token resolution via `start` → `reveal` API with host blacklist protection (`gofile`, `zippyshare`, `cdnclick`).
-- [x] **In-App Sandboxed Resolver:** Child webview for verification countdowns and captcha challenges, blocking adware and redirects.
-- [x] **Downloads & Streaming:** In-app direct file streaming (`fileknot`) with live byte progress, speed calculation, and native OS dispatch for cloud hosts.
+- [x] **Base system & architecture:** Tauri 2 desktop shell with Svelte 5 frontend and native Rust CLI with 100% feature parity (Rule 03, Rule 13).
+- [x] **LewdZone Scraper:** Rate-limited catalog pagination, game detail extraction, version tabs, and genre cloud parsing.
+- [x] **Resolver:** Go-link `#t=v1...` token resolution via `start` → `reveal` API with active host blacklist protection (`gofile`, `zippyshare`, `cdnclick`, `anonfiles`, `uptobox`, `yourfilestore`, `qiwi`, `transfersh`).
+- [x] **In-App Sandboxed Resolver:** Child webview for verification countdowns and captcha challenges, blocking adware, popups, and tracker redirects.
+- [x] **Downloads & Streaming:** In-app direct file streaming (`fileknot`) with live byte progress, speed calculation, and native OS dispatch for cloud file lockers.
 - [x] **Queue Management:** Multi-state queue (`queued`, `resolving`, `downloading`, `extracting`, `complete`, `failed`, `cancelled`), with cancel and delete controls for active and queued jobs.
-- [x] **7-Zip Multi-Format Extraction:** Fast, multi-threaded archive extraction (`.zip`, `.7z`, `.rar`, `.tar`, `.exe`) using standalone 7-Zip CLI (`7za`/`7z`/`7zz`) with real-time percentage progress streaming and immediate cancellation.
+- [x] **7-Zip Multi-Format Extraction:** Fast, multi-threaded archive extraction (`.zip`, `.7z`, `.rar`, `.tar`, `.tar.xz`, `.exe`) using standalone 7-Zip CLI (`7za`/`7z`/`7zz`) with real-time percentage progress streaming and immediate cancellation.
 - [x] **Flat Library Layout:** Archives land flat in `<library-root>/downloads/<archive>` and installs reside in `<library-root>/installed/<slug>/` with an `app.json` manifest.
 - [x] **Library Scanning & Launch:** Scans personal games directory (`games-dir`), generates manifests, and launches installed games safely.
-- [x] **System Tray Integration:** Custom tray icon with context menu (Open, Library, Downloads, Store, Settings, Check for Updates, Quit) and minimize-to-tray.
-- [x] **Themes Engine:** Shipped Nord, Dracula, and Material reference themes with runtime CSS token switching.
-- [x] **Test Suites:** 183 passing Rust unit and integration tests, 31 passing frontend Vitest tests, clippy and svelte-check green.
-- [x] **Documentation Sync:** 100% synchronized wiki pages and repository documentation.
+- [x] **System Tray Integration:** Custom tray icon with context menu (Open, Library, Downloads, Store, Settings, Quit) and minimize-to-tray.
+- [x] **Dynamic Theming Engine:** Shipped Nord, Dracula, and Material reference themes with runtime CSS token switching without app restart.
+- [x] **Metadata & Artwork Enrichment:** Multi-provider enrichment via SteamGridDB, VNDB, IGDB, itch.io, Steam, and IndieDB with secure SQLite secret storage.
+- [x] **Comprehensive Documentation:** Full 17-page GitHub Wiki suite covering Getting Started, 7-Zip CLI guide, CLI reference, and architecture.
+- [x] **GitHub Community Governance:** Detailed YAML issue forms suite (9 templates + config) and automation workflows (failed run cleanup and discussion seeding).
+- [x] **Test Suites & Verification Gate:** 183 passing Rust unit and integration tests, 31 passing frontend Vitest tests, clippy and svelte-check green.
+- [x] **Official Initial Release:** Tagged [`v0.1.0`](https://github.com/HELIX-Origin/LewdZone-Launcher/releases/tag/v0.1.0) with published showcase release notes.
 
 ---
 
-## Now 🚧 (Phase 4 — Packaging & Distribution)
+## Now 🚧 (Milestone v0.2.0 — Packaging & Integrations)
 
-- [ ] Automated packaging for all platforms:
+- [ ] **Cross-Platform Automated Packaging**:
   - Windows: NSIS installer (`.exe`) + MSI package (`.msi`)
   - macOS: Application bundle (`.app`) + Apple Disk Image (`.dmg`)
   - Linux: AppImage (`.AppImage`) + Debian package (`.deb`) + RPM (`.rpm`)
-- [ ] Release channel updater configuration (`@tauri-apps/plugin-updater`).
+- [ ] **Application Self-Updater**:
+  - Configure Tauri updater (`@tauri-apps/plugin-updater`) for automated background updates from GitHub Releases.
+- [ ] **Native Desktop & Start Menu Shortcuts**:
+  - Windows: `.lnk` shortcut creation with custom game icon.
+  - Linux: `.desktop` launcher entry generation in `~/.local/share/applications/`.
+  - macOS: Application alias generation in `~/Applications`.
+- [ ] **Steam Library Export**:
+  - Generate non-Steam shortcuts (`shortcuts.vdf`) with custom artwork from SteamGridDB.
+- [ ] **Playtime & Session Tracking**:
+  - Record playtime duration, session history, and last-played timestamps in SQLite.
 
 ---
 
-## Later ⏳ (Phase 5 — Verification & Official Tag)
+## Later ⏳ (Milestone v0.3.0 — Offline Catalog & Version Tracking)
 
-- [ ] Run full release gate:
-  - `cargo fmt --check`, `cargo clippy -- -D warnings`, `cargo test`
-  - `npm run check`, `npm run test`
-  - `npm run tauri build`
-  - `lewdzone --version` smoke test
-- [ ] Create annotated git tag `v0.1.0` and publish release notes.
+- [ ] **Offline Catalog Synchronization**:
+  - Background SQLite catalog sync for instant search, filtering, and offline catalog browsing.
+- [ ] **Game Update Detection**:
+  - Periodic background checks detecting new game versions released on LewdZone.
+  - One-click update workflow preserving save files and user data.
+- [ ] **Custom Theme Creator GUI**:
+  - Visual theme editor in Settings allowing users to customize CSS tokens and export theme files.
 
 ---
 
@@ -86,8 +99,10 @@ All Phase 1, Phase 2, and Phase 3 milestone items are completed and recorded in 
 - [x] `download --game treasure-of-nadia --json` resolves, streams in-app, extracts with 7-Zip CLI, and registers in Library
 - [x] Store, Library, Downloads, Favorites, and Settings views map 1:1 to Rust core commands
 - [x] Downloads land flat in `<library-root>/downloads/` and installs unpack to `<library-root>/installed/<slug>/`
+- [x] Standalone 7-Zip CLI configuration verified across Windows, macOS, and Linux
 - [x] System tray allows minimizing to background and provides full context navigation
 - [x] Rust (183 tests) + frontend Vitest (31 tests) suites 100% green
+- [x] Tag `v0.1.0` published on GitHub Releases
 
 ---
 
