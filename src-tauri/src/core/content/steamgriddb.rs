@@ -72,7 +72,7 @@ impl Provider for SteamGridDb {
             ArtworkKind::Background => "heroes",
         };
         let url = format!(
-            "https://www.steamgriddb.com/api/v2/{endpoint}/game/{id}?dimensions=512&nsfw=true",
+            "https://www.steamgriddb.com/api/v2/{endpoint}/game/{id}?nsfw=true",
             id = game.id
         );
         let json = match authenticated_get(&url, key) {

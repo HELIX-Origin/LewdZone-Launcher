@@ -784,7 +784,7 @@ describe("settings page", () => {
       "●●●●●●●●●●●●●●●● (saved — paste to replace)",
     );
     await user.type(input, "my-test-sgdb-key-1234");
-    const saveBtn = await screen.findByRole("button", { name: "Save" });
+    const saveBtn = await screen.findByRole("button", { name: "Save SteamGridDB API key" });
     await user.click(saveBtn);
 
     expect(invoke).toHaveBeenCalledWith(

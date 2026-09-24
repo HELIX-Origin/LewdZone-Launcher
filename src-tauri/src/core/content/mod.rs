@@ -57,23 +57,73 @@ pub fn artwork_dir() -> Result<PathBuf, Error> {
     })
 }
 
-/// Best-effort enrichment for a game. LewdZone scraped data is the sole baseline;
-/// external network providers have been removed (ADR-0006).
-pub fn enrich(_ctx: &Context, card: &GameCard) -> Result<Enrichment, Error> {
-    Ok(Enrichment {
-        description: card.description.clone(),
-        developer: card.developer.clone(),
-        rating: None,
-        tags: Vec::new(),
-        genres: card.external_genres.clone(),
-        screenshots: Vec::new(),
-    })
-}
-
+pub mod igdb;
 pub mod steamgriddb;
 
 use std::collections::BTreeMap;
 use std::io::Write;
+
+/// Best-effort enrichment for a game. LewdZone scraped data is the authoritative baseline;
+/// external providers (SteamGridDB, IGDB) supply missing or improved metadata.
+pub fn enrich(ctx: &Context, card: &GameCard) -> Result<Enrichment, Error> {
+    let mut merged = Enrichment {
+        description: card.description.clone(),
+        developer: card.developer.clone(),
+        rating: None,
+        tags: card.genres.clone(),
+        genres: card.external_genres.clone(),
+        screenshots: Vec::new(),
+    };
+
+    let secrets = load_secrets(ctx)?;
+    for provider in providers() {
+        if provider.enabled(&secrets) {
+            match provider.enrich(&secrets, card) {
+                Ok(Some(extra)) => {
+                    if merged.description.is_none()
+                        || merged
+                            .description
+                            .as_deref()
+                            .unwrap_or("")
+                            .trim()
+                            .is_empty()
+                    {
+                        merged.description = extra.description;
+                    }
+                    if merged.developer.is_none()
+                        || merged.developer.as_deref().unwrap_or("").trim().is_empty()
+                    {
+                        merged.developer = extra.developer;
+                    }
+                    if merged.rating.is_none() {
+                        merged.rating = extra.rating;
+                    }
+                    for g in extra.genres {
+                        if !merged.genres.contains(&g) {
+                            merged.genres.push(g);
+                        }
+                    }
+                    for t in extra.tags {
+                        if !merged.tags.contains(&t) {
+                            merged.tags.push(t);
+                        }
+                    }
+                    for s in extra.screenshots {
+                        if !merged.screenshots.contains(&s) {
+                            merged.screenshots.push(s);
+                        }
+                    }
+                }
+                Ok(None) => {}
+                Err(e) => {
+                    eprintln!("[content] provider {} enrich error: {e}", provider.name());
+                }
+            }
+        }
+    }
+
+    Ok(merged)
+}
 
 /// A content provider.
 pub trait Provider: Send + Sync {
@@ -100,7 +150,7 @@ pub trait Provider: Send + Sync {
 
 /// All registered providers.
 pub fn providers() -> Vec<Box<dyn Provider>> {
-    vec![Box::new(steamgriddb::SteamGridDb)]
+    vec![Box::new(steamgriddb::SteamGridDb), Box::new(igdb::Igdb)]
 }
 
 /// Load all secrets this layer cares about from SQLite.

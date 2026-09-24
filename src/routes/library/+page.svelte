@@ -147,26 +147,39 @@
 
   function formatArtworkUrl(url: string | null | undefined): string | null {
     if (!url) return null;
+    let clean = url.trim();
+    if (clean.startsWith("[") && clean.endsWith("]")) {
+      try {
+        const arr = JSON.parse(clean);
+        if (Array.isArray(arr) && arr.length > 0 && typeof arr[0] === "string") {
+          clean = arr[0].trim();
+        }
+      } catch {}
+    }
     if (
-      url.startsWith("http://") ||
-      url.startsWith("https://") ||
-      url.startsWith("data:") ||
-      url.startsWith("asset:")
+      clean.startsWith("http://") ||
+      clean.startsWith("https://") ||
+      clean.startsWith("data:") ||
+      clean.startsWith("asset:")
     ) {
-      return url;
+      return clean;
     }
     try {
-      const cleanPath = url.startsWith("file://")
-        ? decodeURIComponent(url.replace(/^file:\/\/\/?/, ""))
-        : url;
+      const cleanPath = clean.startsWith("file://")
+        ? decodeURIComponent(clean.replace(/^file:\/\/\/?/, ""))
+        : clean;
       return convertFileSrc(cleanPath);
     } catch {
-      return url;
+      return clean;
     }
   }
 
   async function loadArtwork(list: LibraryGame[]) {
-    const next: Record<string, string | null> = {};
+    for (const game of list) {
+      if (game.thumb_url && !coverUrls[game.slug]) {
+        coverUrls[game.slug] = formatArtworkUrl(game.thumb_url);
+      }
+    }
     await Promise.all(
       list.map(async (game) => {
         try {
@@ -179,13 +192,18 @@
             },
             kind: "cover",
           });
-          next[game.slug] = formatArtworkUrl(url ?? game.thumb_url ?? null);
+          const formatted = formatArtworkUrl(url ?? game.thumb_url ?? null);
+          if (formatted) {
+            coverUrls[game.slug] = formatted;
+          }
         } catch {
-          next[game.slug] = formatArtworkUrl(game.thumb_url ?? null);
+          const formatted = formatArtworkUrl(game.thumb_url ?? null);
+          if (formatted) {
+            coverUrls[game.slug] = formatted;
+          }
         }
       }),
     );
-    coverUrls = next;
   }
 
   async function launch(game: LibraryGame) {
@@ -345,8 +363,6 @@
               >
                 {#if coverUrls[game.slug]}
                   <img src={coverUrls[game.slug]} alt="" loading="lazy" />
-                {:else if game.thumb_url}
-                  <img src={formatArtworkUrl(game.thumb_url)} alt="" loading="lazy" />
                 {:else}
                   <span class="icon-glyph"
                     ><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6.5" width="18" height="11" rx="5.5"/><circle cx="8" cy="11.5" r="1.1" fill="currentColor" stroke="none"/><circle cx="12.5" cy="11.5" r="1.1" fill="currentColor" stroke="none"/><path d="M16.2 14.4h.01M18.6 12.4h.01"/></svg></span

@@ -214,6 +214,51 @@ fn parse_genres(document: &Html) -> Vec<String> {
         .collect()
 }
 
+/// Parse the authoritative cover image URL for a game page.
+/// Checks (in priority order):
+/// 1. CSS `--cover-background: url('...')` (the exact thumbnail used on store cards)
+/// 2. `<meta property="og:image:url">` / `<meta property="og:image">`
+/// 3. First screenshot from gallery
+pub fn parse_cover_url(html: &str) -> Option<String> {
+    let document = Html::parse_document(html);
+
+    // 1. Check style tag for --cover-background
+    if let Ok(style_sel) = Selector::parse("style") {
+        for style in document.select(&style_sel) {
+            let text = style.text().collect::<String>();
+            if let Some(pos) = text.find("--cover-background") {
+                let rest = &text[pos..];
+                if let Some(url_start) = rest.find("url(") {
+                    let after_url = &rest[url_start + 4..];
+                    if let Some(url_end) = after_url.find(')') {
+                        let raw_url = after_url[..url_end]
+                            .trim()
+                            .trim_matches('\'')
+                            .trim_matches('"');
+                        if !raw_url.is_empty() && raw_url.starts_with("http") {
+                            return Some(raw_url.to_string());
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // 2. OpenGraph / Twitter meta image
+    let meta_keys = ["og:image:url", "og:image", "twitter:image"];
+    for key in meta_keys {
+        if let Some(u) = meta(&document, key) {
+            if !u.is_empty() && u.starts_with("http") {
+                return Some(u);
+            }
+        }
+    }
+
+    // 3. First screenshot
+    let screenshots = parse_screenshots(&document);
+    screenshots.into_iter().next()
+}
+
 fn parse_screenshots(document: &Html) -> Vec<String> {
     let mut urls = Vec::new();
 
@@ -565,5 +610,14 @@ mod tests {
         );
         assert_eq!(variant_from_label("Mega "), None);
         assert_eq!(variant_from_label(""), None);
+    }
+
+    #[test]
+    fn parses_cover_url_from_fixture() {
+        let cover = parse_cover_url(FIXTURE);
+        assert_eq!(
+            cover.as_deref(),
+            Some("https://lewdzone.com/wp-content/uploads/2019/10/Treasure-of-Nadi-Adult-XXX-Game-Cover-329x196.jpeg")
+        );
     }
 }

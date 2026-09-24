@@ -38,6 +38,8 @@ pub struct AppState {
     pub page_cache: Mutex<HashMap<String, crate::scraper::archive::ArchivePage>>,
     /// In-memory cache for the genre cloud.
     pub genres_cache: Mutex<Option<Vec<crate::core::models::Genre>>>,
+    /// In-memory cache for resolved artwork URLs ((key, kind) -> url).
+    pub artwork_cache: Mutex<HashMap<(String, String), Option<String>>>,
 }
 
 /// Wire format returned to the Settings page (cluster of a single setting).
@@ -83,26 +85,30 @@ fn catalog_page(
     // Persist cards to DB
     if let Ok(conn) = ctx.open_db() {
         for card in &archive.games {
-            if let Some(post_id) = card.post_id {
-                let _ = conn.execute(
-                    r#"
-                    INSERT INTO game (post_id, slug, title, thumbnail_url, updated_at)
-                    VALUES (?1, ?2, ?3, ?4, ?5)
-                    ON CONFLICT(slug) DO UPDATE SET
-                        post_id = excluded.post_id,
-                        title = excluded.title,
-                        thumbnail_url = coalesce(excluded.thumbnail_url, game.thumbnail_url),
-                        updated_at = coalesce(excluded.updated_at, game.updated_at)
-                    "#,
-                    rusqlite::params![
-                        post_id,
-                        card.slug,
-                        card.title,
-                        card.thumb_url,
-                        card.updated_at,
-                    ],
-                );
-            }
+            let post_id = card.post_id.unwrap_or_else(|| {
+                use std::hash::{Hash, Hasher};
+                let mut hasher = std::collections::hash_map::DefaultHasher::new();
+                card.slug.hash(&mut hasher);
+                (hasher.finish() & 0x7FFF_FFFF_FFFF_FFFF) as i64
+            });
+            let _ = conn.execute(
+                r#"
+                INSERT INTO game (post_id, slug, title, thumbnail_url, updated_at)
+                VALUES (?1, ?2, ?3, ?4, ?5)
+                ON CONFLICT(slug) DO UPDATE SET
+                    post_id = coalesce(game.post_id, excluded.post_id),
+                    title = excluded.title,
+                    thumbnail_url = coalesce(excluded.thumbnail_url, game.thumbnail_url),
+                    updated_at = coalesce(excluded.updated_at, game.updated_at)
+                "#,
+                rusqlite::params![
+                    post_id,
+                    card.slug,
+                    card.title,
+                    card.thumb_url,
+                    card.updated_at,
+                ],
+            );
         }
     }
 
@@ -259,9 +265,41 @@ fn game_page(
         game.slug = clean_slug.clone();
     }
 
+    let card = crate::core::models::GameCard {
+        slug: game.slug.clone(),
+        title: game.title.clone(),
+        post_id: game.post_id,
+        thumb_url: game.screenshots.first().cloned(),
+        description: game.description.clone(),
+        developer: game.developer.clone(),
+        genres: game.genres.clone(),
+        ..Default::default()
+    };
+    if let Ok(extra) = crate::core::content::enrich(&ctx, &card) {
+        if game.description.is_none() || game.description.as_deref().unwrap_or("").trim().is_empty()
+        {
+            game.description = extra.description;
+        }
+        if game.developer.is_none() || game.developer.as_deref().unwrap_or("").trim().is_empty() {
+            game.developer = extra.developer;
+        }
+        for g in extra.genres {
+            if !game.genres.contains(&g) {
+                game.genres.push(g);
+            }
+        }
+        for s in extra.screenshots {
+            if !game.screenshots.contains(&s) {
+                game.screenshots.push(s);
+            }
+        }
+    }
+
+    let cover_thumbnail = crate::scraper::game::parse_cover_url(&html);
+
     // Persist to DB
     if let Ok(conn) = ctx.open_db() {
-        let _ = crate::db::repo::upsert_game(&conn, &game, None, None);
+        let _ = crate::db::repo::upsert_game(&conn, &game, None, cover_thumbnail.as_deref());
     }
 
     // Store in memory cache
@@ -492,48 +530,158 @@ fn artwork_url(
     card: crate::core::models::GameCard,
     kind: String,
 ) -> Result<Option<String>, String> {
-    let ctx = state
-        .context
-        .lock()
-        .map_err(|_| "state lock poisoned".to_string())?;
-    let kind = match kind.as_str() {
+    let cache_key = (
+        if !card.slug.is_empty() {
+            card.slug.clone()
+        } else {
+            card.post_id.map(|p| p.to_string()).unwrap_or_default()
+        },
+        kind.clone(),
+    );
+
+    // 1. In-memory first
+    if let Ok(cache) = state.artwork_cache.lock() {
+        if let Some(cached) = cache.get(&cache_key) {
+            return Ok(cached.clone());
+        }
+    }
+
+    let parsed_kind = match kind.as_str() {
         "icon" => crate::core::content::ArtworkKind::Icon,
         "cover" => crate::core::content::ArtworkKind::Cover,
         "background" => crate::core::content::ArtworkKind::Background,
         _ => return Err(format!("unknown artwork kind: {kind}")),
     };
 
-    // LewdZone is the authoritative source for its own cover thumbnail.
-    if kind == crate::core::content::ArtworkKind::Cover {
-        if let Some(ref t) = card.thumb_url {
-            if !t.trim().is_empty() {
-                return Ok(Some(t.clone()));
+    let result = (|| -> Result<Option<String>, String> {
+        let ctx = state
+            .context
+            .lock()
+            .map_err(|_| "state lock poisoned".to_string())?;
+
+        // LewdZone is the authoritative source for its own cover thumbnail.
+        if parsed_kind == crate::core::content::ArtworkKind::Cover {
+            if let Some(ref t) = card.thumb_url {
+                if let Some(clean) = crate::db::repo::clean_thumbnail(t) {
+                    return Ok(Some(clean));
+                }
+            }
+            // Fall back to SQLite database lookup by slug or post_id
+            if let Ok(conn) = crate::db::open(&ctx.db_path) {
+                let db_thumb = if !card.slug.is_empty() {
+                    crate::db::repo::thumbnail_by_slug(&conn, &card.slug)
+                        .ok()
+                        .flatten()
+                } else if let Some(pid) = card.post_id {
+                    crate::db::repo::thumbnail_by_post_id(&conn, pid)
+                        .ok()
+                        .flatten()
+                } else {
+                    None
+                };
+                if let Some(ref t) = db_thumb {
+                    if let Some(clean) = crate::db::repo::clean_thumbnail(t) {
+                        return Ok(Some(clean));
+                    }
+                }
+            }
+
+            // Fall back to resolving from LewdZone directly (for already installed games or games not yet in SQLite)
+            if !card.slug.is_empty() {
+                if let Some(lz_thumb) = resolve_lewdzone_thumbnail(&ctx, &card.slug, &card.title) {
+                    return Ok(Some(lz_thumb));
+                }
             }
         }
-        // Fall back to SQLite database lookup by slug or post_id
-        if let Ok(conn) = crate::db::open(&ctx.db_path) {
-            let db_thumb = if !card.slug.is_empty() {
-                crate::db::repo::thumbnail_by_slug(&conn, &card.slug)
-                    .ok()
-                    .flatten()
-            } else if let Some(pid) = card.post_id {
-                crate::db::repo::thumbnail_by_post_id(&conn, pid)
-                    .ok()
-                    .flatten()
-            } else {
-                None
-            };
-            if let Some(ref t) = db_thumb {
-                if !t.trim().is_empty() {
-                    return Ok(Some(t.clone()));
+
+        crate::core::content::artwork(&ctx, &card, parsed_kind)
+            .map(|opt| opt.map(|p| crate::core::content::path_to_url(&p)))
+            .map_err(|e| e.to_string())
+    })();
+
+    if let Ok(ref val) = result {
+        if let Ok(mut cache) = state.artwork_cache.lock() {
+            cache.insert(cache_key, val.clone());
+        }
+    }
+
+    result
+}
+
+fn resolve_lewdzone_thumbnail(
+    ctx: &crate::core::Context,
+    slug: &str,
+    title: &str,
+) -> Option<String> {
+    // 1. Direct game page fetch: https://lewdzone.com/game/{slug}/
+    let url = format!("https://lewdzone.com/game/{slug}/");
+    if let Ok(html) = crate::scraper::fetch(&url) {
+        if let Some(thumb) = crate::scraper::game::parse_cover_url(&html) {
+            if let Ok(conn) = ctx.open_db() {
+                let post_id = {
+                    use std::hash::{Hash, Hasher};
+                    let mut hasher = std::collections::hash_map::DefaultHasher::new();
+                    slug.hash(&mut hasher);
+                    (hasher.finish() & 0x7FFF_FFFF_FFFF_FFFF) as i64
+                };
+                let _ = conn.execute(
+                    r#"
+                    INSERT INTO game (post_id, slug, title, thumbnail_url)
+                    VALUES (?1, ?2, ?3, ?4)
+                    ON CONFLICT(slug) DO UPDATE SET
+                        thumbnail_url = coalesce(excluded.thumbnail_url, game.thumbnail_url)
+                    "#,
+                    rusqlite::params![post_id, slug, title, thumb],
+                );
+            }
+            return Some(thumb);
+        }
+    }
+
+    // 2. Search on lewdzone.com by title (or slug)
+    let q = if !title.trim().is_empty() {
+        title.trim()
+    } else {
+        slug.trim()
+    };
+    let search_url = crate::core::catalog::search_url(q);
+    if let Ok(html) = crate::scraper::fetch(&search_url) {
+        let archive = crate::scraper::archive::parse_archive(&html);
+        let found = archive
+            .games
+            .iter()
+            .find(|g| g.slug == slug)
+            .or_else(|| archive.games.first());
+        if let Some(c) = found {
+            if let Some(ref thumb) = c.thumb_url {
+                if let Ok(conn) = ctx.open_db() {
+                    let post_id = c.post_id.unwrap_or_else(|| {
+                        use std::hash::{Hash, Hasher};
+                        let mut hasher = std::collections::hash_map::DefaultHasher::new();
+                        c.slug.hash(&mut hasher);
+                        (hasher.finish() & 0x7FFF_FFFF_FFFF_FFFF) as i64
+                    });
+                    let _ = conn.execute(
+                        r#"
+                        INSERT INTO game (post_id, slug, title, thumbnail_url)
+                        VALUES (?1, ?2, ?3, ?4)
+                        ON CONFLICT(slug) DO UPDATE SET
+                            thumbnail_url = coalesce(excluded.thumbnail_url, game.thumbnail_url)
+                        "#,
+                        rusqlite::params![
+                            post_id,
+                            &c.slug,
+                            if title.is_empty() { &c.title } else { title },
+                            thumb
+                        ],
+                    );
                 }
+                return Some(thumb.clone());
             }
         }
     }
 
-    crate::core::content::artwork(&ctx, &card, kind)
-        .map(|opt| opt.map(|p| crate::core::content::path_to_url(&p)))
-        .map_err(|e| e.to_string())
+    None
 }
 
 /// Cancel a queued or active download job.
@@ -725,6 +873,7 @@ pub fn run() {
             game_cache: Mutex::new(HashMap::new()),
             page_cache: Mutex::new(HashMap::new()),
             genres_cache: Mutex::new(None),
+            artwork_cache: Mutex::new(HashMap::new()),
         })
         .setup(|app| {
             use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};

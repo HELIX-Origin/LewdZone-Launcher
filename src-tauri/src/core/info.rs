@@ -115,10 +115,15 @@ mod tests {
 
     const GAME_FIXTURE: &str = include_str!("../../tests/fixtures/html/lz_game.html");
 
+    use std::sync::atomic::{AtomicU64, Ordering};
+    static COUNTER: AtomicU64 = AtomicU64::new(0);
+
     fn ctx() -> Context {
+        let pid = std::process::id();
+        let tag = COUNTER.fetch_add(1, Ordering::Relaxed);
         Context::new(
-            std::env::temp_dir().join("lz-info-test.db"),
-            std::env::temp_dir().join("lz-info-test.json"),
+            std::env::temp_dir().join(format!("lz-info-test-{pid}-{tag}.db")),
+            std::env::temp_dir().join(format!("lz-info-test-{pid}-{tag}.json")),
         )
     }
 
@@ -171,22 +176,24 @@ mod tests {
 
     #[test]
     fn info_resolves_post_id_through_db() {
-        let conn = db::open(&ctx().db_path).unwrap();
+        let c = ctx();
+        let conn = db::open(&c.db_path).unwrap();
         db::migrate(&conn).unwrap();
         let game = scraper::game::parse_game(GAME_FIXTURE);
         let tx = conn.unchecked_transaction().unwrap();
         db::repo::upsert_game(&tx, &game, Some("2024-10-01"), None).unwrap();
         tx.commit().unwrap();
 
-        let slug = resolve_slug(&ctx(), "18212").unwrap();
+        let slug = resolve_slug(&c, "18212").unwrap();
         assert_eq!(slug, "treasure-of-nadia");
     }
 
     #[test]
     fn info_reports_unknown_post_id() {
-        let conn = db::open(&ctx().db_path).unwrap();
+        let c = ctx();
+        let conn = db::open(&c.db_path).unwrap();
         db::migrate(&conn).unwrap();
-        let err = resolve_slug(&ctx(), "999999").unwrap_err();
+        let err = resolve_slug(&c, "999999").unwrap_err();
         assert!(matches!(err, Error::Usage(_)));
     }
 }

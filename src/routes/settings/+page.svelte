@@ -84,6 +84,33 @@
     // Refresh snapshot so the status badge clears.
     await load();
   }
+
+  let igdbClientIdDraft = $state("");
+  let igdbClientSecretDraft = $state("");
+
+  async function saveIgdbClientId() {
+    if (!igdbClientIdDraft.trim()) return;
+    await save("igdb-client-id", igdbClientIdDraft.trim(), true);
+    igdbClientIdDraft = "";
+    await load();
+  }
+
+  async function clearIgdbClientId() {
+    await save("igdb-client-id", "", true);
+    await load();
+  }
+
+  async function saveIgdbClientSecret() {
+    if (!igdbClientSecretDraft.trim()) return;
+    await save("igdb-client-secret", igdbClientSecretDraft.trim(), true);
+    igdbClientSecretDraft = "";
+    await load();
+  }
+
+  async function clearIgdbClientSecret() {
+    await save("igdb-client-secret", "", true);
+    await load();
+  }
 </script>
 
 {#if status === "loading"}
@@ -205,6 +232,7 @@
         <button
           type="button"
           class="secret-save-btn"
+          aria-label="Save SteamGridDB API key"
           disabled={!sgdbKeyDraft || busy}
           onclick={saveSgdbKey}
         >
@@ -228,6 +256,108 @@
         Stored securely in the local SQLite database — never written to any config file.
         {#if snapshot["sgdb-api-key"] === "(set)"}
           <span class="secret-status set">● Key saved</span>
+        {:else}
+          <span class="secret-status unset">○ Not configured</span>
+        {/if}
+      </span>
+    </label>
+
+    <label class="field">
+      <span class="field-label">IGDB (Twitch) Client ID</span>
+      <div class="secret-row">
+        <input
+          type="password"
+          class="secret-input"
+          placeholder={snapshot["igdb-client-id"] === "(set)"
+            ? "●●●●●●●●●●●●●●●● (saved — paste to replace)"
+            : "Paste your Twitch Client ID here"}
+          autocomplete="off"
+          oninput={(e) => {
+            igdbClientIdDraft = (e.currentTarget as HTMLInputElement).value;
+          }}
+          onkeydown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              saveIgdbClientId();
+            }
+          }}
+        />
+        <button
+          type="button"
+          class="secret-save-btn"
+          aria-label="Save IGDB Client ID"
+          disabled={!igdbClientIdDraft || busy}
+          onclick={saveIgdbClientId}
+        >
+          Save
+        </button>
+        {#if snapshot["igdb-client-id"] === "(set)"}
+          <button
+            type="button"
+            class="secret-clear-btn"
+            disabled={busy}
+            onclick={clearIgdbClientId}
+            title="Remove saved Client ID"
+          >
+            Clear
+          </button>
+        {/if}
+      </div>
+      <span class="field-hint">
+        Used alongside Client Secret to enrich game descriptions, genres, screenshots, and artwork via IGDB.
+        {#if snapshot["igdb-client-id"] === "(set)"}
+          <span class="secret-status set">● Saved</span>
+        {:else}
+          <span class="secret-status unset">○ Not configured</span>
+        {/if}
+      </span>
+    </label>
+
+    <label class="field">
+      <span class="field-label">IGDB (Twitch) Client Secret</span>
+      <div class="secret-row">
+        <input
+          type="password"
+          class="secret-input"
+          placeholder={snapshot["igdb-client-secret"] === "(set)"
+            ? "●●●●●●●●●●●●●●●● (saved — paste to replace)"
+            : "Paste your Twitch Client Secret here"}
+          autocomplete="off"
+          oninput={(e) => {
+            igdbClientSecretDraft = (e.currentTarget as HTMLInputElement).value;
+          }}
+          onkeydown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              saveIgdbClientSecret();
+            }
+          }}
+        />
+        <button
+          type="button"
+          class="secret-save-btn"
+          aria-label="Save IGDB Client Secret"
+          disabled={!igdbClientSecretDraft || busy}
+          onclick={saveIgdbClientSecret}
+        >
+          Save
+        </button>
+        {#if snapshot["igdb-client-secret"] === "(set)"}
+          <button
+            type="button"
+            class="secret-clear-btn"
+            disabled={busy}
+            onclick={clearIgdbClientSecret}
+            title="Remove saved Client Secret"
+          >
+            Clear
+          </button>
+        {/if}
+      </div>
+      <span class="field-hint">
+        Stored securely in the local SQLite database.
+        {#if snapshot["igdb-client-secret"] === "(set)"}
+          <span class="secret-status set">● Saved</span>
         {:else}
           <span class="secret-status unset">○ Not configured</span>
         {/if}

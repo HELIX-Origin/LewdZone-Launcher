@@ -47,7 +47,12 @@ pub fn migrate(conn: &Connection) -> Result<(), Error> {
         )?;
         if applied == 0 {
             let tx = conn.unchecked_transaction()?;
-            tx.execute_batch(sql)?;
+            if let Err(e) = tx.execute_batch(sql) {
+                let msg = e.to_string();
+                if !msg.contains("duplicate column name") {
+                    return Err(e.into());
+                }
+            }
             tx.execute(
                 "INSERT INTO schema_migrations (version) VALUES (?1)",
                 [name],

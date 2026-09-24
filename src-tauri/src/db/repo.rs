@@ -22,6 +22,21 @@ fn token_of(go_link: &str) -> String {
     }
 }
 
+/// Helper to ensure a thumbnail string from SQLite is a clean, single image URL,
+/// automatically deserializing and taking the first item if it was stored as a JSON array `["..."]`.
+pub fn clean_thumbnail(raw: &str) -> Option<String> {
+    let trimmed = raw.trim();
+    if trimmed.is_empty() {
+        return None;
+    }
+    if trimmed.starts_with('[') && trimmed.ends_with(']') {
+        if let Ok(urls) = serde_json::from_str::<Vec<String>>(trimmed) {
+            return urls.into_iter().find(|u| !u.trim().is_empty());
+        }
+    }
+    Some(trimmed.to_string())
+}
+
 /// Import a Game plus card metadata inside a caller-managed transaction.
 /// Idempotent: repeated calls converge to the same rows (verified by tests).
 pub fn upsert_game(
@@ -39,10 +54,12 @@ pub fn upsert_game(
             (hasher.finish() & 0x7FFF_FFFF_FFFF_FFFF) as i64
         }
     };
-    let thumbnail = if !game.screenshots.is_empty() {
-        serde_json::to_string(&game.screenshots).ok()
+    let thumbnail = if let Some(ct) = card_thumbnail {
+        clean_thumbnail(ct)
+    } else if let Some(first_shot) = game.screenshots.first() {
+        clean_thumbnail(first_shot)
     } else {
-        card_thumbnail.map(str::to_string)
+        None
     };
     tx.execute(
         r#"
@@ -58,7 +75,7 @@ pub fn upsert_game(
             censorship = excluded.censorship,
             description = excluded.description,
             updated_at = excluded.updated_at,
-            thumbnail_url = excluded.thumbnail_url
+            thumbnail_url = coalesce(excluded.thumbnail_url, game.thumbnail_url)
         "#,
         params![
             post_id,
@@ -672,26 +689,28 @@ pub fn post_id_by_slug(tx: &Connection, slug: &str) -> Result<Option<i64>, Error
 
 /// Query the thumbnail URL for a game by its slug.
 pub fn thumbnail_by_slug(tx: &Connection, slug: &str) -> Result<Option<String>, Error> {
-    tx.query_row(
-        "SELECT thumbnail_url FROM game WHERE slug = ?1",
-        [slug],
-        |row| row.get::<_, Option<String>>(0),
-    )
-    .optional()
-    .map(|opt| opt.flatten())
-    .map_err(Into::into)
+    let opt: Option<String> = tx
+        .query_row(
+            "SELECT thumbnail_url FROM game WHERE slug = ?1",
+            [slug],
+            |row| row.get::<_, Option<String>>(0),
+        )
+        .optional()?
+        .flatten();
+    Ok(opt.and_then(|r| clean_thumbnail(&r)))
 }
 
 /// Query the thumbnail URL for a game by its post id.
 pub fn thumbnail_by_post_id(tx: &Connection, post_id: i64) -> Result<Option<String>, Error> {
-    tx.query_row(
-        "SELECT thumbnail_url FROM game WHERE post_id = ?1",
-        [post_id],
-        |row| row.get::<_, Option<String>>(0),
-    )
-    .optional()
-    .map(|opt| opt.flatten())
-    .map_err(Into::into)
+    let opt: Option<String> = tx
+        .query_row(
+            "SELECT thumbnail_url FROM game WHERE post_id = ?1",
+            [post_id],
+            |row| row.get::<_, Option<String>>(0),
+        )
+        .optional()?
+        .flatten();
+    Ok(opt.and_then(|r| clean_thumbnail(&r)))
 }
 
 /// Add or replace a favorite row for a game. `post_id` must already exist in
@@ -736,7 +755,8 @@ pub fn favorite_list(conn: &Connection) -> Result<Vec<crate::core::models::GameC
     })?;
     let mut out = Vec::new();
     for row in rows {
-        let (post_id, slug, title, developer, engine, thumbnail_url, updated_at) = row?;
+        let (post_id, slug, title, developer, engine, raw_thumb, updated_at) = row?;
+        let thumb_url = raw_thumb.and_then(|t| clean_thumbnail(&t));
         let genres: Vec<String> = {
             let mut gs = conn.prepare(
                 "SELECT genre.label FROM game_genre JOIN genre ON genre.slug = game_genre.genre_id
@@ -763,7 +783,7 @@ pub fn favorite_list(conn: &Connection) -> Result<Vec<crate::core::models::GameC
             slug,
             post_id: Some(post_id),
             title,
-            thumb_url: thumbnail_url,
+            thumb_url,
             platforms: Vec::new(),
             engine,
             state: None,

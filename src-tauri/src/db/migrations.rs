@@ -164,4 +164,10 @@ CREATE TABLE IF NOT EXISTS game_stats (
 CREATE INDEX IF NOT EXISTS idx_game_stats_last_played ON game_stats(last_played_at);
 "#,
     ),
+    (
+        "007_game_screenshots",
+        r#"
+ALTER TABLE game ADD COLUMN screenshots TEXT;
+"#,
+    ),
 ];
