@@ -12,6 +12,7 @@ pub mod extract;
 pub mod favorites;
 pub mod folder;
 pub mod info;
+pub mod installer;
 pub mod launch;
 pub mod library;
 pub mod list;

@@ -74,7 +74,13 @@
     {
       id: "help",
       label: "Help",
-      items: [{ label: "About LewdZone Launcher", action: () => (aboutOpen = true) }],
+      items: [
+        { label: "About LewdZone Launcher", action: () => (aboutOpen = true) },
+        {
+          label: "Repair / Modify Installation",
+          action: () => invoke("open_installer_window", { mode: "maintenance" }),
+        },
+      ],
     },
   ] as const;
 
@@ -109,7 +115,9 @@
   };
 
   const current = $derived(page.url.pathname);
-  const isChildWindow = $derived(current.startsWith("/resolver"));
+  const isChildWindow = $derived(
+    current.startsWith("/resolver") || current.startsWith("/installer"),
+  );
 
   function isActive(item: (typeof nav)[number]): boolean {
     return current === item.path;

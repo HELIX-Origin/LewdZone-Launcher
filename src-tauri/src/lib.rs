@@ -897,6 +897,59 @@ fn read_debug_log() -> Result<String, String> {
     crate::core::logging::read_log_tail(200).map_err(|e| e.to_string())
 }
 
+/// Get installer detection status (is installed, version, default path, etc.).
+#[tauri::command]
+fn installer_status() -> crate::core::installer::InstallerStatus {
+    crate::core::installer::detect_status()
+}
+
+/// Check available disk space on the given path.
+#[tauri::command]
+fn installer_disk_space(target_dir: String) -> crate::core::installer::DiskSpaceInfo {
+    crate::core::installer::check_disk_space(&target_dir)
+}
+
+/// Execute application installation.
+#[tauri::command]
+fn installer_install(
+    options: crate::core::installer::InstallOptions,
+) -> crate::core::installer::OperationResult {
+    crate::core::installer::perform_install(options)
+}
+
+/// Execute application uninstallation.
+#[tauri::command]
+fn installer_uninstall(
+    options: crate::core::installer::UninstallOptions,
+) -> crate::core::installer::OperationResult {
+    crate::core::installer::perform_uninstall(options)
+}
+
+/// Open the installer/uninstaller window.
+#[tauri::command]
+async fn open_installer_window(app: tauri::AppHandle, mode: Option<String>) -> Result<(), String> {
+    use tauri::{Manager, WebviewUrl, WebviewWindowBuilder};
+
+    if let Some(win) = app.get_webview_window("installer") {
+        let _ = win.show();
+        let _ = win.set_focus();
+        return Ok(());
+    }
+
+    let mode_str = mode.unwrap_or_else(|| "auto".to_string());
+    let path = format!("installer?mode={mode_str}");
+
+    let builder = WebviewWindowBuilder::new(&app, "installer", WebviewUrl::App(path.into()))
+        .title("LewdZone Launcher Setup")
+        .inner_size(780.0, 560.0)
+        .min_inner_size(720.0, 520.0)
+        .resizable(false)
+        .center();
+
+    builder.build().map_err(|e| e.to_string())?;
+    Ok(())
+}
+
 /// CLI entry point called from `main.rs` when argv has subcommands.
 pub fn cli_main() -> std::process::ExitCode {
     use clap::Parser;
@@ -1043,10 +1096,99 @@ pub fn run() {
             get_debug_log_path,
             open_debug_log_folder,
             clear_debug_log,
-            read_debug_log
+            read_debug_log,
+            installer_status,
+            installer_disk_space,
+            installer_install,
+            installer_uninstall,
+            open_installer_window
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+}
+
+/// Launch the application directly into the unified installer/uninstaller wizard window.
+pub fn run_installer() {
+    let (db, config) = default_context();
+    let initial_debug = crate::core::settings::Settings::load(&config)
+        .ok()
+        .and_then(|s| s.debug_logging)
+        .unwrap_or(false);
+    crate::core::logging::init(crate::core::paths::log_file_path(), initial_debug);
+    let ctx = Context::new(db.clone(), config.clone());
+    let queue = Arc::new(
+        crate::core::queue::Queue::load(&ctx).expect("queue should load from the local database"),
+    );
+
+    let is_uninstall = std::env::args().any(|a| a == "--uninstall" || a == "--maintenance");
+    let mode = if is_uninstall { "uninstall" } else { "install" };
+
+    tauri::Builder::default()
+        .plugin(tauri_plugin_opener::init())
+        .manage(AppState {
+            context: Mutex::new(Context::new(db, config)),
+            queue,
+            game_cache: Mutex::new(HashMap::new()),
+            page_cache: Mutex::new(HashMap::new()),
+            genres_cache: Mutex::new(None),
+            artwork_cache: Mutex::new(HashMap::new()),
+        })
+        .setup(move |app| {
+            use tauri::{WebviewUrl, WebviewWindowBuilder};
+
+            let path = format!("installer?mode={mode}");
+            let _ = WebviewWindowBuilder::new(app, "installer", WebviewUrl::App(path.into()))
+                .title("LewdZone Launcher Setup")
+                .inner_size(780.0, 560.0)
+                .min_inner_size(720.0, 520.0)
+                .resizable(false)
+                .center()
+                .build()?;
+
+            Ok(())
+        })
+        .invoke_handler(tauri::generate_handler![
+            greet,
+            settings_get,
+            settings_set,
+            themes_list,
+            themes_tokens,
+            themes_apply,
+            catalog_page,
+            catalog_genres,
+            catalog_genre,
+            catalog_search,
+            game_page,
+            game_sources,
+            game_download,
+            downloads_list,
+            favorites_list,
+            favorite_add,
+            favorite_remove,
+            library_list,
+            library_scan,
+            create_shortcut,
+            game_launch,
+            content_enrich,
+            artwork_url,
+            open_resolver_window,
+            download_cancel,
+            download_delete,
+            downloads_clear,
+            resolve_go_link,
+            app_quit,
+            get_debug_log_path,
+            open_debug_log_folder,
+            clear_debug_log,
+            read_debug_log,
+            installer_status,
+            installer_disk_space,
+            installer_install,
+            installer_uninstall,
+            open_installer_window
+        ])
+        .run(tauri::generate_context!())
+        .expect("error while running tauri installer application");
 }
 
 fn default_context() -> (PathBuf, PathBuf) {

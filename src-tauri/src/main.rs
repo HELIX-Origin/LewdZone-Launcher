@@ -4,9 +4,16 @@
 use std::process::ExitCode;
 
 fn main() -> ExitCode {
-    // Native CLI: any argv beyond the binary name dispatches to the CLI
-    // (Rule 03 two-entry-points). Run bare → launch the windowed app.
-    if std::env::args().count() > 1 {
+    let args: Vec<String> = std::env::args().collect();
+    if args
+        .iter()
+        .any(|a| a == "--installer" || a == "--setup" || a == "--uninstall" || a == "--maintenance")
+    {
+        lewdzone_lib::run_installer();
+        return ExitCode::SUCCESS;
+    }
+    // Native CLI: any other argv beyond the binary name dispatches to the CLI
+    if args.len() > 1 {
         return lewdzone_lib::cli_main();
     }
     lewdzone_lib::run();
