@@ -16,7 +16,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "tauri": "tauri",
-    "tauri:build": "tauri build && node scripts/copy-installers.mjs"
+    "tauri:build": "tauri build"
   },
   "license": "MIT",
   "dependencies": {

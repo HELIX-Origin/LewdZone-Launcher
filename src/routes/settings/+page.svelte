@@ -68,6 +68,22 @@
       busy = false;
     }
   }
+
+  let sgdbKeyDraft = $state("");
+
+  async function saveSgdbKey() {
+    if (!sgdbKeyDraft.trim()) return;
+    await save("sgdb-api-key", sgdbKeyDraft.trim(), true);
+    sgdbKeyDraft = "";
+    // Refresh snapshot so the status badge updates immediately.
+    await load();
+  }
+
+  async function clearSgdbKey() {
+    await save("sgdb-api-key", "", true);
+    // Refresh snapshot so the status badge clears.
+    await load();
+  }
 </script>
 
 {#if status === "loading"}
@@ -162,6 +178,62 @@
       <span class="field-hint">Nord, Dracula, and Material ship with the app. Custom skins go in the user skins folder (one subfolder per theme) — next to the app on Windows, in the app data folder on macOS/Linux. Built-in default stays; skins apply at runtime — no restart needed.</span>
     </fieldset>
 
+    <div class="section-divider">
+      <span>Content Providers</span>
+    </div>
+
+    <label class="field">
+      <span class="field-label">SteamGridDB API key</span>
+      <div class="secret-row">
+        <input
+          type="password"
+          class="secret-input"
+          placeholder={snapshot["sgdb-api-key"] === "(set)"
+            ? "●●●●●●●●●●●●●●●● (saved — paste to replace)"
+            : "Paste your SteamGridDB API key here"}
+          autocomplete="off"
+          oninput={(e) => {
+            sgdbKeyDraft = (e.currentTarget as HTMLInputElement).value;
+          }}
+          onkeydown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              saveSgdbKey();
+            }
+          }}
+        />
+        <button
+          type="button"
+          class="secret-save-btn"
+          disabled={!sgdbKeyDraft || busy}
+          onclick={saveSgdbKey}
+        >
+          Save
+        </button>
+        {#if snapshot["sgdb-api-key"] === "(set)"}
+          <button
+            type="button"
+            class="secret-clear-btn"
+            disabled={busy}
+            onclick={clearSgdbKey}
+            title="Remove saved key"
+          >
+            Clear
+          </button>
+        {/if}
+      </div>
+      <span class="field-hint">
+        Used to fetch high-quality cover art, hero banners, and icons for your library.
+        Get a free key at <a href="https://www.steamgriddb.com/profile/preferences/api" target="_blank" rel="noreferrer">steamgriddb.com</a>.
+        Stored securely in the local SQLite database — never written to any config file.
+        {#if snapshot["sgdb-api-key"] === "(set)"}
+          <span class="secret-status set">● Key saved</span>
+        {:else}
+          <span class="secret-status unset">○ Not configured</span>
+        {/if}
+      </span>
+    </label>
+
     {#if toast}<p class="toast" aria-live="polite">{toast}</p>{/if}
   </div>
 {/if}
@@ -235,5 +307,115 @@
 
   .note.error {
     color: var(--lz-danger);
+  }
+
+  .section-divider {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--lz-text-dim);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-top: 4px;
+  }
+
+  .section-divider::before,
+  .section-divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--lz-border);
+  }
+
+  .secret-row {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+  }
+
+  .secret-input {
+    flex: 1;
+    background: var(--lz-surface-2);
+    border: 1px solid var(--lz-surface-2);
+    color: var(--lz-text);
+    border-radius: var(--lz-radius);
+    padding: 8px 10px;
+    font: inherit;
+  }
+
+  .secret-input:focus {
+    outline: 1px solid var(--lz-accent);
+    border-color: var(--lz-accent);
+  }
+
+  .secret-save-btn {
+    padding: 7px 14px;
+    border: none;
+    border-radius: var(--lz-radius);
+    background: var(--lz-accent);
+    color: var(--lz-bg);
+    font-weight: 600;
+    font-size: 12px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: opacity 0.15s;
+  }
+
+  .secret-save-btn:hover:not(:disabled) {
+    opacity: 0.85;
+  }
+
+  .secret-save-btn:disabled {
+    opacity: 0.45;
+    cursor: default;
+  }
+
+  .secret-clear-btn {
+    padding: 7px 10px;
+    border: 1px solid var(--lz-danger);
+    border-radius: var(--lz-radius);
+    background: transparent;
+    color: var(--lz-danger);
+    font-weight: 600;
+    font-size: 12px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.15s;
+  }
+
+  .secret-clear-btn:hover:not(:disabled) {
+    background: var(--lz-danger);
+    color: var(--lz-bg);
+  }
+
+  .secret-clear-btn:disabled {
+    opacity: 0.45;
+    cursor: default;
+  }
+
+  .field-hint a {
+    color: var(--lz-accent);
+    text-decoration: none;
+  }
+
+  .field-hint a:hover {
+    text-decoration: underline;
+  }
+
+  .secret-status {
+    display: inline-block;
+    margin-left: 6px;
+    font-size: 11px;
+    font-weight: 600;
+  }
+
+  .secret-status.set {
+    color: var(--lz-ok);
+  }
+
+  .secret-status.unset {
+    color: var(--lz-text-dim);
   }
 </style>

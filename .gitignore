@@ -5,7 +5,6 @@
 # Tauri framework.
 # --------------------------------------------------
 node_modules/
-build/
 .svelte-kit/
 src-tauri/out/
 src-tauri/target/
@@ -76,5 +75,4 @@ logs/
 # allowed to be committed to the repository, even if
 # they would normally be ignored by other rules.
 # --------------------------------------------------
-!build/.gitkeep
 !logs/.gitkeep

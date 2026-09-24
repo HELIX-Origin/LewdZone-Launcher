@@ -770,4 +770,30 @@ describe("settings page", () => {
     );
     expect(await screen.findByText("7z-path saved")).toBeInTheDocument();
   });
+
+  it("shows Key saved status when sgdb-api-key is already set", async () => {
+    render(SettingsPage);
+    // The mock returns (set) for sgdb-api-key, so the badge should show.
+    expect(await screen.findByText("● Key saved")).toBeInTheDocument();
+  });
+
+  it("saves the SteamGridDB API key as a secret", async () => {
+    const user = userEvent.setup();
+    render(SettingsPage);
+    const input = await screen.findByPlaceholderText(
+      "●●●●●●●●●●●●●●●● (saved — paste to replace)",
+    );
+    await user.type(input, "my-test-sgdb-key-1234");
+    const saveBtn = await screen.findByRole("button", { name: "Save" });
+    await user.click(saveBtn);
+
+    expect(invoke).toHaveBeenCalledWith(
+      "settings_set",
+      expect.objectContaining({
+        key: "sgdb-api-key",
+        value: "my-test-sgdb-key-1234",
+        secret: true,
+      }),
+    );
+  });
 });

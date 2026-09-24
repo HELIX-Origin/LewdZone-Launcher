@@ -1,16 +1,19 @@
 name: Cross-Platform Packaging
 
+# Builds native installers on all three platforms.
+# tauri-action handles the full Rust + frontend build and produces bundles in
+# src-tauri/target/release/bundle/ — Tauri's own native output location.
+# No intermediate copy step is needed; artifacts are uploaded directly from there.
+#
+# Triggers
+#   • Version-tag push  — v*  (also attaches installers to the matching release)
+#   • workflow_dispatch — manual build, no release attachment
+
 on:
   push:
     tags:
       - 'v*'
   workflow_dispatch:
-    inputs:
-      draft:
-        description: 'Create release as draft'
-        required: false
-        type: boolean
-        default: true
 
 permissions:
   contents: write
@@ -52,30 +55,44 @@ jobs:
         if: matrix.platform == 'ubuntu-22.04'
         run: |
           sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf xdg-utils
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libappindicator3-dev \
+            librsvg2-dev \
+            patchelf \
+            xdg-utils
 
       - name: Install frontend dependencies
         run: npm ci
 
-      - name: Package Tauri Desktop App
+      - name: Build Tauri release bundle
+        # tauri-action builds the Rust binary + frontend, runs the bundler,
+        # and (when triggered by a tag push) attaches the installers to the
+        # existing GitHub Release for that tag.
         uses: tauri-apps/tauri-action@v0
         env:
-          GITHUB_TOKEN: ${{ secrets.PAT_TOKEN || secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tagName: v__VERSION__
-          releaseName: 'LewdZone Launcher v__VERSION__'
+          tagName: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || '' }}
+          releaseName: 'LewdZone Launcher ${{ github.ref_name }}'
           releaseBody: 'See CHANGELOG.md for release details.'
-          releaseDraft: ${{ github.event.inputs.draft != 'false' }}
+          releaseDraft: false
           prerelease: false
+          updaterJsonKeepUniversal: true
 
-      - name: Copy and upload bundle artifacts
-        if: always()
-        run: node scripts/copy-installers.mjs
-
+      # Upload the installers Tauri produced as workflow artifacts.
+      # Paths are Tauri v2's native bundle output structure.
       - name: Upload installer artifacts
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.artifact-name }}
-          path: build/*
+          path: |
+            src-tauri/target/release/bundle/**/*.exe
+            src-tauri/target/release/bundle/**/*.msi
+            src-tauri/target/release/bundle/**/*.dmg
+            src-tauri/target/release/bundle/**/*.app.tar.gz
+            src-tauri/target/release/bundle/**/*.AppImage
+            src-tauri/target/release/bundle/**/*.deb
+            src-tauri/target/release/bundle/**/*.rpm
           if-no-files-found: warn
