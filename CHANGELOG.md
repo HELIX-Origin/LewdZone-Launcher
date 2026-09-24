@@ -12,6 +12,23 @@ the top; the current development state lives under `Unreleased`.
 
 ---
 
+## [v0.2.1](https://github.com/HELIX-Origin/LewdZone-Launcher/releases/tag/v0.2.1) — 2026-09-24
+
+Patch release fixing cross-platform CI packaging builds for Linux and macOS, aligning workflow configuration with the official Tauri v2 GitHub Actions guide, and adding SteamGridDB API key settings persistence to the SQLite secret table.
+
+### 🐛 Bug Fixes
+
+- **CI Packaging Pipeline:** Fixed `ENOENT` spawn failure on Linux and macOS during Tauri release bundling. `beforeBuildCommand` in `tauri.conf.json` was switched to standard `npm run build` and `scripts/build-with-log.mjs` was updated to enforce `shell: true` across all operating systems.
+- **Official Tauri v2 Alignment:** Updated `.github/workflows/package.yml` per the official Tauri v2 pipeline guide, installing dual macOS targets (`aarch64-apple-darwin` and `x86_64-apple-darwin`), setting `node-version: lts/*`, and providing native system libraries (`libwebkit2gtk-4.1-dev`, `libappindicator3-dev`, `librsvg2-dev`, `patchelf`).
+- **Tauri Native Artifact Dropping:** Replaced the legacy `build/` root directory and `copy-installers.mjs` script with native bundle collection directly from `src-tauri/target/release/bundle/`. Cleaned `.gitignore` and `package.json` scripts.
+- **Workflow Dispatch Safety:** Scoped `tagName` in `tauri-action` to `v*` tag push events so manual packaging test dispatches upload artifacts cleanly without attempting to publish duplicate release tags.
+
+### ✨ Features
+
+- **SteamGridDB API Key Settings:** Added a new *Content Providers* section to the Settings page. Users can input their SteamGridDB API key with masked password display. Keys are securely stored in the SQLite `secret` table via `settings_set` (`secret: true`) and never written to `config.json`. Displays live *● Key saved* / *○ Not configured* status indicators and provides Save and Clear controls.
+
+---
+
 ## [v0.2.0](https://github.com/HELIX-Origin/LewdZone-Launcher/releases/tag/v0.2.0) — 2026-09-24
 
 Milestone v0.2.0 release introducing native operating system desktop shortcuts, gameplay playtime and session tracking, library sort controls, and automated cross-platform CI/CD packaging.
