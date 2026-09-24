@@ -37,6 +37,10 @@ pub struct LibraryGame {
     pub launch_exe: String,
     pub installed_at: Option<String>,
     pub size_on_disk: u64,
+    pub playtime_seconds: i64,
+    pub play_count: i64,
+    pub last_played_at: Option<String>,
+    pub thumb_url: Option<String>,
 }
 
 pub fn run(ctx: &Context, library_flag: bool, jobs: bool) -> Result<ExitCode, Error> {
@@ -53,21 +57,37 @@ pub fn run(ctx: &Context, library_flag: bool, jobs: bool) -> Result<ExitCode, Er
 pub fn library_listing(ctx: &Context) -> Result<LibraryListing, Error> {
     let root = crate::core::folder::lzapps_root(ctx)?;
     let apps = library::list_installed(ctx)?;
+    let conn = db::open(&ctx.db_path).ok();
     let games = apps
         .into_iter()
-        .map(|app| LibraryGame {
-            slug: app.slug,
-            post_id: app.post_id,
-            title: app.title,
-            version: app.version,
-            platform: app.platform,
-            tab: app.tab,
-            engine: app.engine,
-            install_path: app.install_path.to_string_lossy().into_owned(),
-            candidates: app.candidates,
-            launch_exe: app.launch_exe,
-            installed_at: app.installed_at,
-            size_on_disk: app.size_on_disk,
+        .map(|app| {
+            let thumb_url = conn.as_ref().and_then(|c| {
+                db::repo::thumbnail_by_slug(c, &app.slug)
+                    .ok()
+                    .flatten()
+                    .or_else(|| {
+                        app.post_id
+                            .and_then(|pid| db::repo::thumbnail_by_post_id(c, pid).ok().flatten())
+                    })
+            });
+            LibraryGame {
+                slug: app.slug,
+                post_id: app.post_id,
+                title: app.title,
+                version: app.version,
+                platform: app.platform,
+                tab: app.tab,
+                engine: app.engine,
+                install_path: app.install_path.to_string_lossy().into_owned(),
+                candidates: app.candidates,
+                launch_exe: app.launch_exe,
+                installed_at: app.installed_at,
+                size_on_disk: app.size_on_disk,
+                playtime_seconds: app.playtime_seconds,
+                play_count: app.play_count,
+                last_played_at: app.last_played_at,
+                thumb_url,
+            }
         })
         .collect();
     Ok(LibraryListing {

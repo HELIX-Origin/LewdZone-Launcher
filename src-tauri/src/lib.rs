@@ -504,8 +504,31 @@ fn artwork_url(
     };
 
     // LewdZone is the authoritative source for its own cover thumbnail.
-    if kind == crate::core::content::ArtworkKind::Cover && card.thumb_url.is_some() {
-        return Ok(card.thumb_url.clone());
+    if kind == crate::core::content::ArtworkKind::Cover {
+        if let Some(ref t) = card.thumb_url {
+            if !t.trim().is_empty() {
+                return Ok(Some(t.clone()));
+            }
+        }
+        // Fall back to SQLite database lookup by slug or post_id
+        if let Ok(conn) = crate::db::open(&ctx.db_path) {
+            let db_thumb = if !card.slug.is_empty() {
+                crate::db::repo::thumbnail_by_slug(&conn, &card.slug)
+                    .ok()
+                    .flatten()
+            } else if let Some(pid) = card.post_id {
+                crate::db::repo::thumbnail_by_post_id(&conn, pid)
+                    .ok()
+                    .flatten()
+            } else {
+                None
+            };
+            if let Some(ref t) = db_thumb {
+                if !t.trim().is_empty() {
+                    return Ok(Some(t.clone()));
+                }
+            }
+        }
     }
 
     crate::core::content::artwork(&ctx, &card, kind)

@@ -70,6 +70,53 @@ pub fn enrich(_ctx: &Context, card: &GameCard) -> Result<Enrichment, Error> {
     })
 }
 
+pub mod steamgriddb;
+
+use std::collections::BTreeMap;
+use std::io::Write;
+
+/// A content provider.
+pub trait Provider: Send + Sync {
+    fn name(&self) -> &'static str;
+
+    /// Whether this provider can run given the secrets available.
+    fn enabled(&self, secrets: &BTreeMap<String, String>) -> bool;
+
+    /// Try to enrich a game. Returns `Ok(None)` when the provider has nothing.
+    fn enrich(
+        &self,
+        secrets: &BTreeMap<String, String>,
+        card: &GameCard,
+    ) -> Result<Option<Enrichment>, Error>;
+
+    /// Try to fetch artwork bytes. Returns `Ok(None)` when nothing is found.
+    fn artwork(
+        &self,
+        secrets: &BTreeMap<String, String>,
+        card: &GameCard,
+        kind: ArtworkKind,
+    ) -> Result<Option<(String, Vec<u8>)>, Error>;
+}
+
+/// All registered providers.
+pub fn providers() -> Vec<Box<dyn Provider>> {
+    vec![Box::new(steamgriddb::SteamGridDb)]
+}
+
+/// Load all secrets this layer cares about from SQLite.
+pub fn load_secrets(ctx: &Context) -> Result<BTreeMap<String, String>, Error> {
+    let keys = ["sgdb-api-key", "igdb-client-id", "igdb-client-secret"];
+    let conn = db::open(&ctx.db_path)?;
+    db::migrate(&conn)?;
+    let mut out = BTreeMap::new();
+    for key in keys {
+        if let Some(value) = db::repo::secret_get(&conn, key)? {
+            out.insert(key.to_string(), value);
+        }
+    }
+    Ok(out)
+}
+
 /// Fetch (or return a cached) artwork file for a game. The returned path is
 /// absolute and safe to use in `<img>`/CSS.
 pub fn artwork(
@@ -81,12 +128,51 @@ pub fn artwork(
     let dir = artwork_dir()?;
     fs::create_dir_all(&dir)?;
 
-    // Check the database cache.
-    let conn = db::open(&ctx.db_path)?;
-    if let Some(row) = db::repo::artwork_cache_get(&conn, &key, &kind.to_string())? {
-        let path = PathBuf::from(&row.file_path);
-        if path.exists() {
-            return Ok(Some(path));
+    // 1. Check the database cache first.
+    {
+        let conn = db::open(&ctx.db_path)?;
+        if let Some(row) = db::repo::artwork_cache_get(&conn, &key, &kind.to_string())? {
+            let path = PathBuf::from(&row.file_path);
+            if path.exists() {
+                return Ok(Some(path));
+            }
+        }
+    }
+
+    // 2. Query enabled providers (e.g. SteamGridDB if API key is configured).
+    let secrets = load_secrets(ctx)?;
+    for provider in providers() {
+        if !provider.enabled(&secrets) {
+            continue;
+        }
+        match provider.artwork(&secrets, card, kind) {
+            Ok(Some((_remote_url, bytes))) if !bytes.is_empty() => {
+                let ext = image_ext(&bytes).unwrap_or("jpg");
+                let file_name = format!("{key}-{kind}.{ext}");
+                let path = dir.join(&file_name);
+                let mut file = fs::File::create(&path)?;
+                file.write_all(&bytes)?;
+
+                let conn = db::open(&ctx.db_path)?;
+                let _ = db::repo::artwork_cache_upsert(
+                    &conn,
+                    &key,
+                    &kind.to_string(),
+                    provider.name(),
+                    &path.to_string_lossy(),
+                );
+                return Ok(Some(path));
+            }
+            Ok(_) => {}
+            Err(e) => {
+                eprintln!(
+                    "[content] {} artwork failed for '{}' ({:?}): {}",
+                    provider.name(),
+                    card.title,
+                    kind,
+                    e
+                );
+            }
         }
     }
 

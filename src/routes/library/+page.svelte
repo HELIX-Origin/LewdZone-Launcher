@@ -2,7 +2,7 @@
 
 <script lang="ts">
   import { onMount } from "svelte";
-  import { invoke } from "@tauri-apps/api/core";
+  import { invoke, convertFileSrc } from "@tauri-apps/api/core";
 
   type LoadState = "loading" | "ready" | "error";
 
@@ -22,6 +22,7 @@
     playtime_seconds?: number;
     play_count?: number;
     last_played_at?: string | null;
+    thumb_url?: string | null;
   }
 
   interface LibraryListing {
@@ -144,6 +145,26 @@
     }
   }
 
+  function formatArtworkUrl(url: string | null | undefined): string | null {
+    if (!url) return null;
+    if (
+      url.startsWith("http://") ||
+      url.startsWith("https://") ||
+      url.startsWith("data:") ||
+      url.startsWith("asset:")
+    ) {
+      return url;
+    }
+    try {
+      const cleanPath = url.startsWith("file://")
+        ? decodeURIComponent(url.replace(/^file:\/\/\/?/, ""))
+        : url;
+      return convertFileSrc(cleanPath);
+    } catch {
+      return url;
+    }
+  }
+
   async function loadArtwork(list: LibraryGame[]) {
     const next: Record<string, string | null> = {};
     await Promise.all(
@@ -154,12 +175,13 @@
               slug: game.slug,
               post_id: game.post_id,
               title: game.title,
+              thumb_url: game.thumb_url ?? null,
             },
             kind: "cover",
           });
-          next[game.slug] = url ?? null;
+          next[game.slug] = formatArtworkUrl(url ?? game.thumb_url ?? null);
         } catch {
-          next[game.slug] = null;
+          next[game.slug] = formatArtworkUrl(game.thumb_url ?? null);
         }
       }),
     );
@@ -323,6 +345,8 @@
               >
                 {#if coverUrls[game.slug]}
                   <img src={coverUrls[game.slug]} alt="" loading="lazy" />
+                {:else if game.thumb_url}
+                  <img src={formatArtworkUrl(game.thumb_url)} alt="" loading="lazy" />
                 {:else}
                   <span class="icon-glyph"
                     ><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6.5" width="18" height="11" rx="5.5"/><circle cx="8" cy="11.5" r="1.1" fill="currentColor" stroke="none"/><circle cx="12.5" cy="11.5" r="1.1" fill="currentColor" stroke="none"/><path d="M16.2 14.4h.01M18.6 12.4h.01"/></svg></span

@@ -670,6 +670,30 @@ pub fn post_id_by_slug(tx: &Connection, slug: &str) -> Result<Option<i64>, Error
     .map_err(Into::into)
 }
 
+/// Query the thumbnail URL for a game by its slug.
+pub fn thumbnail_by_slug(tx: &Connection, slug: &str) -> Result<Option<String>, Error> {
+    tx.query_row(
+        "SELECT thumbnail_url FROM game WHERE slug = ?1",
+        [slug],
+        |row| row.get::<_, Option<String>>(0),
+    )
+    .optional()
+    .map(|opt| opt.flatten())
+    .map_err(Into::into)
+}
+
+/// Query the thumbnail URL for a game by its post id.
+pub fn thumbnail_by_post_id(tx: &Connection, post_id: i64) -> Result<Option<String>, Error> {
+    tx.query_row(
+        "SELECT thumbnail_url FROM game WHERE post_id = ?1",
+        [post_id],
+        |row| row.get::<_, Option<String>>(0),
+    )
+    .optional()
+    .map(|opt| opt.flatten())
+    .map_err(Into::into)
+}
+
 /// Add or replace a favorite row for a game. `post_id` must already exist in
 /// `game` (foreign-key enforcement, Rule 06).
 pub fn favorite_add(tx: &Connection, post_id: i64) -> Result<(), Error> {

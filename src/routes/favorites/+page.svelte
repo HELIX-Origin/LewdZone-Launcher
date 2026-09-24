@@ -2,7 +2,7 @@
 
 <script lang="ts">
   import { onMount } from "svelte";
-  import { invoke } from "@tauri-apps/api/core";
+  import { invoke, convertFileSrc } from "@tauri-apps/api/core";
   import { goto } from "$app/navigation";
 
   type LoadState = "loading" | "ready" | "error";
@@ -35,6 +35,26 @@
     linux: "Linux",
   };
 
+  function formatArtworkUrl(url: string | null | undefined): string | null {
+    if (!url) return null;
+    if (
+      url.startsWith("http://") ||
+      url.startsWith("https://") ||
+      url.startsWith("data:") ||
+      url.startsWith("asset:")
+    ) {
+      return url;
+    }
+    try {
+      const cleanPath = url.startsWith("file://")
+        ? decodeURIComponent(url.replace(/^file:\/\/\/?/, ""))
+        : url;
+      return convertFileSrc(cleanPath);
+    } catch {
+      return url;
+    }
+  }
+
   async function load() {
     status = "loading";
     error = "";
@@ -59,12 +79,13 @@
               slug: game.slug,
               post_id: game.post_id,
               title: game.title,
+              thumb_url: game.thumb_url ?? null,
             },
             kind: "cover",
           });
-          next[game.slug] = url ?? game.thumb_url ?? null;
+          next[game.slug] = formatArtworkUrl(url ?? game.thumb_url ?? null);
         } catch {
-          next[game.slug] = game.thumb_url ?? null;
+          next[game.slug] = formatArtworkUrl(game.thumb_url ?? null);
         }
       }),
     );
@@ -126,6 +147,8 @@
                 <div class="cover">
                   {#if coverUrls[game.slug]}
                     <img src={coverUrls[game.slug]} alt="" loading="lazy" />
+                  {:else if game.thumb_url}
+                    <img src={formatArtworkUrl(game.thumb_url)} alt="" loading="lazy" />
                   {:else}
                     <span class="cover-glyph"
                       ><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6.5" width="18" height="11" rx="5.5"/><circle cx="8" cy="11.5" r="1.1" fill="currentColor" stroke="none"/><circle cx="12.5" cy="11.5" r="1.1" fill="currentColor" stroke="none"/><path d="M16.2 14.4h.01M18.6 12.4h.01"/></svg></span
