@@ -140,6 +140,36 @@
     }
   }
 
+  let scanning = $state(false);
+  let scanReport = $state<string | null>(null);
+
+  interface ScanReportResult {
+    scanned_dir: string;
+    found_count: number;
+    queued_count: number;
+    added_games: string[];
+  }
+
+  async function scanGames() {
+    scanning = true;
+    scanReport = null;
+    try {
+      const res = await invoke<ScanReportResult>("library_scan");
+      if (res.queued_count > 0) {
+        scanReport = `Scan complete: ${res.found_count} game(s) found, ${res.queued_count} archive extraction(s) queued. View progress in Queue.`;
+      } else if (res.found_count > 0) {
+        scanReport = `Scan complete: ${res.found_count} game(s) registered from ${res.scanned_dir}`;
+      } else {
+        scanReport = `Scan complete: no new games found in ${res.scanned_dir}`;
+      }
+      await load();
+    } catch (err) {
+      scanReport = `Scan failed: ${err}`;
+    } finally {
+      scanning = false;
+    }
+  }
+
   onMount(() => {
     load();
     const handler = () => loadFavorites();
@@ -155,15 +185,36 @@
 {:else}
   <section class="library">
     <div class="head">
-      <h1>
-        <span class="head-icon" aria-hidden="true"
-          ><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 19V5h4v14H5Z"/><path d="M10 19V5h4v14h-4Z"/><path d="M15 19V5h4v14h-4Z"/></svg></span
-        >Library
-      </h1>
-      {#if root}
-        <span class="root" title="Library root">{root}</span>
-      {/if}
+      <div class="head-left">
+        <h1>
+          <span class="head-icon" aria-hidden="true"
+            ><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 19V5h4v14H5Z"/><path d="M10 19V5h4v14h-4Z"/><path d="M15 19V5h4v14h-4Z"/></svg></span
+          >Library
+        </h1>
+        {#if root}
+          <span class="root" title="Library root">{root}</span>
+        {/if}
+      </div>
+      <div class="head-actions">
+        <button
+          type="button"
+          class="scan-btn"
+          disabled={scanning}
+          onclick={scanGames}
+          title="Scan your custom games directory for archives and extracted games"
+        >
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+          {scanning ? "Scanning…" : "Scan Games"}
+        </button>
+      </div>
     </div>
+
+    {#if scanReport}
+      <div class="scan-toast" role="status">
+        <span>{scanReport}</span>
+        <button type="button" class="toast-close" onclick={() => (scanReport = null)} aria-label="Dismiss">×</button>
+      </div>
+    {/if}
 
     {#if games.length === 0}
       <p class="note">
@@ -238,8 +289,77 @@
   .head {
     display: flex;
     align-items: center;
+    justify-content: space-between;
     gap: 12px;
     margin-bottom: var(--lz-gap);
+    flex-wrap: wrap;
+  }
+
+  .head-left {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    flex-wrap: wrap;
+    min-width: 0;
+  }
+
+  .head-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .scan-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--lz-text);
+    background: var(--lz-surface-2);
+    border: 1px solid var(--lz-cyan);
+    border-radius: var(--lz-radius);
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+
+  .scan-btn:hover:not(:disabled) {
+    background: var(--lz-cyan);
+    color: var(--lz-bg);
+  }
+
+  .scan-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .scan-toast {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 14px;
+    margin-bottom: var(--lz-gap);
+    background: var(--lz-surface-2);
+    border: 1px solid var(--lz-cyan);
+    border-radius: var(--lz-radius);
+    font-size: 13px;
+    color: var(--lz-text);
+  }
+
+  .toast-close {
+    background: transparent;
+    border: none;
+    color: var(--lz-text-dim);
+    font-size: 18px;
+    cursor: pointer;
+    line-height: 1;
+    padding: 0 4px;
+  }
+
+  .toast-close:hover {
+    color: var(--lz-text);
   }
 
   .head h1 {

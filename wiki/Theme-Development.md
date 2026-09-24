@@ -1,144 +1,102 @@
-# 🎨 Theme Development
+# 🎨 Theme Development & Styling Guide
 
 > Links between wiki pages are relative and omit the `.md` extension.
 
-This is the complete guide for creating themes (skins) for the LewdZone
-Launcher. Themes color every view through design tokens — a skin never ships
-code, only values + assets ([Security](Security)).
+LewdZone Launcher features a dynamic runtime theming engine. Themes (skins) allow full customization of the launcher's visual appearance through CSS custom property tokens, requiring zero application restarts.
 
-## 📦 What a theme is
+---
 
-A theme is a **folder** placed inside the app's user skins folder, with one
-subfolder per theme. Embedded theme resources (artwork, icons, …) live **inside
-the theme folder, right next to `theme.json`** — with subfolders used freely for
-organization:
+## 📦 Theme Package Structure
 
-```
-<skins>/<Theme Name>/
-├── theme.json          # required manifest (name, version, author, tokens)
-└── assets/             # embedded resources (artwork, icons) — inside the theme
-    ├── banner.png      #   folder next to theme.json; subfolders are fine
-    └── icons/cover.png
+Themes reside in the user-accessible skins directory as individual folders containing a `theme.json` manifest:
+
+```text
+<skins_root>/
+└── ThemeName/
+    ├── theme.json            # Required theme definition
+    └── assets/               # Optional directory for artwork, icons, or banners
+        ├── icon.png
+        └── background.png
 ```
 
-The **built-in default theme** is compiled into the app and is never stored in
-this folder; it stays as the fallback. When you apply a custom theme, its
-tokens load in place of the defaults at runtime — no restart needed.
+The launcher ships with three built-in reference themes seeded on first launch:
+- **Nord:** Arctic, north-bluish palette.
+- **Dracula:** Dark, vibrant gothic aesthetic.
+- **Material:** Clean, modern material surface design.
 
-## 🧭 Bundled reference themes
+---
 
-Three working themes ship with every build and become live folders in the skins
-folder on first run — **Nord**, **Dracula**, and **Material**. They are the
-canonical examples for theme creators: copy one, rename its folder, and edit
-the tokens. See the shipped `theme.json` files in
-[`skins/`](https://github.com/helix-origin/lewdzone-launcher/tree/main/skins)
-for the exact structure.
+## 📁 Where Themes Live
 
-## 📁 Where themes live per OS
-
-The skins folder is a **user-accessible** location (one subfolder per theme),
-chosen per OS so users can always reach their themes:
-
-| OS | Skins folder |
+| OS | Directory Path |
 | --- | --- |
-| Windows | `<install dir>\skins\` (next to the executable) |
-| macOS | `~/Library/Application Support/lewdzone/skins/` (the `.app` bundle is not user-accessible) |
-| Linux | `$XDG_DATA_HOME/lewdzone/skins/` (usually `~/.local/share/lewdzone/skins/`) |
+| **Windows** | `<install_dir>\skins\` (alongside the executable) |
+| **Linux** | `$XDG_DATA_HOME/lewdzone/skins/` (`~/.local/share/lewdzone/skins/`) |
+| **macOS** | `~/Library/Application Support/lewdzone/skins/` |
 
-Each theme must be its **own subfolder**, named exactly as it should appear in
-the **Settings → Appearance** dropdown.
+---
 
-## 📝 Writing `theme.json`
+## 📝 The `theme.json` Manifest
 
-The manifest is small, JSON, UTF-8:
+A valid `theme.json` requires a `name` and optional `tokens` map:
 
 ```json
 {
-  "name": "Pink Neon",
+  "name": "Neon Cyberpunk",
   "version": "1.0.0",
-  "author": "you",
+  "author": "Community Creator",
+  "description": "High contrast cyan and magenta palette",
   "tokens": {
-    "--lz-accent": "#FF4EC8",
-    "--lz-bg": "#0A1118"
+    "--lz-accent": "#FF007F",
+    "--lz-primary": "#00F0FF",
+    "--lz-cyan": "#00FFFF",
+    "--lz-bg": "#05050A",
+    "--lz-surface": "#0C0D14",
+    "--lz-surface-2": "#161824",
+    "--lz-text": "#F0F4F8",
+    "--lz-text-dim": "#8A99AD",
+    "--lz-danger": "#FF2A6D",
+    "--lz-ok": "#05FFA1",
+    "--lz-radius": "6px",
+    "--lz-gap": "14px",
+    "--lz-glow": "0 0 16px rgba(0, 240, 255, 0.4)"
   }
 }
 ```
 
-### Manifest rules
+---
 
-| Field | Required | Rules |
+## 🎨 Design Tokens Reference
+
+| CSS Token | Default | Usage |
 | --- | --- | --- |
-| `name` | yes | must equal the folder name (trimmed, no surrounding whitespace) |
-| `version` | no | free-form string (recommend semver) |
-| `author` | no | display text |
-| `tokens` | no | map of `--lz-*` custom properties; empty = pure default theme |
+| `--lz-accent` | `#FF4EC8` | Primary accent color, focus rings, hover indicators. |
+| `--lz-primary` | `#FF5FB2` | Primary buttons and key interactive elements. |
+| `--lz-cyan` | `#22D3EE` | Active navigation highlights, download metrics. |
+| `--lz-bg` | `#0A1118` | Base background color for main views and window. |
+| `--lz-surface` | `#0E1B26` | Card background and primary panel surfaces. |
+| `--lz-surface-2` | `#122A3A` | Raised surfaces, inputs, modal containers. |
+| `--lz-text` | `#E8F1F8` | Primary text color. |
+| `--lz-text-dim` | `#9AAEC0` | Secondary and descriptive label text. |
+| `--lz-danger` | `#FF3B6B` | Destructive actions, cancellation buttons, error badges. |
+| `--lz-ok` | `#3DFFA2` | Success status, completed download badges. |
+| `--lz-radius` | `4px` | Border radius for cards, inputs, and buttons. |
+| `--lz-gap` | `12px` | Grid gap and layout spacing scalar. |
+| `--lz-glow` | `0 0 14px rgba(34, 211, 238, 0.35)` | Neon box-shadow glow effects. |
 
-A manifest that fails validation (e.g. a token key that does not start with
-`--lz-`) causes the skin to be **skipped** — the app falls back to the default
-theme. Invalid keys inside an otherwise-valid skin are **dropped**, never
-applied.
+---
 
-## 🎨 The design tokens
+## 🛡️ Theme Security
 
-Skins override CSS custom properties. All tokens shown below are the defaults;
-set any of them in your `tokens` map to override. They apply app-wide.
+- Themes are strictly declarative JSON data.
+- Executable scripts, JavaScript code, or binary files are never executed from theme packages ([Security](Security)).
+- Any unknown token keys or malformed CSS values are safely dropped, and corrupt packages fall back gracefully to the built-in default theme.
 
-| Token | Default | Meaning |
-| --- | --- | --- |
-| `--lz-accent` | `#FF4EC8` | neon magenta accent (focus, hovers) |
-| `--lz-primary` | `#FF5FB2` | hot pink primary |
-| `--lz-cyan` | `#22D3EE` | neon cyan (active nav glow) |
-| `--lz-bg` | `#0A1118` | deep dark cyan/charcoal page bg |
-| `--lz-surface` | `#0E1B26` | panel surface |
-| `--lz-surface-2` | `#122A3A` | raised surface (inputs, cards) |
-| `--lz-text` | `#E8F1F8` | primary text |
-| `--lz-text-dim` | `#9AAEC0` | secondary text |
-| `--lz-danger` | `#FF3B6B` | errors / destructive |
-| `--lz-ok` | `#3DFFA2` | success states |
-| `--lz-radius` | `4px` | corner rounding |
-| `--lz-gap` | `12px` | layout spacing scale |
-| `--lz-gradient` | `linear-gradient(160deg, #0A1118 0%, #0E1B26 100%)` | page backdrop |
-| `--lz-glow` | `0 0 14px rgba(34, 211, 238, 0.35)` | neon glow under accents |
-| `--lz-glass` | `rgba(14, 27, 38, 0.55)` | glassmorphism fill (title bar, menus) |
+---
 
-> **Parity rule:** the defaults above must match `src/lib/theme/default.css`
-> exactly — both are the source for `--lz-*` values and stay in sync.
+## 🔗 Related Pages
 
-## 🖼️ Theme assets
-
-Embedded resources — artwork, icons, and any other files a theme needs — live
-**inside the theme folder, right next to `theme.json`**. Use subfolders freely
-for organization (e.g. `assets/`, `assets/icons/`). The app resolves an asset
-strictly with a sandbox check — a `relative` path must stay within the theme
-folder, or it resolves to `None`. The bundled Nord/Dracula/Material themes each
-include an `assets/` subfolder as an example. The token layer is the primary
-surface today; assets are authored and referenced by views going forward.
-
-## 🧪 Trying a theme
-
-1. Create `<skins>/Pink Neon/theme.json` (folder name + manifest name match);
-   the skins folder is the per-OS path shown in the table above.
-2. Open **Settings → Appearance**, pick **Pink Neon**.
-3. It applies instantly. Switch back to `(default)` any time.
-4. Or set it from the CLI: `lewdzone settings set theme "Pink Neon"`.
-
-## 👀 How the app sees skins
-
-- **Settings → Appearance** lists every folder under the skins folder that has
-  a valid `theme.json` (sorted, default theme excluded from the list but always
-  available as `(default)`). The bundled themes are seeded on first run.
-- Applying a theme writes the `theme` setting key and returns the merged token
-  set to the webview, which updates CSS variables live (`src/lib/theme/apply`).
-- The merge is **defaults overridden by skin tokens** (`effective_tokens` in
-  `core/skins.rs`); unknown/default tokens remain when a skin omits them.
-
-## 🔒 Security boundaries
-
-- Skins carry **tokens + assets only**. No scripts, no arbitrary CSS, no
-  network calls — the manifest schema only accepts `--lz-*` string values
-  ([Rule 10](../.agents/rules/rule-10-security.md)).
-- A token whose key fails the `--lz-*` check is dropped, never applied.
-- Asset lookup is sandboxed to the theme folder.
-- The allowlist and download/resolver paths are never reachable from a skin.
-
-See also: [Configuration](Configuration) → Theme skins, [Design Conventions](Design-Conventions).
+- [Configuration Reference](Configuration)
+- [Architecture](Architecture)
+- [Security Architecture](Security)
+- [Troubleshooting](Troubleshooting)

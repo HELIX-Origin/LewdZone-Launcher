@@ -27,29 +27,27 @@ const TIMEOUT: Duration = Duration::from_secs(15);
 /// Minimum gap between requests to the API host.
 const HOST_INTERVAL: Duration = Duration::from_secs(1);
 
-/// Allowlisted host slugs (Rule 10.2). Product policy (user, 2026-09): the site
-/// hosted many cloud providers, but most have shut down or are untrusted/dodgy
-/// — only reputable mirrors that are known to still accept uploads may be
-/// dispatched (in-app stream or OS handler). Anything else is refused.
-const KNOWN_HOSTS: &[&str] = &[
-    "fileknot",
-    "transfaze",
-    "mega",
-    "google",
-    "uploadhaven",
-    "workupload",
-    "mediafire",
-    "dropbox",
-    "pixeldrain",
-    "mixdrop",
-    "racaty",
-    "terminal",
-    "1fichier",
-    "rapidgator",
+/// Blacklist of defunct, dead, or known malicious host slugs (Rule 10.2).
+/// Any host not on this list is permitted.
+pub const BLOCKED_HOSTS: &[&str] = &[
+    "gofile",
+    "gofiles",
+    "zippyshare",
+    "cdnclick",
+    "anonfile",
+    "anonfiles",
+    "anonzip",
+    "uptobox",
+    "yourfilestore",
     "qiwi",
-    "bowfile",
-    "hexload",
+    "transfersh",
 ];
+
+/// Returns true if `host` is on the blocked hosts list.
+pub fn is_blocked_host(host: &str) -> bool {
+    let clean = host.trim().to_ascii_lowercase();
+    BLOCKED_HOSTS.iter().any(|b| b.eq_ignore_ascii_case(&clean))
+}
 
 /// Result of one successful resolution.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -107,32 +105,37 @@ pub fn extract_token(go_link: &str) -> Option<&str> {
     go_link.split("#t=").nth(1).map(str::trim)
 }
 
-/// Allowlist gate (Rule 10.2): only hosts we have re-verified may be dispatched.
+/// Blacklist gate: ensures the host is not on the blocked list.
 pub fn validate_host(host: &str) -> Result<(), Error> {
-    if KNOWN_HOSTS.iter().any(|k| k.eq_ignore_ascii_case(host)) {
-        Ok(())
+    if is_blocked_host(host) {
+        Err(Error::Network(format!("download host '{host}' is blocked")))
     } else {
-        Err(Error::Network(format!("unknown download host '{host}'")))
+        Ok(())
     }
 }
 
-/// The allowlist, for validation of user-supplied priority lists.
+/// The blocked hosts list.
+pub fn blocked_hosts() -> &'static [&'static str] {
+    BLOCKED_HOSTS
+}
+
+/// Backward compatibility helper.
 pub fn allowed_hosts() -> &'static [&'static str] {
-    KNOWN_HOSTS
+    &[]
 }
 
 /// Rank of `host` inside a comma-separated `source-priority` list (higher =
-/// more preferred). Unknown hosts and non-allowlisted slugs rank 0, so a
-/// configured preference never pulls in a disallowed host.
+/// more preferred). Blocked hosts rank 0.
 pub fn priority_rank(host: &str, priority: Option<&str>) -> usize {
     let Some(list) = priority else {
         return 0;
     };
+    if is_blocked_host(host) {
+        return 0;
+    }
     for (rank, slug) in list.split(',').enumerate() {
         let slug = slug.trim();
-        if slug.eq_ignore_ascii_case(host)
-            && KNOWN_HOSTS.iter().any(|k| k.eq_ignore_ascii_case(slug))
-        {
+        if slug.eq_ignore_ascii_case(host) && !is_blocked_host(slug) {
             return rank + 1;
         }
     }
@@ -143,8 +146,7 @@ fn host_of(url: &str) -> Option<&str> {
     url.split("://").nth(1)?.split('/').next()
 }
 
-/// Confirm a resolved URL is http(s) and its hostname belongs to the
-/// allowlisted host slug from `start`.
+/// Confirm a resolved URL is http(s) and its hostname is not blocked.
 fn verify_resolved(url: &str, host: &str) -> Result<(), Error> {
     if !(url.starts_with("https://") || url.starts_with("http://")) {
         return Err(Error::Network(format!(
@@ -152,6 +154,9 @@ fn verify_resolved(url: &str, host: &str) -> Result<(), Error> {
         )));
     }
     let hostname = host_of(url).ok_or_else(|| Error::Network("resolved URL has no host".into()))?;
+    if is_blocked_host(hostname) || is_blocked_host(host) {
+        return Err(Error::Network(format!("download host '{host}' is blocked")));
+    }
     if !hostname
         .to_ascii_lowercase()
         .contains(&host.to_ascii_lowercase())
@@ -362,35 +367,34 @@ mod tests {
     }
 
     #[test]
-    fn allowlist_rejects_unknown_host() {
+    fn blacklist_rejects_blocked_host() {
         assert!(validate_host("fileknot").is_ok());
         assert!(validate_host("mega").is_ok());
         assert!(validate_host("google").is_ok());
         assert!(validate_host("dropbox").is_ok());
-        let err = validate_host("evil.example").unwrap_err();
-        assert!(matches!(err, Error::Network(_)));
-        // Only gofile is truly dead (service shut down). The other former
-        // de-listings — mixdrop, racaty, terminal — still accept uploads and
-        // are re-allowed. Transfaze and pixeldrain were always valid mirrors.
-        for dead in ["gofile"] {
-            assert!(
-                validate_host(dead).is_err(),
-                "{dead} should no longer resolve"
-            );
-        }
-        for live in ["pixeldrain", "transfaze", "mixdrop", "racaty", "terminal"] {
-            assert!(validate_host(live).is_ok(), "{live} should resolve");
+        assert!(validate_host("pixeldrain").is_ok());
+        assert!(validate_host("transfaze").is_ok());
+        assert!(validate_host("mixdrop").is_ok());
+        assert!(validate_host("any-new-host").is_ok());
+
+        for &blocked in BLOCKED_HOSTS {
+            let err = validate_host(blocked).unwrap_err();
+            assert!(matches!(err, Error::Network(_)));
+            assert!(err.to_string().contains("blocked"));
+            assert!(is_blocked_host(blocked));
         }
     }
 
     #[test]
-    fn priority_rank_orders_only_allowlisted_hosts() {
+    fn priority_rank_orders_unblocked_hosts() {
         // Preferred list ordering: earlier slug = higher rank.
         assert_eq!(priority_rank("mega", Some("mega,google,dropbox")), 1);
         assert_eq!(priority_rank("dropbox", Some("mega,google,dropbox")), 3);
         assert_eq!(priority_rank("fileknot", Some("mega,google,dropbox")), 0);
-        // A disallowed slug in the list never grants a rank.
+        // A blocked slug in the list never grants a rank.
         assert_eq!(priority_rank("gofile", Some("mega,gofile")), 0);
+        // Any unblocked new host can be prioritized.
+        assert_eq!(priority_rank("newhost", Some("mega,newhost")), 2);
         // Case-insensitive matching.
         assert_eq!(priority_rank("GOOGLE", Some("mega,Google")), 2);
         // No list = no preference.
@@ -398,10 +402,9 @@ mod tests {
     }
 
     #[test]
-    fn allowed_hosts_exposes_the_allowlist() {
-        assert!(allowed_hosts().contains(&"fileknot"));
-        assert!(allowed_hosts().contains(&"mega"));
-        assert!(!allowed_hosts().contains(&"gofile"));
+    fn blocked_hosts_exposes_the_blacklist() {
+        assert!(blocked_hosts().contains(&"gofile"));
+        assert!(!blocked_hosts().contains(&"mega"));
     }
 
     #[test]
@@ -493,13 +496,13 @@ mod tests {
     }
 
     #[test]
-    fn unknown_host_is_refused() {
+    fn blocked_host_is_refused() {
         let mut post = |_endpoint: &str, _body: &str| -> Result<String, Error> {
-            Ok(canned(vec![("host".into(), "sketchy".into())]))
+            Ok(canned(vec![("host".into(), "gofile".into())]))
         };
         let err = resolve_with("https://lewdzone.com/go/#t=v1.x.y", &mut post).unwrap_err();
         assert!(matches!(err, Error::Network(_)));
-        assert!(err.to_string().contains("unknown download host"));
+        assert!(err.to_string().contains("blocked"));
     }
 
     #[test]

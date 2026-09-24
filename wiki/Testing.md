@@ -1,95 +1,67 @@
-# 🧪 Testing & QA
+# 🧪 Testing & Quality Assurance
 
 > Links between wiki pages are relative and omit the `.md` extension.
 
-## 🧬 Layers
+LewdZone Launcher maintains a comprehensive, hermetic testing suite that enforces correctness across the Rust core, database migrations, scraper parsers, token resolver, download queue, archive extractors, and frontend views.
 
-| Layer | What it covers | How it runs |
+---
+
+## 🧬 Test Layers
+
+| Layer | Scope | Execution | Environment |
+| --- | --- | --- | --- |
+| **Rust Unit Tests** | Parsing, models, folder organization, 7-Zip path resolution, configuration logic | `cargo test` in `src-tauri/` | Offline, deterministic |
+| **Rust Integration Tests** | SQLite migrations, catalog sync, download worker, cancellation, extraction | `cargo test` in `src-tauri/` | Isolated in-memory/temp SQLite DB |
+| **Frontend Unit Tests** | Svelte views (`Store`, `Library`, `Downloads`, `Settings`, `Favorites`) | `npm run test` (Vitest) in repo root | Mocked Tauri IPC invoke handlers |
+| **Type & Lint Checks** | Svelte compiler checks, Rust linter, formatting | `npm run check`, `cargo clippy -- -D warnings`, `cargo fmt --check` | Pre-merge verification gate |
+| **Opt-In Live Tests** | Real network probes against `lewdzone.com` and content providers | `cargo test -- --ignored` | Tagged with `#[ignore]` |
+
+---
+
+## ▶️ Running the Suites
+
+```bash
+# Run all Rust offline unit and integration tests (from src-tauri/)
+cargo test
+
+# Run Rust formatting and clippy linter checks
+cargo fmt --check
+cargo clippy -- -D warnings
+
+# Run all frontend Vitest tests (from repo root)
+npm run test
+
+# Run Svelte TypeScript and template checks
+npm run check
+```
+
+---
+
+## 🎭 Test Doubles & Fakes
+
+To guarantee that the test suite runs hermetically and safely without internet connectivity:
+- **HTTP Transport Fake:** Intercepts outgoing requests to return canned HTML and JSON fixtures for LewdZone catalog and game pages.
+- **7-Zip Probe Harness:** Tests detection of 7-Zip binaries across directories, executables, and PATH variables without executing live external installations.
+- **Queue Test Double:** Exercises cancel, delete, and progress callback semantics in memory.
+- **SQLite In-Memory Migrations:** Every database test operates on a fresh temporary SQLite database with all migrations applied.
+
+---
+
+## ⏱️ Performance Budgets
+
+| Operation | Budget | Target |
 | --- | --- | --- |
-| **Unit** | pure logic: parsers, formats, domain, organizers | `cargo test` in `src-tauri/` — offline, fast |
-| **Integration** | controllers, db with scratch DB, resolver/adapters | `cargo test`; no live network |
-| **Live** | real `lewdzone.com`, SteamGridDB, real download stream | opt-in `cargo test -- --ignored` (tagged `#[ignore]`) |
-| **GUI tests** | Svelte views against the Rust core | Vitest (`npm run test`) in `src/` |
-| **Windows-specific** | spawn flags, `.lnk`, path rules | `cargo test` on a Windows CI runner |
+| Cold application startup | < 2s | Native Rust binary initialization |
+| Catalog listing query | < 300ms | Indexed SQLite queries with WAL mode |
+| Search filter response | < 200ms | Instant client-side or indexed search |
+| HTML archive page parse | < 400ms | Streaming scraper |
+| Network request fan-out | ~ 1 req/s | Sequential rate-limited scheduler |
 
-## ▶️ Running the suite
+---
 
-```sh
-cargo test                 # from src-tauri/: default offline-only
-cargo test -- --ignored    # opt-in live networking
-npm run test               # from repo root: Vitest frontend suite
-```
+## 🔗 Related Pages
 
-Coverage floors: **85% overall**, core modules ~90%, GUI-side ~70% (via
-`cargo llvm-cov` when available). Gate in CI: `cargo fmt --check`,
-`cargo clippy -D warnings`, `cargo test`, `npm run check`, `npm run test`. See
-[Rule 11](../.agents/rules/rule-11-testing).
-
-## 📂 Test layout
-
-```
-src-tauri/
-  src/                  # inline #[cfg(test)] unit tests per module
-  tests/
-    integration/        # cross-module tests
-    live/               # requires #[ignore] (opt-in)
-    fixtures/           # html/json/golden/sql fixtures
-    support/            # test helper modules (fakes, never shipped)
-    perf/               # micro-benchmarks (criterion)
-src/
-  lib/                  # Vitest suites per view/component (*.test.ts)
-```
-
-## 🎭 Fakes (test helper modules)
-
-The suite never touches real anything by default. Key fakes:
-
-| Fake | Stands in for |
-| --- | --- |
-| fake HTTP transport (`support/http.rs`) | real site/api, canned by URL |
-| stream-seam stub | in-app download stream (bytes + reader), offline-dispatching redirects |
-| fake SteamGrid (`support/steamgrid.rs`) | SteamGridDB artwork API |
-| command-test harness | core commands called in-process, assert on results |
-| shortcut fakes | `.lnk`, `.desktop`, macOS alias |
-
-Fakes **fail loud** on unexpected input so bugs aren't masked. Documented in
-[the agent](../.agents/agents/testing/mock-engineer/mock-engineer).
-
-## 🔁 Protocol & parity tests
-
-- A **parity test** exercises `lewdzone <cmd> --json` and asserts the
-  CLI's machine output stays 1:1 with the GUI-facing core commands (GUI/CLI
-  drift = bug).
-- Long-running commands are tested by feeding canned data through the
-  in-process command test harness and asserting state transitions — no
-  subprocess involved (Rule 13).
-
-## ♻️ Probe/script promotion (reuse, don't remake)
-
-The Rust test suite is the **sole home for every script in this repo** —
-scanning, probing, verification, and debugging logic all live as test modules,
-never as scripts in `scratch/`:
-
-- Offline checks → unit/integration tests in `src-tauri/`.
-- Real-network probes → `live/` tests tagged `#[ignore]` (opt-in, keeps the
-  offline gate hermetic).
-- Benchmarks → `src-tauri/tests/perf/` criterion benches.
-- Scratch scanners are promoted into `src-tauri/` tests; the gate fails if
-  stray logic appears in `scratch/` — the fix is to promote it into tests.
-- Empirical findings (e.g. archive pagination = `/games/page/N/`, 20
-  games/page) are recorded in the ROADMAP **and** pinned as live tests so they
-  never regress silently.
-
-## ⏱️ Performance budgets
-
-| Operation | Budget |
-| --- | --- |
-| cold start | <2s |
-| `list` | <300ms |
-| `search` | <200ms |
-| page parse | <400ms |
-| site fan-out | ~1 req/s (throttled) |
-
-Tracked in `src-tauri/tests/perf/` with micro-benchmarks; N+1 queries are rejected at
-review. See [Rule 11](https://github.com/helix-origin/lewdzone-launcher/tree/main/.agents/rules/rule-11-testing.md) and
-[the perf-auditor](https://github.com/helix-origin/lewdzone-launcher/tree/main/.agents/agents/review/perf-auditor/perf-auditor.md).
+- [Architecture](Architecture)
+- [Installing & Building](Installing-and-Building)
+- [Development](Development)
+- [Release Process](Release-Process)

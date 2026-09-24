@@ -8,7 +8,8 @@
 
 - [Architecture](Architecture)
 - [CLI Reference](CLI-Reference)
-- [Download Managers](Download-Managers)
+- [Download Managers & Streaming](Download-Managers)
+- [Archive Extraction & 7-Zip](Archive-Extraction)
 - [Content Providers](Content-Providers)
 - [Configuration](Configuration)
 - [Theme Development](Theme-Development)

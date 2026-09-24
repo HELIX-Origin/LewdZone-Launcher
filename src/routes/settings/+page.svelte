@@ -93,6 +93,36 @@
     </label>
 
     <label class="field">
+      <span class="field-label">Extracted games directory</span>
+      <input
+        class:touched={false}
+        type="text"
+        placeholder="e.g. D:\Games\LewdZone"
+        value={String(snapshot["games-dir"] ?? "")}
+        onchange={(e) => save("games-dir", (e.currentTarget as HTMLInputElement).value)}
+        onkeydown={(e) => {
+          if (e.key === "Enter") (e.currentTarget as HTMLInputElement).blur();
+        }}
+      />
+      <span class="field-hint">Folder where you personally extract games. Use "Scan Games" in the Library to discover installed games here.</span>
+    </label>
+
+    <label class="field">
+      <span class="field-label">7-Zip console executable path</span>
+      <input
+        class:touched={false}
+        type="text"
+        placeholder="e.g. C:\Utilities\7z or C:\Utilities\7z\7za.exe"
+        value={String(snapshot["7z-path"] ?? "")}
+        onchange={(e) => save("7z-path", (e.currentTarget as HTMLInputElement).value)}
+        onkeydown={(e) => {
+          if (e.key === "Enter") (e.currentTarget as HTMLInputElement).blur();
+        }}
+      />
+      <span class="field-hint">Path to the 7-Zip command line tool (7za.exe or 7z.exe) for fast multi-format archive extractions.</span>
+    </label>
+
+    <label class="field">
       <span class="field-label">Home page</span>
       <select
         aria-label="Home page"

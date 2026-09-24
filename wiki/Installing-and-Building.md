@@ -2,51 +2,93 @@
 
 > Links between wiki pages are relative and omit the `.md` extension.
 
+LewdZone Launcher is built with **Tauri 2**, utilizing a Rust backend and a modern Svelte 5 frontend. The single compiled executable acts as both the graphical desktop application and the standalone CLI tool (Rule 03, Rule 13).
+
+---
+
 ## ✅ Prerequisites
 
-- **Rust toolchain** (stable) — builds the Rust core + CLI (`src-tauri/`)
-- **Node.js + npm** (or pnpm) — builds the Svelte webview (`src/`)
-- Platform Tauri prerequisites:
-  - Windows: WebView2 runtime, MSVC build tools
-  - Linux: WebKitGTK/native deps (per Tauri docs)
-  - macOS: Xcode command line tools
+1. **Rust Toolchain:** Stable Rust compiler and Cargo (`rustup update stable`).
+2. **Node.js & Package Manager:** Node.js (v18 or higher) and `npm` (or `pnpm`).
+3. **OS-Specific Tauri Dependencies:**
+   - **Windows:** Microsoft Visual Studio C++ Build Tools and WebView2 Runtime (pre-installed on Windows 10/11).
+   - **Linux:** WebKitGTK and development libraries (e.g. `libwebkit2gtk-4.1-dev`, `libssl-dev`, `libayatana-appindicator3-dev`).
+   - **macOS:** Xcode Command Line Tools (`xcode-select --install`).
+4. **7-Zip Console Executable (Runtime Tool):** Recommended for extracting `.zip`, `.7z`, and `.rar` downloads. See the **[Archive Extraction & 7-Zip Setup Guide](Archive-Extraction)**.
 
-## 🔨 Build the CLI
+---
 
-```sh
-npm install            # from repo root (frontend deps)
-cargo build            # from src-tauri/ — produces src-tauri/target/debug/lewdzone
-./target/debug/lewdzone --help
+## 🔨 Building the CLI and Rust Core
+
+To build only the native Rust binary (which includes both CLI subcommands and Tauri backend logic):
+
+```bash
+cd src-tauri
+cargo build --release
 ```
 
-The CLI is a native Rust binary — the same executable the Tauri app ships
-(Rule 13). `cargo run` from `src-tauri/` works for development.
+The resulting binary will be created at:
+- `src-tauri/target/release/lewdzone.exe` (Windows)
+- `src-tauri/target/release/lewdzone` (Linux/macOS)
 
-## 💻 Build the desktop app
+Test the binary:
+```bash
+./target/release/lewdzone --version
+./target/release/lewdzone --help
+```
 
-```sh
-npm install            # from repo root
+---
+
+## 💻 Building the Desktop Application
+
+To compile the production desktop application and bundle platform installers:
+
+```bash
+# Install frontend dependencies from the repository root
+npm install
+
+# Build release bundles
 npm run tauri build
 ```
 
-Artifacts per platform (see [Architecture](Architecture) → Packaging):
+Generated installer artifacts:
 
-| Platform | Formats |
+| Operating System | Output Formats |
 | --- | --- |
-| Windows | NSIS installer, MSI |
-| macOS | `.app` bundle + DMG |
-| Linux | AppImage, deb, rpm |
+| **Windows** | NSIS installer (`.exe`), MSI installer (`.msi`) |
+| **macOS** | Application bundle (`.app`), Apple Disk Image (`.dmg`) |
+| **Linux** | AppImage (`.AppImage`), Debian package (`.deb`), RPM (`.rpm`) |
 
-- **Signing:** Windows Authenticode via `signingIdentities`; macOS app
-  notarization. Signing keys are CI secrets.
-- **Updates:** `@tauri-apps/plugin-updater` with channel keys (CI secrets).
+---
 
-## 🧑‍💻 Development mode
+## 🧑‍💻 Development Loop
 
-```sh
-npm run tauri dev      # from repo root
+To run the application with live hot-reloading:
+
+```bash
+# Start Vite frontend and Tauri development shell
+npm run tauri dev
 ```
 
-This launches the app in dev mode. The GUI and the CLI (`cargo run` from
-`src-tauri/`) both call the same Rust core, so there is no sidecar to build or
-install separately.
+Run automated verification checks:
+
+```bash
+# Rust core linting and test suite (from src-tauri/)
+cargo fmt --check
+cargo clippy -- -D warnings
+cargo test
+
+# Frontend typecheck and Vitest suite (from repo root)
+npm run check
+npm run test
+```
+
+---
+
+## 🔗 Related Pages
+
+- [Getting Started](Getting-Started)
+- [Archive Extraction & 7-Zip Setup](Archive-Extraction)
+- [Architecture](Architecture)
+- [Testing & QA](Testing)
+- [Release Process](Release-Process)

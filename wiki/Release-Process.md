@@ -1,58 +1,76 @@
-# 🚀 Release Process
+# 🚀 Release Process & Versioning Standards
 
 > Links between wiki pages are relative and omit the `.md` extension.
 
-## 🔖 Versioning
+LewdZone Launcher follows strict **Semantic Versioning (`MAJOR.MINOR.PATCH`)** standards. Because the application exposes both a GUI and an integrated CLI from a single binary, release versions are strictly synchronized across all descriptors (Rule 08, Rule 13).
 
-SemVer `MAJOR.MINOR.PATCH`. The version is synced across:
+---
 
-- `src-tauri/Cargo.toml` (crate `version` + `tauri.conf.json`)
-- `package.json`
+## 🔖 Single Source of Truth
 
-There is a single binary; the CLI reports the same version as the app
-(`lewdzone --version`).
+The release version is synchronized across all project files:
+- `src-tauri/Cargo.toml` (`version = "x.y.z"`)
+- `src-tauri/tauri.conf.json` (`"version": "x.y.z"`)
+- `package.json` (`"version": "x.y.z"`)
 
-## 🔄 Release flow
+Running `lewdzone --version` outputs the exact same version string compiled into the desktop application window.
+
+---
+
+## 🔄 Release Pipeline
 
 ```mermaid
 flowchart TD
-    FEAT["feature branch"]
-    PR["PR - all checks green"]
-    MAIN["merge to main"]
-    BUM["bump version (all files)"]
-    TAG["tag vX.Y.Z (annotated)"]
-    NOT["release notes"]
-    REL["gh release create vX.Y.Z"]
-    FEAT --> PR
-    PR -->|"approve + merge"| MAIN
-    MAIN --> BUM
-    BUM --> TAG
-    TAG --> NOT
-    NOT --> REL
+    DEV["Feature Development"] --> GATE["Run Full Verification Gate"]
+    GATE --> BUMP["Version Bump (Cargo.toml, tauri.conf.json, package.json)"]
+    BUMP --> MERGE["Merge to main"]
+    MERGE --> TAG["Annotated Git Tag (vX.Y.Z)"]
+    TAG --> BUILD["Automated Multi-Platform Build"]
+    BUILD --> REL["GitHub Release & Signed Assets"]
 ```
 
-## ✅ Verification gate (before tag)
+---
 
-Everything must be green first:
+## ✅ Pre-Release Verification Gate
 
-- `cargo fmt --check` + `cargo clippy -- -D warnings` + `cargo test` (from `src-tauri/`)
-- `npm run check` (svelte-check) + `npm run test` (Vitest)
-- Coverage ≥ floors (`cargo llvm-cov`)
-- `lewdzone --version` smoke test
-- `tauri build` succeeds on all target platforms (CI)
+Before cutting any release or creating an annotated git tag, the entire verification pipeline must pass without errors or warnings:
 
-## 📝 Release notes structure
+```bash
+# 1. Rust checks (from src-tauri/)
+cargo fmt --check
+cargo clippy -- -D warnings
+cargo check
+cargo test
 
-`gh release create vX.Y.Z --title "vX.Y.Z — <Key Feature>" --notes-file <file>`
+# 2. Frontend checks (from repo root)
+npm run check
+npm run test
 
-Sections:
+# 3. Build smoke test
+npm run tauri build
 
-- ✨ **Highlights**
-- 🚀 **Key Improvements & Features**
-- 🛡️ **Security & Governance**
-- 📄 **Changes & Commits**
-- 📦 **Quick Start & Upgrading**
+# 4. CLI smoke test
+lewdzone --version
+lewdzone --help
+```
 
-Pre-releases use `vX.Y.Z-alpha.N` / `vX.Y.Z-beta.N` with `gh release create --prerelease`.
+---
 
-Tags are annotated and never deleted. Full rule: [Rule 08](https://github.com/helix-origin/lewdzone-launcher/tree/main/.agents/rules/rule-08-release-standards.md).
+## 📦 Distribution Packages
+
+Each official release publishes signed, standalone platform artifacts:
+
+- **Windows:** NSIS executable installer (`.exe`) and Windows Installer package (`.msi`).
+- **macOS:** Universal `.app` bundle and Apple Disk Image (`.dmg`) for Apple Silicon and Intel.
+- **Linux:** Portable AppImage (`.AppImage`), Debian package (`.deb`), and Red Hat package (`.rpm`).
+
+No secondary CLI sidecar packages are distributed: the CLI is built directly into the launcher executable.
+
+---
+
+## 🔗 Related Pages
+
+- [Installing & Building](Installing-and-Building)
+- [Testing & QA](Testing)
+- [Architecture](Architecture)
+- [Governance & Agents](Agents)

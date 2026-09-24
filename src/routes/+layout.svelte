@@ -5,6 +5,7 @@
   import { goto } from "$app/navigation";
   import { page } from "$app/state";
   import { getCurrentWindow } from "@tauri-apps/api/window";
+  import { invoke } from "@tauri-apps/api/core";
   import { loadAndApplyTheme } from "$lib/theme/apply";
   import "../lib/theme/default.css";
 
@@ -13,6 +14,13 @@
   const compact = () => getCurrentWindow().minimize();
   const zoom = () => getCurrentWindow().toggleMaximize();
   const quit = () => getCurrentWindow().close();
+  const quitApp = async () => {
+    try {
+      await invoke("app_quit");
+    } catch {
+      getCurrentWindow().close();
+    }
+  };
 
   // macOS convention puts the traffic lights on the left; Windows/Linux put
   // them on the right.
@@ -49,7 +57,8 @@
         { label: "Favorites", action: () => goto("/favorites") },
         { label: "Library", action: () => goto("/library") },
         { label: "Settings", action: () => goto("/settings") },
-        { label: "Quit", action: quit },
+        { label: "Minimize to Tray", action: () => getCurrentWindow().hide() },
+        { label: "Quit", action: quitApp },
       ],
     },
     {
@@ -59,7 +68,7 @@
         { label: "Store", action: () => goto("/store") },
         { label: "Favorites", action: () => goto("/favorites") },
         { label: "Library", action: () => goto("/library") },
-        { label: "Downloads", action: () => goto("/downloads") },
+        { label: "Queue", action: () => goto("/downloads") },
       ],
     },
     {
@@ -82,7 +91,7 @@
     { id: "store", label: "Store", icon: "store", path: "/store" },
     { id: "favorites", label: "Favorites", icon: "favorites", path: "/favorites" },
     { id: "library", label: "Library", icon: "library", path: "/library" },
-    { id: "downloads", label: "Downloads", icon: "downloads", path: "/downloads" },
+    { id: "downloads", label: "Queue", icon: "downloads", path: "/downloads" },
     { id: "settings", label: "Settings", icon: "settings", path: "/settings" },
   ] as const;
 
@@ -100,6 +109,7 @@
   };
 
   const current = $derived(page.url.pathname);
+  const isChildWindow = $derived(current.startsWith("/resolver"));
 
   function isActive(item: (typeof nav)[number]): boolean {
     return current === item.path;
@@ -114,6 +124,9 @@
   });
 </script>
 
+{#if isChildWindow}
+  {@render children?.()}
+{:else}
 <div class="app">
   <header
     class:mac={isMac}
@@ -156,11 +169,6 @@
     </nav>
     <span class="tb-title">LewdZone Launcher</span>
     <div class="spacer"></div>
-    <button class="avatar" aria-label="Profile">
-      <span aria-hidden="true" class="avatar-icon"
-        ><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.8"/><path d="M4.5 20a7.5 7.5 0 0 1 15 0"/></svg></span
-      >
-    </button>
   </header>
 
   {#if openMenu}
@@ -201,6 +209,7 @@
   </div>
   </div>
 </div>
+{/if}
 
 <style>
   .app {
@@ -239,7 +248,7 @@
     align-items: center;
   }
 
-  /* Default (Windows/Linux): traffic lights on the right, after the avatar. */
+  /* Default (Windows/Linux): traffic lights on the right. */
   .titlebar .menubar {
     order: 1;
   }
@@ -252,12 +261,8 @@
     order: 3;
   }
 
-  .titlebar .avatar {
-    order: 4;
-  }
-
   .titlebar .traffic {
-    order: 5;
+    order: 4;
   }
 
   /* macOS: traffic lights on the left, before the menu bar. */
@@ -328,31 +333,6 @@
 
   .spacer {
     flex: 1 1 auto;
-  }
-
-.avatar {
-    appearance: none;
-    border: 1px solid var(--lz-surface-2);
-    background: var(--lz-surface-2);
-    color: var(--lz-cyan);
-    font: inherit;
-    font-size: 13px;
-    width: 26px;
-    height: 26px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .avatar-icon :global(svg) {
-    width: 16px;
-    height: 16px;
-    display: block;
-  }
-
-  .avatar:hover {
-    box-shadow: var(--lz-glow);
   }
 
   .about-backdrop {

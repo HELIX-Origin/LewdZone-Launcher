@@ -59,13 +59,13 @@ user action.
 - No secrets are committed to the repository; API keys are kept in the SQLite
   `secret` table and are never written to the readable JSON config.
 - Subprocess calls use argument arrays (never shell interpolation) to avoid
-  injection (see [SECURITY](SECURITY)).
+  injection (see [Security Policy](SECURITY.md)).
 - The application never uploads your database or tokens anywhere.
 
 ## 6. Community & Contact
 
 - GitHub: [HELIX-Origin/LewdZone-Launcher](https://github.com/HELIX-Origin/LewdZone-Launcher)
-- Security: see [SECURITY](SECURITY) for responsible disclosure.
+- Security: see [Security Policy](SECURITY.md) for responsible disclosure.
 
 ---
 

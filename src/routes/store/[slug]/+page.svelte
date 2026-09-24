@@ -1,7 +1,7 @@
 <svelte:options runes={true} />
 
 <script lang="ts">
-  import { onMount, onDestroy } from "svelte";
+  import { onMount, onDestroy, untrack } from "svelte";
   import { invoke } from "@tauri-apps/api/core";
   import { listen, type UnlistenFn } from "@tauri-apps/api/event";
   import { page } from "$app/state";
@@ -198,7 +198,9 @@
 
   $effect(() => {
     const s = slug;
-    load(s);
+    untrack(() => {
+      load(s);
+    });
   });
 
   async function queueDownload(entry: DownloadEntry) {
@@ -420,25 +422,17 @@
     {#if game.screenshots.length > 0}
       <section class="carousel-section" aria-label="Game Preview Images">
         <div class="carousel-header">
-          <h2>
-            <svg class="section-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
-              <circle cx="8.5" cy="8.5" r="1.5"/>
-              <polyline points="21 15 16 10 5 21"/>
-            </svg>
-            Attached Preview Images
-          </h2>
           <span class="carousel-counter">{activeImageIndex + 1} / {game.screenshots.length}</span>
         </div>
 
         <div class="carousel-stage">
-          <button class="nav-arrow left" onclick={prevImage} aria-label="Previous image">
+          <button type="button" class="nav-arrow left" onclick={prevImage} aria-label="Previous image">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
               <polyline points="15 18 9 12 15 6"></polyline>
             </svg>
           </button>
 
-          <button class="stage-img-btn" onclick={toggleLightbox} aria-label="Click to enlarge image">
+          <button type="button" class="stage-img-btn" onclick={toggleLightbox} aria-label="Click to enlarge image">
             <img
               class="stage-img"
               src={game.screenshots[activeImageIndex]}
@@ -449,7 +443,7 @@
             </div>
           </button>
 
-          <button class="nav-arrow right" onclick={nextImage} aria-label="Next image">
+          <button type="button" class="nav-arrow right" onclick={nextImage} aria-label="Next image">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
               <polyline points="9 18 15 12 9 6"></polyline>
             </svg>
@@ -460,6 +454,7 @@
         <div class="thumbnail-strip" role="tablist" aria-label="Thumbnails">
           {#each game.screenshots as thumbUrl, idx (thumbUrl)}
             <button
+              type="button"
               class="thumb-btn"
               class:active={idx === activeImageIndex}
               onclick={() => selectImage(idx)}
@@ -686,22 +681,8 @@
   .carousel-header {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    margin-bottom: 12px;
-  }
-
-  .carousel-header h2 {
-    font-size: 16px;
-    margin: 0;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-
-  .section-icon {
-    width: 18px;
-    height: 18px;
-    color: var(--lz-cyan);
+    justify-content: flex-end;
+    margin-bottom: 8px;
   }
 
   .carousel-counter {

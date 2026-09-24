@@ -32,7 +32,7 @@ two entry points into the same Rust core: the same functions back both (Rule
 | `testing` | testing.md | fixture-crafter, mock-engineer, test-suite-architect, debugger | Test layers, fakes, coverage floors |
 | `review` | review.md | security-auditor, perf-auditor | Gate pipeline, threat modeling, perf budgets |
 
-See [wiki/Agents](wiki/Agents) for the full agent catalog with sub-agent details.
+See [Agent Catalog](../../wiki/Agents) for the full agent catalog with sub-agent details.
 
 ---
 
@@ -47,15 +47,15 @@ See [wiki/Agents](wiki/Agents) for the full agent catalog with sub-agent details
 | 04 | Remote Issue Protocol | Roadmap-first, sub-issue lifecycle, commit format |
 | 05 | Network Etiquette | 1 req/s, retry, offline fixtures, live opt-in |
 | 06 | SQLite Conventions | WAL, FK, migrations, store tokens not URLs |
-| 07 | Download Dispatch | Direct-stream routing, OS-native dispatch, folder folding |
+| 07 | Download Dispatch | Direct-stream routing, OS-native dispatch, 7-Zip extraction, flat folders |
 | 08 | Release Standards | SemVer, version sync, verification gate |
 | 09 | Mermaid Standards | GitHub v10, quoted labels, ≤12 nodes |
-| 10 | Security | Secrets, allowlists, subprocess safety |
+| 10 | Security | Secrets, host blacklist, subprocess safety |
 | 11 | Testing | Rust unit/integration layers + Svelte Vitest, coverage floor |
 | 12 | Error Handling | Exit codes 0–5, typed errors, stdout vs stderr |
 | 13 | GUI Conventions | Shared-core invoke model, GUI/CLI parity guardrails |
 
-Full descriptions: `.agents/rules/index.md` and `wiki/Design-Conventions`.
+Full descriptions: `.agents/rules/index.md` and [Design Conventions](../../wiki/Design-Conventions).
 
 ---
 

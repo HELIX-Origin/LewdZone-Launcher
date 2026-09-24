@@ -1,91 +1,64 @@
-# 🪄 Content Providers
+# 🪄 Content Providers & External Enrichment
 
 > Links between wiki pages are relative and omit the `.md` extension.
 
-Not every LewdZone page carries complete metadata — indie and amateur titles
-often lack descriptions, screenshots, release dates, and artwork. A pluggable
-**content-provider layer** enriches the catalog with external info and art,
-while keeping LewdZone as the source of truth for downloadability (versions,
-platforms, hosts).
+Not every LewdZone game page carries complete descriptions, high-resolution artwork, or developer information. LewdZone Launcher includes an optional, pluggable **content-provider layer** that enriches listings with external metadata and covers while keeping LewdZone as the authoritative source for downloads and versions.
 
-## 🧭 Principle
+---
 
-- LewdZone data is authoritative for **downloads**.
-- Provider data is authoritative for **presentation** (info + art).
-- Providers only fill *missing* fields — they never overwrite a scraped value.
+## 🧭 Core Principles
 
-## 🗂️ Providers
+1. **LewdZone is Authoritative for Downloads:** External metadata never overrides or conflicts with official LewdZone version numbers, download tabs, or platform links.
+2. **Missing Fields Only:** Providers only supplement fields that are absent or sparse on the LewdZone page (e.g. detailed plot summary, publisher, high-res hero/grid artwork).
+3. **Graceful Degradation:** If a provider is unreachable, missing an API key, or encounters an error, the launcher degrades seamlessly without blocking store browsing or downloads.
 
-| Provider | name | Info | Art | API key | Notes |
-| --- | --- | --- | --- | --- | --- |
-| SteamGridDB | `steamgriddb` | no | icons, grids, heroes, logos | Bearer key | `nsfw=yes` for mature titles |
-| VNDB (Kana) | `vndb` | description, developer, rating, tags, screenshots | cover + screenshots | none | Best adult-VN coverage |
-| IGDB v4 | `igdb` | description, genres, screenshots | covers / artworks | Twitch Client-ID + secret | mainstream + mid-size |
-| itch.io | `itch` | description, dev, price, platforms | cover, screenshots | optional | indie hub, HTML scrape |
-| Steam Storefront | `steam` | description, screenshots | capsule/header | none | only for known Steam appids |
-| IndieDB | `indiedb` | description, images | images | none | no public API, HTML scrape |
+---
 
-## 🔀 How it works
+## 🗂️ Supported External Providers
 
-```mermaid
-flowchart LR
-    A[catalog game] --> B[enrichment request]
-    B --> C{external_id cached?}
-    C -- yes --> D[reuse cached info + art]
-    C -- no --> E[registry dispatch by priority]
-    E --> F[SteamGridDB]
-    E --> G[VNDB]
-    E --> H[IGDB]
-    E --> I[itch.io]
-    E --> J[Steam Storefront]
-    E --> K[IndieDB]
-    F --> L{found?}
-    G --> L
-    H --> L
-    I --> L
-    J --> L
-    K --> L
-    L -- yes --> M[merge info + download art]
-    L -- no --> N[next provider]
-    M --> O[store external_id + assets]
-    N --> P["none left: record missing"]
-    O --> Q[enriched catalog row]
-    P --> Q
+| Provider | ID | Enriched Info | Enriched Artwork | Authentication |
+| --- | --- | --- | --- | --- |
+| **SteamGridDB** | `steamgriddb` | None | Icons, grids, heroes, logos | Bearer API Key (free on steamgriddb.com) |
+| **VNDB (Kana)** | `vndb` | Synopsis, developer, rating, tags, screenshots | Cover, screenshots | Keyless public API |
+| **IGDB v4** | `igdb` | Summary, genres, release date, screenshots | High-res covers, backgrounds | Twitch Client-ID & Client Secret |
+| **itch.io** | `itch` | Description, author, platform tags | Cover, screenshots | Keyless HTML scrape |
+| **Steam Store** | `steam` | Full store description, screenshots | Capsules, header banners | Keyless public storefront API |
+| **IndieDB** | `indiedb` | Summary, release status | Promotional artwork | Keyless HTML scrape |
+
+---
+
+## 🔑 Setting Provider Credentials
+
+API keys can be configured directly in **Settings → API keys** or via the CLI:
+
+```bash
+# Securely store SteamGridDB key
+lewdzone settings set sgdb-api-key "<YOUR_KEY>" --secret
+
+# Securely store IGDB Twitch OAuth credentials
+lewdzone settings set igdb-client-id "<YOUR_CLIENT_ID>" --secret
+lewdzone settings set igdb-client-secret "<YOUR_CLIENT_SECRET>" --secret
+
+# Set provider query priority order
+lewdzone settings set content-priority "steamgriddb, vndb, igdb, itch, steam, indiedb"
 ```
 
-- `game_external` DB table maps `post_id → provider → external_id` (idempotent
-  upsert).
-- `artwork_cache` is keyed by `(normalized_title, kind)` and tagged with
-  `provider` + `kind`, so a game can hold a SteamGridDB icon and a VNDB cover
-  simultaneously, and rebuilds are offline-fast.
+All credentials are saved in the local SQLite `secret` table and are never printed to console output or logged ([Security](Security)).
 
-## 🔑 API keys & settings
+---
 
-Keys are set from the app's **Settings → API keys** section or CLI:
+## 🖼️ Local Artwork Caching
 
-| Setting | Provider | Secret |
-| --- | --- | --- |
-| `sgdb-api-key` | steamgriddb | yes |
-| `igdb-client-id` | igdb | yes |
-| `igdb-client-secret` | igdb | yes |
-| `content-providers-enabled` | which providers are on | no |
-| `content-priority` | dispatch order | no |
+Fetched artwork is stored locally in the library cache:
+- Keyed by `(normalized_title, kind)`.
+- Reused across launcher restarts and offline sessions.
+- Allows lightning-fast library rendering without network latency.
 
-Keys live in the per-OS config dir (Rule 10). Providers that are disabled or
-missing a key simply don't enrich — downloads are never affected. See
-[Configuration](Configuration) for the full settings list.
+---
 
-## 🛡️ Robustness
+## 🔗 Related Pages
 
-- Missing key / provider outage → "no enrichment", never a hard failure.
-- Enrichment is idempotent; re-running never duplicates rows.
-- All provider calls follow [Network Etiquette](Design-Conventions) (1 req/s,
-  retries, offline fixtures); live tests are opt-in (`cargo test -- --ignored`).
-
-## 🧑‍🔬 Agent ownership
-
-The `content` agent family owns this layer —
-[Agent Ecosystem](Agents): provider-registry, steamgriddb-provider,
-vndb-provider, igdb-provider, itch-provider, steam-provider, indiedb-provider.
-The `shortcuts` family's `artwork-fetch` consumes provider art for native
-shortcuts instead of talking to a single source.
+- [Architecture](Architecture)
+- [Configuration](Configuration)
+- [Security](Security)
+- [Troubleshooting](Troubleshooting)

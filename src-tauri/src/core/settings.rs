@@ -26,6 +26,8 @@ pub struct Settings {
     /// Library root override (library-folders analog, ADR-0005);
     /// unset = `<data_root>/library`.
     pub library_root: Option<String>,
+    /// Directory where the user extracts their games, scanned to populate the library.
+    pub games_dir: Option<String>,
     /// Grace period between consecutive download starts (seconds); unset = 20.
     pub download_grace_seconds: Option<u64>,
     /// Preferred cloud-source hosts, comma-separated (e.g. `mega,google,dropbox`).
@@ -34,6 +36,8 @@ pub struct Settings {
     /// Which sidebar tab opens at launch (`store`, `favorites`, `library`,
     /// `downloads`, `settings`); unset = `store`.
     pub home_page: Option<String>,
+    /// Path to 7-Zip CLI console executable (7za.exe / 7z.exe / 7za).
+    pub seven_zip_path: Option<String>,
     /// Extra user-provided keys, kept un-echoed (Rule 10).
     #[serde(flatten)]
     pub extra: BTreeMap<String, serde_json::Value>,
@@ -65,9 +69,13 @@ impl Settings {
             "capture-aware" => self.capture_aware.map(serde_json::Value::Bool),
             "theme" => self.theme.clone().map(serde_json::Value::String),
             "library-root" => self.library_root.clone().map(serde_json::Value::String),
+            "games-dir" => self.games_dir.clone().map(serde_json::Value::String),
             "download-grace-seconds" => self.download_grace_seconds.map(serde_json::Value::from),
             "source-priority" => self.source_priority.clone().map(serde_json::Value::String),
             "home-page" => self.home_page.clone().map(serde_json::Value::String),
+            "7z-path" | "seven-zip-path" => {
+                self.seven_zip_path.clone().map(serde_json::Value::String)
+            }
             other => self.extra.get(other).cloned(),
         };
         s
@@ -88,7 +96,18 @@ impl Settings {
                 self.theme = Some(take_string(key, value)?);
             }
             "library-root" => {
-                self.library_root = Some(take_string(key, value)?);
+                let v = take_string(key, value)?;
+                if !v.trim().is_empty() {
+                    let _ = crate::core::folder::initialize_library_structure(Path::new(&v));
+                }
+                self.library_root = Some(v);
+            }
+            "games-dir" => {
+                let v = take_string(key, value)?;
+                if !v.trim().is_empty() {
+                    let _ = crate::core::folder::initialize_library_structure(Path::new(&v));
+                }
+                self.games_dir = Some(v);
             }
             "download-grace-seconds" => {
                 self.download_grace_seconds = Some(take_u64(key, value)?);
@@ -98,6 +117,9 @@ impl Settings {
             }
             "home-page" => {
                 self.home_page = Some(take_string(key, value)?);
+            }
+            "7z-path" | "seven-zip-path" => {
+                self.seven_zip_path = Some(take_string(key, value)?);
             }
             other => {
                 self.extra.insert(other.to_string(), value);
@@ -132,9 +154,11 @@ const KNOWN_KEYS: &[&str] = &[
     "capture-aware",
     "theme",
     "library-root",
+    "games-dir",
     "download-grace-seconds",
     "source-priority",
     "home-page",
+    "7z-path",
 ];
 
 /// Keys whose values are secrets: stored in the SQLite `secret` table, never

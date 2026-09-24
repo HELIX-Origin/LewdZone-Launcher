@@ -1,176 +1,110 @@
-# ⚙️ Configuration
+# ⚙️ Configuration Reference
 
 > Links between wiki pages are relative and omit the `.md` extension.
 
-## 📄 Config file
+LewdZone Launcher manages its state and user preferences through a unified configuration system shared between the Tauri GUI and the native CLI (Rule 03, Rule 13).
 
-LewdZone Launcher stores a JSON config file in the per-OS config dir
-(`<config_root>/lewdzone/config.json`, mirrored on the launcher folder layout —
-see [Architecture](Architecture) → Folder structure):
+---
 
-| OS | Path |
-| --- | --- |
-| Windows | `%APPDATA%/lewdzone/config.json` |
-| Linux | `$XDG_CONFIG_HOME/lewdzone/config.json` (or `~/.config/lewdzone/config.json`) |
-| macOS | `~/Library/Application Support/lewdzone/config.json` |
+## 📄 Configuration Files & Storage
 
-## 🔑 Key settings
+Configuration is stored in two locations per operating system:
 
-```jsonc
-{
-  "download-root": "D:/Games",          // where raw downloaded files land (default: per-OS downloads folder)
-  "download-grace-seconds": 20,         // pause between download starts (cloud free-tier throttle protection)
-  "content-priority": "steamgriddb, vndb, igdb, itch, steam, indiedb", // dispatch order
-  "capture-aware": true,                // installer capture heuristics
-  "source-priority": "mega, google, dropbox, mediafire", // preferred download-source order
-  "theme": "Pink Neon"                  // theme skin name (unset = built-in default)
-}
-```
-
-> ⚖️ **Download scheduler** — downloads are always dispatched **one at a time**;
-> the scheduler waits `download-grace-seconds` (default 20) between each start so
-> the site's free-tier mirrors (Mega, Google Drive, MediaFire, ...) aren't
-> throttled or blocked. Set it lower on fast connections, higher on flaky ones:
-
-## ⭐ Preferred download sources
-
-By default a game download lists every source available on the game page. The
-`source-priority` setting (a comma-separated list of source hosts) reorders the
-available sources so your favorites come first:
-
-```sh
-lewdzone settings set source-priority "mega, google, dropbox, mediafire"
-lewdzone settings get source-priority
-```
-
-Valid hosts are the [resolver allowlist](Download-Managers) (`fileknot`,
-`transfaze`, `mega`, `google`, `uploadhaven`, `workupload`, `mediafire`,
-`dropbox`, `pixeldrain`). Hosts you name that aren't on the game page are
-simply skipped — the download never fails just because a source is missing.
-
-## 📥 How downloads are dispatched
-
-There is no download manager to configure. Every resolved URL is dispatched
-by host class (see [Downloads & In-App Streaming](Download-Managers)):
-
-- **Direct-file hosts** — streamed in-app with byte progress.
-- **Everything else** — opened in the OS default handler (the installed cloud
-  app for the service, or the browser). Zero configuration.
-
-## 🎨 Theme skins (ADR-0005)
-
-Themes are first-class: a skin package lives in a **per-OS user-accessible**
-skins folder (Windows: next to the executable; macOS/Linux: the app data
-folder) at `<skins>/<Name>/theme.json` — one subfolder per theme. Embedded
-theme resources live inside the theme folder next to `theme.json` (optional
-`assets/` subfolder). Each skin overrides the `--lz-*` design tokens via CSS
-custom properties. The built-in default theme is always present; a custom skin
-loads in its place when applied. Skins may only carry tokens + assets — never
-scripts ([Security](Security)). A malformed skin falls back to the built-in
-default theme.
-
-**Nord**, **Dracula**, and **Material** ship with every build and are seeded
-into the skins folder on first run — they always appear in the theme list and
-double as working reference themes for creators.
-
-Full authoring guidance lives in [Theme development](Theme-Development) —
-including a step-by-step walkthrough, the complete token table, manifest
-schema, validation rules, and per-OS folder locations.
-
-| Token | Default | Meaning |
+| OS | Configuration File (`config.json`) | SQLite Database (`lewdzone.db`) |
 | --- | --- | --- |
-| `--lz-accent` | `#FF4EC8` | neon magenta accent |
-| `--lz-primary` | `#FF5FB2` | neon pink |
-| `--lz-cyan` | `#22D3EE` | neon cyan |
-| `--lz-bg` | `#0A1118` | deep dark cyan/charcoal |
-| `--lz-surface` / `--lz-surface-2` | `#0E1B26` / `#122A3A` | panel surfaces |
-| `--lz-text` / `--lz-text-dim` | `#E8F1F8` / `#9AAEC0` | text colors |
-| `--lz-danger` | `#FF3B6B` | errors/destructive |
-| `--lz-ok` | `#3DFFA2` | success |
-| `--lz-radius` | `4px` | corner rounding |
-| `--lz-gap` | `12px` | layout spacing |
-| `--lz-gradient` | `linear-gradient(160deg, #0A1118 0%, #0E1B26 100%)` | page backdrop |
-| `--lz-glow` | `0 0 14px rgba(34, 211, 238, 0.35)` | neon glow |
-| `--lz-glass` | `rgba(14, 27, 38, 0.55)` | glassmorphism fill |
+| **Windows** | `%APPDATA%\lewdzone\config.json` | `%APPDATA%\lewdzone\lewdzone.db` |
+| **Linux** | `$XDG_CONFIG_HOME/lewdzone/config.json` (`~/.config/lewdzone/config.json`) | `$XDG_DATA_HOME/lewdzone/lewdzone.db` (`~/.local/share/...`) |
+| **macOS** | `~/Library/Application Support/lewdzone/config.json` | `~/Library/Application Support/lewdzone/lewdzone.db` |
 
-```sh
-lewdzone settings set theme "Pink Neon"
-lewdzone settings get theme
+- **Non-secret settings** are saved as readable JSON in `config.json`.
+- **Sensitive credentials** (such as SteamGridDB API keys and IGDB client secrets) are stored encrypted in the SQLite `secret` table and are never written to `config.json` ([Security](Security)).
+
+---
+
+## 🔑 Key Settings Reference
+
+| Key | Type | Default | Description |
+| --- | --- | --- | --- |
+| `7z-path` | string | `""` | Path to the 7-Zip console executable (`7za.exe`, `7z.exe`, `7zz`, or directory containing them). Alias: `seven-zip-path`. See [Archive Extraction & 7-Zip](Archive-Extraction). |
+| `library-root` | string | `""` | Base directory containing `downloads/` and `installed/` game directories. |
+| `games-dir` | string | `""` | Folder where you personally extract games. Scanned by the Library view to discover and register games. |
+| `download-root` | string | `""` | Override path for downloaded archives (defaults to `<library-root>/downloads`). |
+| `download-grace-seconds`| integer | `20` | Pacing delay (in seconds) between sequential download dispatches to protect against host throttling. |
+| `source-priority` | string | `"mega, google, dropbox, mediafire"` | Comma-separated list of preferred download hosts; used to reorder host options in the game detail view. |
+| `home-page` | string | `"store"` | Initial view loaded when the application launches (`store`, `library`, `favorites`, `downloads`, `settings`). |
+| `theme` | string | `""` | Active skin name (empty string selects the built-in default theme). See [Theme Development](Theme-Development). |
+| `capture-aware` | boolean | `true` | When enabled, pauses background network syncing while window capture or streaming is detected. |
+| `content-priority` | string | `"steamgriddb, vndb, igdb, itch, steam, indiedb"` | Priority order for querying external metadata providers. |
+
+---
+
+## 🛠️ Configuring via Command Line
+
+Use `lewdzone settings` to inspect and modify any configuration key:
+
+```bash
+# View all configuration settings
+lewdzone settings get
+
+# Inspect a specific key
+lewdzone settings get 7z-path
+lewdzone settings get library-root
+
+# Set configuration values
+lewdzone settings set 7z-path "C:\Utilities\7z\7za.exe"
+lewdzone settings set library-root "G:\LewdZone"
+lewdzone settings set games-dir "D:\Games\LewdZone"
+lewdzone settings set download-grace-seconds 10
+lewdzone settings set home-page "library"
+lewdzone settings set theme "Nord"
+
+# Store sensitive API keys securely
+lewdzone settings set sgdb-api-key "your-steamgriddb-key" --secret
+lewdzone settings set igdb-client-id "your-twitch-client-id" --secret
+lewdzone settings set igdb-client-secret "your-twitch-client-secret" --secret
 ```
 
-Switch skins in **Settings → Appearance** without restarting. The Settings
-page lists every skin in the user skins folder (including the seeded Nord/
-Dracula/Material defaults); the default theme is always available as
-`(default)` regardless of what is installed.
+---
 
-## 🗝️ Content-provider API keys
+## 🗂️ Library Directory Layout
 
-The content-provider layer (info + art enrichment) uses several external
-sources. Keys are set per-provider from the app's **Settings → API keys** or
-the CLI, and are never displayed back:
+Setting `library-root` establishes a flat, clean structure on disk:
 
-| Key | Provider | Needed? |
-| --- | --- | --- |
-| `sgdb-api-key` | SteamGridDB | yes, for icons/grids/heroes/logos |
-| `igdb-client-id` | IGDB | yes, for IGDB info + covers |
-| `igdb-client-secret` | IGDB | yes (Twitch token exchange) |
-| VNDB / itch.io / IndieDB / Steam | — | no keys required (scrape or keyless) |
-
-```sh
-lewdzone settings set sgdb-api-key <key> --secret
-lewdzone settings set igdb-client-id <id> --secret
-lewdzone settings set igdb-client-secret <secret> --secret
-lewdzone settings set content-priority "vndb,igdb,steamgriddb"
+```text
+<library-root>/
+├── downloads/
+│   ├── Game Title [Ongoing] - Version 0.19.1.zip
+│   └── Another Game - Version 1.0.rar
+└── installed/
+    ├── game-slug/
+    │   ├── app.json
+    │   ├── Game.exe
+    │   └── game_data/
+    └── another-slug/
+        ├── app.json
+        └── Game.exe
 ```
 
-Keys live in the SQLite database's `secret` table (never in `config.json`,
-never in the repo; redacted from logs — see [Security](Security)).
-`settings get <key>` prints only `(set)` or `(not set)` — never the value.
-Providers that are disabled or missing a key simply don't enrich — downloads
-are never affected.
+- **Flat Downloads:** Raw download archives land in `<library-root>/downloads/` without cluttered engine subdirectories.
+- **Flat Installs:** Each extracted game resides directly inside `<library-root>/installed/<slug>/`.
+- **Legacy Compatibility:** The launcher continues to detect and run existing games located in legacy `<library-root>/lzapps/<slug>/` or engine subfolders (`installed/<engine>/<slug>/`).
 
-## 🛠️ Changing settings via CLI
+---
 
-```sh
-lewdzone settings get <key>
-lewdzone settings set <key> <value>
-```
+## 🎨 Theme Skins
 
-## 🗂️ Library root
+Theme packages live in the user-accessible skins directory:
+- **Windows:** `<install dir>\skins\<ThemeName>\theme.json`
+- **macOS / Linux:** `<data_root>/skins/<ThemeName>/theme.json`
 
-The `library-root` setting relocates both the downloads folder and the installed
-apps folder. When set, the launcher uses:
+Three reference themes ship with the launcher: **Nord**, **Dracula**, and **Material**. Any custom theme directory containing a valid `theme.json` will automatically appear in the Settings dropdown and can be applied dynamically without restarting the application. Detailed documentation is available in [Theme Development](Theme-Development).
 
-- `<library-root>/downloads/` — raw downloaded files
-- `<library-root>/lzapps/` — extracted/installed games
+---
 
-When unset, defaults are per-OS and user-accessible:
+## 🔗 Related Pages
 
-| OS | Default downloads | Default lzapps |
-| --- | --- | --- |
-| Windows | `<install dir>/downloads` | `<install dir>/lzapps` |
-| Linux | `<data_root>/downloads` | `<data_root>/lzapps` |
-| macOS | `~/Library/Application Support/lewdzone/downloads` | `~/Library/Application Support/lewdzone/lzapps` |
-
-This mirrors the skin-folder pattern: Windows keeps folders next to the
-executable; macOS/Linux keep them in the app data directory.
-
-ADR-0005's Steam-style `library/` folder still holds per-game manifests
-(`appmanifest_<post_id>.json`), common assets, and artwork; see
-[Architecture](Architecture) → Folder structure.
-
-## 🗄️ Database
-
-SQLite database lives at `<data_root>/lewdzone.db` (e.g.
-`%APPDATA%\lewdzone\lewdzone.db` on Windows).
-Configured with WAL journaling, foreign keys ON, busy timeout 5000ms. See
-[Architecture](Architecture) → Data model.
-
-## 🔖 Version
-
-The app version is the single source of truth; it is synced across:
-- `src-tauri/Cargo.toml` (crate version + `tauri.conf.json`)
-- `package.json`
-
-The CLI reports the same version as the app (`lewdzone --version`).
-See [Release Process](Release-Process).
+- [Archive Extraction & 7-Zip Setup](Archive-Extraction)
+- [Downloads & In-App Streaming](Download-Managers)
+- [CLI Reference](CLI-Reference)
+- [Theme Development](Theme-Development)
+- [Security](Security)

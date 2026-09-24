@@ -1,53 +1,64 @@
-# 🎨 Design Conventions
+# 🎨 Design & Coding Conventions
 
 > Links between wiki pages are relative and omit the `.md` extension.
 
-## 🏷️ Naming
+This document records the coding, naming, diagramming, and architectural standards enforced across the LewdZone Launcher codebase.
 
-| Item | Convention |
-| --- | --- |
-| Rust files / vars / DB table names | `snake_case` |
-| Rust types / structs / enum variants | `PascalCase` (e.g. `Platform::PC`) |
-| CLI commands / subcommands | `kebab-case` |
-| Rust consts / serialized enum values | UPPER_CASE (`"PC"`, `"ANDROID"`) |
-| Svelte / JS variables | `camelCase` |
-| Download files | `<Title> - <Version> - <Platform>[- <Variant>].<ext>` |
-| Shortcut group / folder | `lewdzone` |
+---
 
-## 💬 Canonical vocabulary
+## 🏷️ Naming Standards
 
-`Game` / `PostId`, `Version`, `DownloadEntry`, `Host` (slug from the site),
-`GoToken` (`v1.<payload>.<sig>`), `DownloadJob`, `ArtworkCache`, `Shortcut`,
-`Genre`.
+| Scope | Convention | Examples |
+| --- | --- | --- |
+| Rust files / modules / DB tables | `snake_case` | `extract.rs`, `game_entry`, `download_job` |
+| Rust structs / enums / traits | `PascalCase` | `ArchiveFilter`, `ResolvedUrl`, `AppJson` |
+| CLI commands & flags | `kebab-case` | `download-root`, `source-priority`, `7z-path` |
+| Serialization constants | `UPPER_CASE` | `"PC"`, `"ANDROID"`, `"WINDOWS"` |
+| Svelte components | `PascalCase` | `GameCard.svelte`, `QueueItem.svelte` |
+| Svelte & TS variables | `camelCase` | `activeDownloads`, `isExtracting` |
+| Download archive names | Canonical pattern | `<Title> - <Version> - <Platform>[- <Variant>].<ext>` |
 
-## 📐 Code style
+---
 
-- **rustfmt** (`cargo fmt`) + **clippy** with `-D warnings` as the gate; `cargo check`
-- Module-level `pub` types documented; no `unwrap()` outside tests and top-level
-  entry points — use `?` with typed errors (Rule 12)
-- Newtype wrappers for domain IDs (`PostId(u64)`, `GameId(u64)`, `GoToken`)
-- Explicit `enum` variants over flag booleans
+## 💬 Canonical Vocabulary
 
-## 🧩 Mermaid diagrams
+- **`Game` / `PostId`:** Canonical game entity and LewdZone numeric post identifier.
+- **`Version`:** Specific release version string (`"0.19.1"`).
+- **`DownloadEntry`:** Individual host option under a version/tab.
+- **`GoToken`:** Ephemeral download token extracted from `#t=v1...` links.
+- **`DownloadJob`:** Tracked queue task (`queued`, `resolving`, `downloading`, `extracting`, `complete`).
+- **`7-Zip CLI`:** Standalone console binary (`7za`/`7z`/`7zz`) used for decompression.
 
-All Mermaid in the repo must comply with GitHub's Mermaid v10.x renderer.
-Rules:
+---
 
-- **Fence** with ` ```mermaid `.
-- **Quote** every label containing special characters: `A["label (with parens)"]`,
-  `A -->|"Yes"| B`.
-- **Subgraph titles** must be quoted: `subgraph id["Title"]`.
-- One concern per diagram; ≤8-12 nodes.
-- Label both branches of every decision.
-- No `%%{init}%%` directives; no math/LaTeX; no exotic shapes.
-- No reserved-word IDs: `end`, `class`, `note`, `subgraph`, `link`,
-  `default`, `linkStyle`.
-- Allowed styling: only `classDef` / `linkStyle` / `style` color overrides.
+## 📐 Rust & Frontend Code Style
 
-Full rule: [Rule 09](https://github.com/helix-origin/lewdzone-launcher/tree/main/.agents/rules/rule-09-mermaid-standards.md).
+- **Strict Formatting & Linting:** Code must pass `cargo fmt --check` and `cargo clippy -- -D warnings`.
+- **Fail Loudly & Typed Errors:** No `unwrap()` in production core paths. Errors are represented by `core::Error` enums.
+- **One Core, Two Entry Points:** Business logic resides strictly in `src-tauri/src/core/`. GUI invoke commands and CLI subcommands call identical core functions (Rule 03, Rule 13).
+- **Inward Dependency Rule:** Outer presentation layers depend inward on services and models; inner layers never import presentation controllers.
 
-## 📜 ADRs
+---
 
-Cross-layer contract changes require an **Architecture Decision Record**
-before implementation, filed in `.agents/adr/` using the template
-[`templates/adr.md`](https://github.com/helix-origin/lewdzone-launcher/tree/main/.agents/templates/adr.md).
+## 🧩 Mermaid Diagram Rules
+
+All diagrams in documentation and issues must comply with GitHub Mermaid v10.x standards:
+- Always quote labels with special characters: `A["Label (with details)"]`.
+- Quote subgraph titles: `subgraph "Extraction Pipeline"`.
+- Keep diagrams focused and readable (≤ 8–12 nodes).
+- Avoid reserved keywords as node identifiers (`end`, `class`, `note`, `subgraph`).
+
+---
+
+## 📜 Architectural Decisions (ADRs)
+
+Any cross-layer interface change, storage model revision, or protocol addition requires an **Architecture Decision Record (ADR)** documented before implementation.
+
+---
+
+## 🔗 Related Pages
+
+- [Architecture](Architecture)
+- [Agent Ecosystem](Agents)
+- [Testing & QA](Testing)
+- [Security](Security)

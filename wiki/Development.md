@@ -1,85 +1,71 @@
-# 🛠️ Development
+# 🛠️ Development & Engineering Guide
 
 > Links between wiki pages are relative and omit the `.md` extension.
 
-This project is governed by a **detailed agent ecosystem** in `.agents/` with
-GitHub-compatible Mermaid diagrams, plus rules 00-13. The wiki is the
-human-facing distillation; the `.agents` docs are the authoritative spec.
+This guide provides an overview of repository structure, daily engineering workflows, and verification requirements for contributing to the LewdZone Launcher.
 
-## 📁 Repo layout
+---
 
-```
-lewdzone/
-  .agents/
-    agents/                # 11 agent families + sub-agents
-    skills/                # SKILL.md per skill
-    rules/                 # rule-00..13 + index
-    templates/             # agent/skill/rule/module/adr templates
-  src/                     # Svelte webview (Tauri frontend)
-  src-tauri/src/           # Rust core: cli.rs, db.rs, scraper.rs, resolver.rs, ...
-  src-tauri/tests/         # Rust unit/integration tests + fixtures
-  wiki/                    # this wiki (synced with GitHub Wiki)
-  scratch/                 # gitignored temp scripts
-```
+## 📁 Repository Layout
 
-## 🧩 Agent families
-
-| Family | Owns |
-| --- | --- |
-| architect | structure, ADRs, contracts (systems-designer, module-contractor) |
-| scraper | site scraping, fixtures (archive-scraper, game-page-scraper, fixture-engineer) |
-| resolver | go-token → real URL (token-prober, dispatch-builder) |
-| database | schema, sync (schema-designer, sync-orchestrator) |
-| dm | downloads + folder folding (direct-stream routing, OS-native dispatch, folder-organizer) |
-| cli | the engine, output (command-designer, output-formatter) |
-| gui | Tauri app (app-shell, view-designer) |
-| shortcuts | artwork + native shortcuts (artwork-fetch, shortcut-builder) |
-| content | info + art enrichment (provider-registry, steamgriddb-provider, vndb-provider, igdb-provider, itch-provider, steam-provider, indiedb-provider) |
-| testing | suite, fakes (fixture-crafter, mock-engineer, test-suite-architect, debugger) |
-| review | gates (security-auditor, perf-auditor) |
-
-See [Agent Ecosystem](Agents).
-
-## ⚖️ Rules (00-13)
-
-Governance, code style, naming, module architecture, remote issue protocol
-(roadmap-first), network etiquette, SQLite conventions, download-manager
-integration, release standards, Mermaid standards, security, testing, error
-handling, GUI conventions. Index: [`.agents/rules/index.md`](https://github.com/helix-origin/lewdzone-launcher/tree/main/.agents/rules/index.md) (wiki link; repo path has `.md`).
-
-## 🤝 Contribution workflow
-
-1. Issues are **roadmap-first**: a plan has one living roadmap issue, edited in
-   place; work is tracked as sub-issues.
-2. Commits follow `<emoji> <type>(<scope>): <subject>` with `Resolves #N` /
-   `Closes #N`. Scopes include `scraper`, `resolver`, `db`, `dm`, `cli`, `gui`,
-   `shortcuts`, `tests`, `agents`, `rules`, `docs`, `deps`.
-3. Every plan/bug issue embeds ≥1 GitHub-compatible Mermaid diagram.
-4. PRs mirror issues (`Part of #parent` / `Closes #sub-issue`); bodies via
-   `gh pr create --body-file`.
-
-Full protocol: [Rule 04](https://github.com/helix-origin/lewdzone-launcher/tree/main/.agents/rules/rule-04-remote-issue-protocol.md).
-
-## 🪵 Branch & commit hygiene
-
-- Feature branch → PR → merge to `main`. Never push directly.
-- Clean tree before commits; never commit secrets
-  ([Security](Security)).
-- Changes to cross-layer contracts require an ADR
-  ([Design Conventions](Design-Conventions)).
-
-## ✅ Verification commands
-
-```sh
-# Rust core (from src-tauri/)
-cargo fmt --check && cargo clippy -- -D warnings
-cargo check
-cargo test                      # offline default
-cargo test -- --ignored         # opt-in live (#[ignore] tags)
-
-# Svelte frontend (from repo root)
-npm run check                   # svelte-check
-npm run test                    # Vitest unit tests
+```text
+lewdzone-launcher/
+├── .agents/                      # Agent specifications, rules, templates, and ADRs
+│   ├── adr/                      # Architecture Decision Records
+│   ├── rules/                    # Enforceable repository rules (Rule 00 - 13)
+│   └── templates/                # Issue, agent, and module scaffolds
+├── src/                          # Tauri webview frontend (Svelte 5 + Vite + TS)
+│   ├── lib/                      # Components, theme engine, and test suites
+│   └── routes/                   # Application views (Store, Library, Downloads, Settings)
+├── src-tauri/                    # Rust core backend & CLI application
+│   ├── src/
+│   │   ├── core/                 # Shared core logic (download, extract, queue, folder)
+│   │   ├── db/                   # SQLite database models and migrations
+│   │   ├── scraper/              # LewdZone HTML parsers and HTTP fetcher
+│   │   ├── resolver.rs           # Token resolution & host allowlist verification
+│   │   ├── cli.rs                # Native Rust command-line interface
+│   │   └── lib.rs                # Tauri entry point, IPC commands, and tray setup
+│   └── Cargo.toml                # Rust crate dependencies and metadata
+└── wiki/                         # GitHub wiki documentation suite
 ```
 
-See [Testing & QA](Testing) and [Release Process](Release-Process).
+---
+
+## 🤝 Daily Development Commands
+
+```bash
+# Start desktop app with hot module reloading
+npm run tauri dev
+
+# Run CLI commands directly in development
+cargo run --manifest-path src-tauri/Cargo.toml -- --help
+cargo run --manifest-path src-tauri/Cargo.toml -- list --library
+
+# Format and lint codebase
+cargo fmt --manifest-path src-tauri/Cargo.toml
+cargo clippy --manifest-path src-tauri/Cargo.toml -- -D warnings
+
+# Execute test suites
+cargo test --manifest-path src-tauri/Cargo.toml
+npm run test
+npm run check
+```
+
+---
+
+## 🏛️ Contribution Rules & Hygiene
+
+1. **One Core, Two Entry Points:** Any feature added to the GUI must have an equivalent CLI command backed by the same Rust core function.
+2. **Hermetic Testing:** Tests must run offline without touching live networks unless explicitly tagged with `#[ignore]`.
+3. **No Shell Invocations:** Subprocesses must be spawned using explicit argument lists (`std::process::Command`), never through shell strings ([Security](Security)).
+4. **No Secrets in Config:** Passwords and API tokens must be saved to the encrypted SQLite database, not `config.json`.
+
+---
+
+## 🔗 Related Pages
+
+- [Architecture](Architecture)
+- [Agent Ecosystem](Agents)
+- [Testing & QA](Testing)
+- [Release Process](Release-Process)
+- [Design Conventions](Design-Conventions)

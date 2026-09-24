@@ -5,7 +5,32 @@ use std::process::Command;
 
 use crate::core::{Context, Error};
 
-pub fn run(ctx: &Context, game: &str) -> Result<crate::cli::ExitCode, Error> {
+fn locate_manifest(
+    ctx: &Context,
+    game: &str,
+) -> Result<(crate::core::extract::AppJson, PathBuf), Error> {
+    // 1. Try finding in list_installed (finds installed/<engine>/<slug>/app.json)
+    if let Ok(installed) = crate::core::library::list_installed(ctx) {
+        let sanitized = crate::core::folder::sanitize_segment(game);
+        if let Some(app) = installed.into_iter().find(|a| {
+            a.slug.eq_ignore_ascii_case(game)
+                || a.slug.eq_ignore_ascii_case(&sanitized)
+                || a.title.eq_ignore_ascii_case(game)
+        }) {
+            let manifest_path = app.install_path.join("app.json");
+            if manifest_path.is_file() {
+                if let Ok(raw) = std::fs::read_to_string(&manifest_path) {
+                    if let Ok(manifest) =
+                        serde_json::from_str::<crate::core::extract::AppJson>(&raw)
+                    {
+                        return Ok((manifest, app.install_path));
+                    }
+                }
+            }
+        }
+    }
+
+    // 2. Direct lzapps/installed root lookup fallback
     let lzapps = crate::core::folder::lzapps_root(ctx)?;
     let install_dir = lzapps.join(crate::core::folder::sanitize_segment(game));
     let manifest_path = install_dir.join("app.json");
@@ -20,6 +45,19 @@ pub fn run(ctx: &Context, game: &str) -> Result<crate::cli::ExitCode, Error> {
     let manifest: crate::core::extract::AppJson = serde_json::from_str(&raw)
         .map_err(|e| Error::Runtime(format!("corrupt app.json for {game}: {e}")))?;
 
+    let custom_path = PathBuf::from(&manifest.install_path);
+    let base_dir = if custom_path.is_absolute() && custom_path.exists() {
+        custom_path
+    } else {
+        install_dir
+    };
+
+    Ok((manifest, base_dir))
+}
+
+pub fn run(ctx: &Context, game: &str) -> Result<crate::cli::ExitCode, Error> {
+    let (manifest, base_dir) = locate_manifest(ctx, game)?;
+
     let exe_rel = if manifest.launch_exe.trim().is_empty() {
         manifest.candidates.first().map(|s| s.as_str())
     } else {
@@ -27,7 +65,7 @@ pub fn run(ctx: &Context, game: &str) -> Result<crate::cli::ExitCode, Error> {
     }
     .ok_or_else(|| Error::Runtime(format!("no executable candidate found for {game}")))?;
 
-    let exe_path = install_dir.join(exe_rel);
+    let exe_path = base_dir.join(exe_rel);
     if !exe_path.exists() {
         return Err(Error::Runtime(format!(
             "launch target not found: {}",
@@ -35,7 +73,7 @@ pub fn run(ctx: &Context, game: &str) -> Result<crate::cli::ExitCode, Error> {
         )));
     }
 
-    launch_exe(&exe_path, &install_dir)?;
+    launch_exe(&exe_path, &base_dir)?;
     Ok(crate::cli::ExitCode::Ok)
 }
 
@@ -80,6 +118,13 @@ pub fn resolve_exe(ctx: &Context, game: &str) -> Result<PathBuf, Error> {
     let manifest: crate::core::extract::AppJson = serde_json::from_str(&raw)
         .map_err(|e| Error::Runtime(format!("corrupt app.json for {game}: {e}")))?;
 
+    let custom_path = PathBuf::from(&manifest.install_path);
+    let base_dir = if custom_path.is_absolute() && custom_path.exists() {
+        custom_path
+    } else {
+        install_dir
+    };
+
     let exe_rel = if manifest.launch_exe.trim().is_empty() {
         manifest.candidates.first().map(|s| s.as_str())
     } else {
@@ -87,7 +132,7 @@ pub fn resolve_exe(ctx: &Context, game: &str) -> Result<PathBuf, Error> {
     }
     .ok_or_else(|| Error::Runtime(format!("no executable candidate found for {game}")))?;
 
-    Ok(install_dir.join(exe_rel))
+    Ok(base_dir.join(exe_rel))
 }
 
 #[cfg(test)]

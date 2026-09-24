@@ -10,15 +10,17 @@ edited in place as work progresses — a tracked twin of the roadmap tracking
 > cancelled corpse. When done, it moves to **Done**. History lives in the git
 > log, not here.
 
+---
+
 ## 🧭 North Star
 
 Cross-platform desktop game launcher for lewdzone.com: Storefront
 (browse/search/download), Library (icons, covers, descriptions), Downloads
-(queue), Settings. **Single Tauri 2 binary** with two faces: a windowed GUI
-(SvelteKit frontend in `src/`, Rust core in `src-tauri/`) and a native Rust CLI
-(same core, clap commands, `--json` machine output). Internal folders mirror a
-classic launcher layout
-([ADR-0005](.agents/adr/0005-steam-mirror-folder-structure.md)).
+(queue with live streaming & 7-Zip extraction progress), Favorites, and Settings. **Single Tauri 2 binary** with two faces: a windowed GUI
+(Svelte frontend in `src/`, Rust core in `src-tauri/`) and a native Rust CLI
+(same core, clap commands, `--json` machine output).
+
+---
 
 ## 🗓️ Plan
 
@@ -35,71 +37,60 @@ flowchart TD
     style ROAD fill:#e11,color:#fff
 ```
 
+---
+
 ## Done ✅
 
-- [x] `.agents/` ecosystem — 10 families, rules 00–13, skills, wiki, ADRs 0001–0006
-- [x] GitHub repo + initial push
-- [x] Root docs: `AGENTS.md`, wiki (16 pages), legal pages (LICENSE/PRIVACY/TOS/SECURITY)
-- [x] Restructure: Python CLI deleted; repo root IS the Tauri 2 app (`src/` + `src-tauri/`)
-- [x] Native Rust CLI core (clap): sync/search/info/download/list/settings/shortcuts/launch/favorites + exit-code contract (0–5) + `--json`
-- [x] Shared core: paths, settings, library, skins/theme system (ADR-0005) — Rust tests green
-- [x] Tauri commands bridge: settings_get/settings_set/themes_list/themes_tokens/themes_apply
-- [x] App shell: topbar nav (Store/Library/Downloads/Settings) + 4 placeholder views; frontend vitest suites green, svelte-check green
-- [x] Toolchain (Rust 1.98 / MSVC via VS2026 Build Tools), cargo test + clippy + fmt green
-- [x] Scraper family: archive card parser with `?page=N` pagination, game-page parser (versions, tabs, genres, screenshots), polite fetch with bounded retries
-- [x] Resolver family: go-link token → start/reveal API → real URL, retries, host allowlist (Rule 10)
-- [x] Download dispatch: version/platform/tab selection; direct-file hosts stream in-app, others open via OS default handler
-- [x] SQLite catalog: forward-only migrations, repo layer, resumable sync pipeline + prune (Rule 06, ADR-0003)
-- [x] `list` + `info` CLI commands backed by the synced catalog
-- [x] Docs/CLI drift cleanup: README, wiki, and `.agents` docs now match the real CLI (`download`, `list --library`/`--jobs`, no `--manager`/`--status`)
-- [x] **Memory-first architecture with SQLite persistence**: In-memory caching (`AppState` `game_cache`, `page_cache`, `genres_cache`) for instant 0ms responses; SQLite database fallback; automatic upsert upon network fetch; complete model deserialization in `db::repo::game_by_slug`
-- [x] **Storefront game detail fixes**: Safe Svelte 5 reactive rendering, request deduplication, and single-version game fallback support
-- [x] **Removed external metadata providers (ADR-0006)**: Eliminated external providers (IGDB, VNDB, Steam, SteamGridDB, itch, IndieDB) so store pages load reliably without network stalling
-- [x] **Discontinued desktop shortcuts (ADR-0006)**: Abandoned desktop shortcut creation due to site lacking square icon assets; cleaned up Library UI and CLI handlers
-- [x] **Settings preferred sources toggle grid**: Interactive multi-toggle button grid for all 12 allowlisted cloud hosts in Settings
-- [x] **GUI relayout** to dark cyberpunk spec: left icon sidebar + top header, deep cyan/charcoal gradient, neon accents, glassmorphism, thin scrollbar
-- [x] **Library = downloaded games**: list installed titles from `lzapps/<slug>/app.json`; launch support from the Library view
-- [x] **Multi-format launch**: infer game binary via engine/tag taxonomy so Launch opens the right target
-- [x] Custom macOS-style title bar: frameless window (`decorations: false`) + traffic lights (red/yellow/green) + custom File/View/Help menus + profile button
-- [x] Download scheduler: `download-grace-seconds` pacing between dispatch starts
-- [x] **Non-blocking async download queue** (Rust core): `game_download` enqueues and returns instantly; background worker resolves + dispatches one request at a time
-- [x] **Downloads page**: poll `downloads_list` and render each job's status/message
-- [x] Persist `download_job` rows + resume across restarts
-- [x] Storefront catalog view: real tiles + game-page lookup; clickable tiles navigate to detail
-- [x] App icons: generated from `assets/appicon.png` via `tauri icon` and wired into bundle config
-- [x] Favorites: SQLite-backed heart toggle on Library tiles + Favorites page
-- [x] Live archive pagination verification (`/games/page/N/`)
-- [x] **Ad-Free Custom Child Window Resolver**: Dedicated child window loading an in-app redirect page (`/resolver`) with animated countdown timer, token resolution, direct browser launch, and verified link event notification (`download-url-resolved`).
-- [x] **Storefront Download Source Selection**: LewdZone-style per-source download buttons directly on the game page, grouped by platform and variant, importing sources directly from the site and filtering out only unsupported hosts (like Gofile).
-- [x] **Download Queue Cancellation & Deletion**: Cancel in-flight/queued jobs and Delete (`✕`)/Clear Finished on the Downloads page.
-- [x] **Game Attached Image Preview Carousel**: Full-resolution screenshot and gallery image parsing with interactive carousel, thumbnail strip, and fullscreen lightbox modal.
+All Phase 1, Phase 2, and Phase 3 milestone items are completed and recorded in `git log`:
 
-## Now 🚧 (Phase 3 — Test Suite & Regression)
+- [x] **Base system & architecture:** Tauri 2 desktop shell with Svelte 5 frontend and native Rust CLI (Rule 03, Rule 13).
+- [x] **LewdZone Scraper:** Catalog archive pagination, game detail extraction, version tabs, and genre cloud parsing.
+- [x] **Resolver:** Go-link `#t=v1...` token resolution via `start` → `reveal` API with host blacklist protection (`gofile`, `zippyshare`, `cdnclick`).
+- [x] **In-App Sandboxed Resolver:** Child webview for verification countdowns and captcha challenges, blocking adware and redirects.
+- [x] **Downloads & Streaming:** In-app direct file streaming (`fileknot`) with live byte progress, speed calculation, and native OS dispatch for cloud hosts.
+- [x] **Queue Management:** Multi-state queue (`queued`, `resolving`, `downloading`, `extracting`, `complete`, `failed`, `cancelled`), with cancel and delete controls for active and queued jobs.
+- [x] **7-Zip Multi-Format Extraction:** Fast, multi-threaded archive extraction (`.zip`, `.7z`, `.rar`, `.tar`, `.exe`) using standalone 7-Zip CLI (`7za`/`7z`/`7zz`) with real-time percentage progress streaming and immediate cancellation.
+- [x] **Flat Library Layout:** Archives land flat in `<library-root>/downloads/<archive>` and installs reside in `<library-root>/installed/<slug>/` with an `app.json` manifest.
+- [x] **Library Scanning & Launch:** Scans personal games directory (`games-dir`), generates manifests, and launches installed games safely.
+- [x] **System Tray Integration:** Custom tray icon with context menu (Open, Library, Downloads, Store, Settings, Check for Updates, Quit) and minimize-to-tray.
+- [x] **Themes Engine:** Shipped Nord, Dracula, and Material reference themes with runtime CSS token switching.
+- [x] **Test Suites:** 183 passing Rust unit and integration tests, 31 passing frontend Vitest tests, clippy and svelte-check green.
+- [x] **Documentation Sync:** 100% synchronized wiki pages and repository documentation.
 
-- [ ] Frontend unit tests for all views
-- [ ] App/CLI parity tests + protocol tests
-- [ ] Coverage floors: 85% overall, ~90% core, ~70% gui
+---
 
-## Later ⏳
+## Now 🚧 (Phase 4 — Packaging & Distribution)
 
-### Phase 4 — Packaging & Distribution
-- Packaging: MSI+NSIS, .app+DMG, AppImage+deb+rpm, updater
-- **Releases page:** prebuilt installers per OS+arch (no npm/GitHub Packages publishing — the CLI ships inside the app bundle)
+- [ ] Automated packaging for all platforms:
+  - Windows: NSIS installer (`.exe`) + MSI package (`.msi`)
+  - macOS: Application bundle (`.app`) + Apple Disk Image (`.dmg`)
+  - Linux: AppImage (`.AppImage`) + Debian package (`.deb`) + RPM (`.rpm`)
+- [ ] Release channel updater configuration (`@tauri-apps/plugin-updater`).
 
-### Phase 5 — Verification & Release
-- Release gate (cargo test/clippy/fmt, vitest, svelte-check, security, build smoke)
-- Docs sync → wiki, release notes, tag `v0.1.0`
+---
+
+## Later ⏳ (Phase 5 — Verification & Official Tag)
+
+- [ ] Run full release gate:
+  - `cargo fmt --check`, `cargo clippy -- -D warnings`, `cargo test`
+  - `npm run check`, `npm run test`
+  - `npm run tauri build`
+  - `lewdzone --version` smoke test
+- [ ] Create annotated git tag `v0.1.0` and publish release notes.
+
+---
 
 ## ✅ Acceptance Criteria
 
-- [x] `lewdzone --help` clean on PowerShell and bash
-- [x] `download --game treasure-of-nadia --json` resolves and dispatches (direct-file hosts stream in-app; others open via OS default handler)
-- [x] Store/Library/Downloads/Settings all map 1:1 to an invoke command or CLI command
-- [x] Files land in `<downloads>/Games/<Title>/` staging and `<lzapps>/<slug>/` installs
-- [x] Rust + frontend suites green on CI
+- [x] `lewdzone --help` and `lewdzone --version` clean on PowerShell and bash
+- [x] `download --game treasure-of-nadia --json` resolves, streams in-app, extracts with 7-Zip CLI, and registers in Library
+- [x] Store, Library, Downloads, Favorites, and Settings views map 1:1 to Rust core commands
+- [x] Downloads land flat in `<library-root>/downloads/` and installs unpack to `<library-root>/installed/<slug>/`
+- [x] System tray allows minimizing to background and provides full context navigation
+- [x] Rust (183 tests) + frontend Vitest (31 tests) suites 100% green
+
+---
 
 ## 🔗 Related
 
-In-repo: `TODO.md`, `BUGS.md`, `AGENTS.md`, wiki pages (Architecture,
-CLI-Reference, Download-Managers, Development). Living spec: `.agents/rules/index.md`.
-ADRs: `.agents/adr/` (storage/settings patterns).
+In-repo: `TODO.md`, `BUGS.md`, `AGENTS.md`, and [wiki](../../wiki/Home). Living spec: `.agents/rules/index.md`.

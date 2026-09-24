@@ -2,182 +2,160 @@
 
 > Links between wiki pages are relative and omit the `.md` extension.
 
-## 🎯 Two entry points, one core
+LewdZone Launcher is a **modular desktop game launcher and native CLI engine** designed around the principle of **one core, two entry points** (Rule 03, Rule 13).
 
-LewdZone Launcher is a **modular layered monolith** with two entry points into
-one Rust core:
+---
 
-| Entry point | Role | Talks to |
+## 🎯 Two Entry Points, One Core
+
+The application is distributed as a single unified binary:
+
+| Entry Point | Role | Interface |
 | --- | --- | --- |
-| **Tauri 2 desktop app** | primary product (Svelte webview) | core commands |
-| **Native Rust CLI** | the engine, headless/scriptable | core commands, same functions |
+| **Tauri 2 Desktop App** | The primary user experience (Svelte frontend in `src/`, Rust host in `src-tauri/`). | Tauri IPC commands mapped directly to `core` functions. |
+| **Native Rust CLI** | Full scriptable and headless engine (`src-tauri/src/cli.rs`). | Clap-based subcommands mapped directly to `core` functions with `--json` stdout output. |
 
-The Tauri binary re-exposes the Rust core as a CLI (`src-tauri/src/cli.rs`);
-both entry points call the same functions — no duplication, no serialization
-hand-off.
-
-## 🧱 Layer contract (inner = pure)
-
-| Layer | Contains | May use |
-| --- | --- | --- |
-| `src/` (Tauri webview) | Svelte views (Store / Library / Downloads / Settings) | core commands only; never site or DB |
-| `src-tauri/src/` (Rust core) | `cli.rs`, `db.rs`, `scraper.rs`, `resolver.rs`, `content.rs`, `core/` (download, queue, folder, native), domain structs | inner layers only |
-| controllers | game, download, sync, shortcut, artwork, content commands | services + domain |
-| domain | `Game`, `Version`, `DownloadEntry`, `GoToken` (plain structs) | stdlib only |
-| services | scraping, resolver, db, in-app streaming, OS-native open, shortcuts, artwork, content providers | domain |
-| external | lewdzone.com, sqlite, OS default handler (cloud apps/browser), SteamGridDB/VNDB/IGDB/itch/Steam/IndieDB, native shortcuts | — |
-
-Import rule: **inward only**. Domain never imports IO; services never import
-controllers; the webview never touches services directly. Enforced via the
-crate's module boundaries (Rule 03). Full rule: [Rule 03](https://github.com/helix-origin/lewdzone-launcher/tree/main/.agents/rules/rule-03-module-architecture.md) —
-link resolves on the wiki; in the repo it's `.agents/rules/rule-03-module-architecture.md`.
-
-## 🖥️ CLI machine contract
-
-- **Query commands** (`info`, `search`, `list`, …): one `--json` document.
-- **Long-running commands** (`sync`, `download`, `shortcuts`, …): progress
-  goes to **stderr**; stdout gets exactly one machine-parseable `--json`
-  document on completion.
-- stdout is the protocol channel; stderr is diagnostics. Never parse stderr as
-  data.
-- The GUI does **not** parse this stream: GUI actions call the same core
-  functions directly and get typed results in-process (Rule 13).
+Neither the GUI nor the CLI duplicates business logic: both invoke the exact same underlying Rust services and repositories.
 
 ```mermaid
 flowchart TD
-    WV["Svelte webview"]
-    RN["Rust core"]
-    CLI["lewdzone CLI (--json)"]
-    CT["controllers"]
-    SV["services"]
-    WV --> RN
-    RN --> CT
-    CLI --> CT
-    CT --> SV
+    WV["Svelte Webview (GUI)"]
+    CLI["Native Rust CLI"]
+    INV["Tauri IPC Commands"]
+    CLAP["Clap Command Parser"]
+    CORE["LewdZone Rust Core"]
+    SRV["Services (Scraper, Resolver, Downloader, 7z Extractor, Tray)"]
+    DB["SQLite Database (WAL)"]
+    FS["File System (Library, Downloads, Config, Skins)"]
+
+    WV --> INV
+    CLI --> CLAP
+    INV --> CORE
+    CLAP --> CORE
+    CORE --> SRV
+    SRV --> DB
+    SRV --> FS
 ```
 
-## 🗄️ Data model
+---
 
-- SQLite catalog stores go-link **tokens**, never resolved URLs (resolved URLs
-  are ephemeral).
-- Core tables: `game`, `genre`, `game_genre`, `version`, `download_entry`,
-  `host`, `download_job`; enrichment `game_external`
-  (`post_id → provider → external_id`) and `artwork_cache` (gains `provider` +
-  `kind` columns).
-- Config + DB live in the per-OS config dir; see [Configuration](Configuration).
+## 🧱 Architectural Layers
 
-## 📂 Folder structure (ADR-0005)
+1. **Presentation Layer (`src/`):**
+   - Svelte 5 views: `Store`, `Store/[slug]`, `Library`, `Downloads`, `Favorites`, and `Settings`.
+   - Dynamic CSS variable theme swap powered by the active theme's tokens.
+   - Real-time progress trackers for active downloads and running extractions.
+2. **IPC & CLI Dispatch Layer (`src-tauri/src/lib.rs`, `src-tauri/src/cli.rs`):**
+   - Exposes `#[tauri::command]` handlers for the webview.
+   - Defines and parses CLI commands and formats structured `--json` output.
+3. **Core Services Layer (`src-tauri/src/core/`):**
+   - `download`: Manages chunked HTTP streaming, byte counting, and download speeds.
+   - `queue`: Sequential, persistent download worker with cancel and delete capabilities.
+   - `extract`: Multi-format archive decompression utilizing the **7-Zip console executable** (`7za`/`7z`/`7zz`) with real-time `-bsp1` progress monitoring.
+   - `folder`: Manages flat library layout (`downloads/<archive>` and `installed/<slug>/`).
+   - `library`: Manifest inspection (`app.json`), game launching, and directory scanning (`games-dir`).
+   - `settings`: Config JSON management, migrations, and SQLite encrypted secret storage.
+   - `skins`: Runtime theme resolution and bundle validation.
+4. **Data & Scraping Layer (`src-tauri/src/scraper/`, `src-tauri/src/resolver/`, `src-tauri/src/db/`):**
+   - Scrapers for game cards, pagination, version tabs, and genre clouds.
+   - Two-step token resolver (`start` → `reveal`) with allowlist verification.
+   - SQLite migrations and repository operations with WAL mode enabled.
 
-The on-disk layout is a launcher-style tree: data root, library, logs, cache,
-and per-game saves, mirroring the shape of modern desktop launchers:
+---
 
+## 📂 On-Disk Storage & Folder Layout
+
+The launcher follows a modern, user-accessible directory layout:
+
+```text
+<data_root>/lewdzone/                     # %APPDATA% / ~/.local/share / ~/Library/Application Support
+├── lewdzone.db                           # SQLite database (WAL enabled, foreign keys ON)
+├── config.json                           # JSON settings (secrets omitted)
+├── appcache/                             # Cached catalog data and HTML
+├── logs/                                 # Component logs
+└── skins/                                # User theme packages
+    ├── Nord/theme.json
+    ├── Dracula/theme.json
+    └── Material/theme.json
+
+<library-root>/                           # Configurable via library-root setting
+├── downloads/                            # Flat archive downloads (no engine folders)
+│   ├── Game Title [Ongoing] - Version 0.19.1.zip
+│   └── Another Game - Version 1.0.rar
+└── installed/                            # Flat game installs (no engine folders)
+    ├── game-slug/
+    │   ├── app.json                      # itch.io-style install manifest
+    │   ├── Game.exe                      # Launch executable
+    │   └── game_files/
+    └── another-slug/
+        ├── app.json
+        └── Game.exe
 ```
-<data_root>/lewdzone/          # %APPDATA% / ~/Library/Application Support / $XDG_DATA_HOME
-  lewdzone.db                           # SQLite catalog (WAL, FK, tokens only)
-  config.json                           # JSON settings (Rule 10 secrets redacted)
-  appcache/                             # cached catalog/site data
-  logs/<component>.log                  # per-subsystem logs
-  library/                              # library root (library-folder analog)
-    libraryfolders.json                 # ordered library roots (libraryfolders analog)
-    appmanifest_<post_id>.json          # per-game manifest (appmanifest analog)
-    common/<Game Title>/                # installed games
-    downloading/<post_id>/              # in-progress downloads
-    artwork/<post_id>_<kind>.png        # hero / logo / p / bare grid art
-  userdata/<local_user_id>/             # per-user config + shortcuts
-<downloads>/                            # per-OS user-accessible downloads folder:
-                                        #   Windows: <install dir>/downloads
-                                        #   macOS/Linux: <data_root>/downloads
-  Games/<Game Title>/<Title> - <Version> - <Platform>.zip
-<lzapps>/                               # per-OS user-accessible installed apps folder:
-                                        #   Windows: <install dir>/lzapps
-                                        #   macOS/Linux: <data_root>/lzapps
-  <slug>/app.json                       # itch.io-style install manifest
-  <slug>/<extracted game files>
-<cache_root>/lewdzone/         # %LOCALAPPDATA% / ~/Library/Caches / $XDG_CACHE_HOME
-  htmlcache/                            # webview/tile cache
-<documents>/My Games/<Game Title>/      # per-game saves (Documents\My Games analog)
-<skins_root>/                      # per-OS user-accessible skins folder:
-                                  #   Windows: <install dir>/skins
-                                  #   macOS/Linux: <data_root>/skins
-  <Name>/theme.json               # user theme skins (one subfolder per theme)
-    assets/                       # embedded theme resources inside the theme folder
-  Nord/theme.json                 # bundled reference themes — Nord, Dracula,
-  Dracula/theme.json              # Material — seeded on first run + wiki examples
-  Material/theme.json
+
+### Manifest Specifications (`app.json`)
+When an archive is extracted, an itch.io-style `app.json` manifest is generated inside `<installed>/<slug>/`:
+- Stores game title, version, slug, engine, and install timestamp.
+- Lists detected executable candidates.
+- Allows user-defined `launch_exe` override for games with custom launchers or subfolder executables.
+
+---
+
+## ⬇️ Download, Extraction & Verification Pipeline
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant GUI as GUI / CLI
+    participant Worker as Download Worker
+    participant Res as Token Resolver
+    participant Ext as 7-Zip CLI Extractor
+    participant FS as Local Filesystem
+
+    User->>GUI: Request Download (slug, version, host)
+    GUI->>Worker: Enqueue Download Job
+    Worker->>Res: Resolve Token (#t=v1...) via start->reveal API
+    Res-->>Worker: Return Direct URL (or cloud host URL)
+    alt Direct File Host (e.g. fileknot)
+        Worker->>FS: Stream Bytes to downloads/<archive>
+        Worker-->>GUI: Emit Real-Time Byte & Speed Progress
+        Worker->>Ext: Spawn 7z CLI (7za x -y -bsp1)
+        loop Extraction Progress
+            Ext-->>Worker: Emit Progress Percentage (\r XX%)
+            Worker-->>GUI: Emit Real-Time Extraction Progress
+        end
+        Ext-->>Worker: Extraction Finished
+        Worker->>FS: Write installed/<slug>/app.json
+        Worker->>FS: Remove Original Archive
+        Worker-->>GUI: Job Complete (Ready in Library)
+    else Cloud Host (e.g. mega, google)
+        Worker->>GUI: Dispatch to OS Default Handler / Browser
+    end
 ```
 
-- Manifest files (`appmanifest_<post_id>.json`) are the source of truth for
-  "installed"; `libraryfolders.json` holds ordered roots (`library-root`
-  setting picks the active one; see [Configuration](Configuration)).
-- Downloads stage into `downloading/<post_id>/` and publish to
-  `common/<Title>/` on completion.
-- Artwork files under `library/artwork/` are indexed by `artwork_cache` in
-  SQLite (ADR-0004); the Theme picker (skins) is first-class and
-  is retained as a core capability ([ADR-0005](../.agents/adr/0005-steam-mirror-folder-structure)).
+---
 
-## 🪄 Content enrichment pipeline
+## 🪟 In-App Sandboxed Webview Resolver
 
-Not every LewdZone page carries full metadata (indie/amateur titles are often
-thin). A pluggable **content-provider layer** fills info + art gaps without
-overwriting LewdZone download data:
+If a go-link requires countdown timers or verification, the launcher opens a dedicated, sandboxed child webview window:
+- Isolated from third-party advertising, malicious popups, and click-jacking scripts.
+- Presents a clean verification screen to the user.
+- Emits the validated download URL back to the main launcher window upon completion.
 
-1. `content` controller asks the provider registry for enabled providers in
-   priority order (`steamgriddb, vndb, igdb, itch, steam, indiedb`).
-2. Each provider searches the title; the first match maps to
-   `game_external(post_id, provider, external_id)` (upsert, idempotent).
-3. `fetch_info` fills only *missing* fields: description, developer, release
-   date, screenshots, rating, tags, store link.
-4. `fetch_asset` pulls art by kind: SteamGridDB icons/grids/heroes/logos;
-   VNDB cover + screenshots; IGDB covers/artworks; itch/IndieDB page art.
-5. Artwork is cached in `artwork_cache` (keyed by `(normalized_title, kind)`,
-   tagged with `provider`) and used again on rebuilds (offline-fast).
+---
 
-APIs: SteamGridDB v2 (Bearer key), VNDB Kana (keyless), IGDB v4
-(Client-ID + Twitch token), itch.io HTML scrape, Steam Storefront (keyless,
-only for already-mapped appids), IndieDB HTML scrape (no public API). API keys
-are pasted by the user in the app's **Settings → API keys** section and
-persisted securely (Rule 10) — never echoed back. Providers degrade
-gracefully: an outage or missing key means "no enrichment", never a broken
-listing or download. See [Agents](Agents) for the `content` family.
+## 🛎️ System Tray Integration
 
-## ⬇️ Download pipeline
+The desktop app integrates natively with the OS system tray:
+- Displays a custom tray icon.
+- Context menu: **Open LewdZone Launcher**, **Library**, **Downloads**, **Store**, **Settings**, **Check for Updates**, and **Quit LewdZone**.
+- Closing or minimizing the main window automatically docks to the tray, allowing background downloads and extractions to continue uninterrupted.
 
-1. Scraper collects `game`/`version`/`download_entry` rows from the site
-   (tokens, not URLs).
-2. Resolver turns a chosen token into a real URL via the site's
-   `start` → `reveal` API (rate-limited).
-3. **Direct-file hosts** (`fileknot`) are streamed in-app into the download
-   root with live byte progress; **every other host** opens in the OS default
-   handler (installed cloud app or browser). Redirects during a stream must
-   stay on the same host (or a subdomain) — anything else is refused.
-4. `core/folder` folds the result into
-   `<downloads>/Games/<Title>/<Title> - <Version> - <Platform>[- <Variant>].<ext>`.
-   If the downloaded file is a `.zip`, `core/extract` removes any existing
-   `<lzapps>/<slug>/` folder, extracts the archive there, deletes the archive,
-   and writes an `app.json` manifest with install metadata and executable
-   candidates (including a user-editable `launch_exe` override).
+---
 
-See [Downloads & In-App Streaming](Download-Managers).
+## 🔗 Related Pages
 
-## 📦 Packaging
-
-`tauri build` produces:
-
-| Platform | Formats |
-| --- | --- |
-| Windows | NSIS + MSI |
-| macOS | `.app` + DMG |
-| Linux | AppImage + deb + rpm |
-
-The CLI ships as part of the app binary itself (Rule 13): the same executable
-provides the `lewdzone` command, so no sidecar artifact is bundled.
-
-## 🖇️ Cross-platform rules
-
-- Config dirs: `%APPDATA%` (Windows), `~/.config` or `$XDG_CONFIG_HOME` (Linux),
-  `~/Library/Application Support` (macOS).
-- Spawn flags (when invoking shortcuts or the OS default handler):
-  `CREATE_NO_WINDOW` (Windows) vs detached POSIX session; never launch with a
-  shell.
-- Shortcuts: `.lnk`, `.desktop` (xdg), `.app`/aliases (macOS).
-- All paths via `std::path::PathBuf`; no hardcoded separators.
+- [Downloads & In-App Streaming](Download-Managers)
+- [Archive Extraction & 7-Zip Guide](Archive-Extraction)
+- [Configuration Reference](Configuration)
+- [CLI Reference](CLI-Reference)
+- [Security Architecture](Security)

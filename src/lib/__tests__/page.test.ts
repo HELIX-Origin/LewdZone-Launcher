@@ -127,7 +127,7 @@ function mockInvoke(impl: (cmd: string, args?: InvokeArgs) => unknown) {
 describe("app shell", () => {
   it("renders the left icon sidebar with primary tabs", () => {
     render(Layout);
-    for (const label of ["Favorites", "Library", "Store", "Downloads", "Settings"]) {
+    for (const label of ["Favorites", "Library", "Store", "Queue", "Settings"]) {
       expect(screen.getByRole("button", { name: label })).toBeInTheDocument();
     }
     expect(screen.queryByRole("button", { name: "Home" })).not.toBeInTheDocument();
@@ -149,14 +149,14 @@ describe("app shell", () => {
     ).toBeInTheDocument();
   });
 
-  it("renders a custom menu bar with items and a profile button", () => {
+  it("renders a custom menu bar with items without profile button", () => {
     render(Layout);
     for (const label of ["File", "View", "Help"]) {
       expect(screen.getByRole("button", { name: label })).toBeInTheDocument();
     }
     expect(
-      screen.getByRole("button", { name: "Profile" }),
-    ).toBeInTheDocument();
+      screen.queryByRole("button", { name: "Profile" }),
+    ).not.toBeInTheDocument();
   });
 
   it("traffic-light buttons call the window controls, not the drag", async () => {
@@ -626,7 +626,7 @@ describe("downloads page", () => {
     expect(screen.getByText("no matching download entries found")).toBeInTheDocument();
   });
 
-  it("allows cancelling an active download and deleting a completed download", async () => {
+  it("allows cancelling or deleting active/queued jobs and deleting completed jobs", async () => {
     const user = userEvent.setup();
     const invocations: Array<{ cmd: string; args?: InvokeArgs }> = [];
     mockInvoke(async (cmd: string, args?: InvokeArgs) => {
@@ -644,9 +644,35 @@ describe("downloads page", () => {
     await user.click(cancelBtn);
     expect(invocations.some((i) => i.cmd === "download_cancel" && i.args?.id === 1)).toBe(true);
 
-    const deleteBtn = screen.getByRole("button", { name: "Remove wild-life from downloads" });
-    await user.click(deleteBtn);
+    const deleteBtns = screen.getAllByRole("button", { name: "Remove wild-life from downloads" });
+    expect(deleteBtns.length).toBe(2);
+    // Delete the dispatched job (id: 3)
+    await user.click(deleteBtns[1]);
     expect(invocations.some((i) => i.cmd === "download_delete" && i.args?.id === 3)).toBe(true);
+    // Delete the queued job directly (id: 1)
+    await user.click(deleteBtns[0]);
+    expect(invocations.some((i) => i.cmd === "download_delete" && i.args?.id === 1)).toBe(true);
+  });
+
+  it("renders extraction progress bar and badge for extracting jobs", async () => {
+    mockInvoke(async (cmd: string) => {
+      if (cmd === "downloads_list") {
+        return [
+          {
+            ...sampleJob,
+            id: 5,
+            status: "extracting",
+            bytes_done: 104_857_600,
+            bytes_total: 209_715_200,
+          },
+        ];
+      }
+      return [];
+    });
+    render(DownloadsPage);
+    expect(await screen.findByText("Extracting")).toBeInTheDocument();
+    expect(screen.getByRole("progressbar", { name: /Extraction progress for wild-life/ })).toBeInTheDocument();
+    expect(screen.getByText(/50% extracted/)).toBeInTheDocument();
   });
 });
 
@@ -723,5 +749,19 @@ describe("settings page", () => {
       expect.objectContaining({ key: "home-page", value: "favorites" }),
     );
     expect(await screen.findByText("home-page saved")).toBeInTheDocument();
+  });
+
+  it("saves the 7-Zip console executable path setting", async () => {
+    const user = userEvent.setup();
+    render(SettingsPage);
+    const input = await screen.findByPlaceholderText("e.g. C:\\Utilities\\7z or C:\\Utilities\\7z\\7za.exe");
+    await user.type(input, "C:\\Utilities\\7z\\7za.exe");
+    await user.keyboard("{Enter}");
+
+    expect(invoke).toHaveBeenCalledWith(
+      "settings_set",
+      expect.objectContaining({ key: "7z-path", value: "C:\\Utilities\\7z\\7za.exe" }),
+    );
+    expect(await screen.findByText("7z-path saved")).toBeInTheDocument();
   });
 });

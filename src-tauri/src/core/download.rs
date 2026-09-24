@@ -231,16 +231,8 @@ pub fn job_for(
     let base = folder::safe_basename(&game.title, &entry_label(entry), &platform, variant);
     let ext = folder::file_ext(orig);
     let target_name = format!("{base}.{ext}");
-    let final_path = folder::download_target(
-        root,
-        &game.title,
-        &entry_label(entry),
-        &platform,
-        variant,
-        &target_name,
-        false,
-    );
-    let install_dir = folder::install_dir(lzapps_root, &game.slug);
+    let final_path = folder::engine_download_target(root, game.engine.as_deref(), &target_name);
+    let install_dir = folder::engine_install_dir(lzapps_root, game.engine.as_deref(), &game.slug);
     Ok(Job {
         game: game.slug.clone(),
         title: game.title.clone(),
@@ -297,6 +289,7 @@ pub fn run(
                     last_pct = pct;
                     eprintln!("[download] {pct}%");
                 }
+                Ok(())
             })
         },
         grace,
@@ -313,7 +306,7 @@ pub const DIRECT_STREAM_HOSTS: &[&str] = &["fileknot"];
 pub type StreamFn<'a> = &'a mut dyn FnMut(&str) -> Result<(u64, Box<dyn Read>), Error>;
 
 /// Progress callback: `(bytes done, bytes total)`.
-pub type ProgressCallback<'a> = &'a mut dyn FnMut(u64, u64);
+pub type ProgressCallback<'a> = &'a mut dyn FnMut(u64, u64) -> Result<(), Error>;
 
 /// True when `host` (a `Job::tab` slug) is a direct-file host we stream in-app.
 pub fn is_direct_stream_host(host: &str) -> bool {
@@ -328,7 +321,7 @@ pub fn is_direct_stream_host(host: &str) -> bool {
 /// on validated hosts (Rule 10). Shared by the synchronous CLI path and the
 /// async GUI queue worker.
 pub fn dispatch(job: &Job) -> Result<(), Error> {
-    dispatch_with(job, &mut scraper::download_stream, &mut |_, _| {})
+    dispatch_with(job, &mut scraper::download_stream, &mut |_, _| Ok(()))
 }
 
 /// `dispatch` with the stream seam injected (Rule 11 offline fixtures).
@@ -370,7 +363,7 @@ pub fn stream_target(
         }
         file.write_all(&buf[..n])?;
         done += n as u64;
-        progress(done, total);
+        progress(done, total)?;
     }
 
     if folder::file_ext(&target.to_string_lossy()) == "zip" {
@@ -385,7 +378,7 @@ pub fn stream_target(
                 engine: job.engine.as_deref(),
                 download_url: &job.url,
             };
-            extract::install_from_archive(target, install_dir, &meta)?;
+            extract::install_from_archive_with_progress(target, install_dir, &meta, progress)?;
         }
     }
 
@@ -448,7 +441,7 @@ pub fn jobs_for(
         sel.source,
     )?;
     let root = folder::download_root(ctx)?;
-    let lzapps_root = folder::lzapps_root(ctx)?;
+    let lzapps_root = folder::installed_root(ctx).or_else(|_| folder::lzapps_root(ctx))?;
 
     let mut jobs: Vec<Job> = Vec::new();
     for entry in entries {
@@ -672,7 +665,7 @@ mod tests {
             Ok((total, Box::new(file) as Box<dyn Read>))
         };
 
-        stream_target(&job, &mut download, &mut |_, _| {}).unwrap();
+        stream_target(&job, &mut download, &mut |_, _| Ok(())).unwrap();
         assert!(!target.exists(), "archive removed after extraction");
         assert!(install.join("game.exe").exists());
         assert!(install.join("app.json").exists());

@@ -3,7 +3,7 @@
 **Last Updated:** September 21, 2026
 
 By using LewdZone-Launcher, you agree to these Terms of Service, the
-[License](LICENSE), and the [Privacy Policy](PRIVACY).
+[License](LICENSE.md), and the [Privacy Policy](PRIVACY.md).
 
 ## 1. Acceptance of Terms
 
@@ -60,7 +60,7 @@ provider or download-manager vendor mentioned in its documentation.
 **The software is provided "as is", without warranty of any kind, express or
 implied**, including but not limited to the warranties of merchantability,
 fitness for a particular purpose, and non-infringement. See the
-[LICENSE](LICENSE) for the full disclaimer.
+[License](LICENSE.md) for the full disclaimer.
 
 ## 6. Limitation of Liability
 

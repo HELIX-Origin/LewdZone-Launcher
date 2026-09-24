@@ -38,9 +38,13 @@ pub enum Status {
     Dispatching,
     /// Streaming a direct-file host into the download root (bytes shown live).
     Downloading,
+    /// Extracting archive files into the target game directory.
+    Extracting,
     /// All jobs handed off successfully.
     Dispatched,
-    /// Resolution or dispatch failed (see `message`).
+    /// Archive extraction or job fully completed.
+    Completed,
+    /// Resolution, dispatch, or extraction failed (see `message`).
     Failed,
 }
 
@@ -51,7 +55,9 @@ impl Status {
             Self::Resolving => "resolving",
             Self::Dispatching => "dispatching",
             Self::Downloading => "downloading",
+            Self::Extracting => "extracting",
             Self::Dispatched => "dispatched",
+            Self::Completed => "completed",
             Self::Failed => "failed",
         }
     }
@@ -66,7 +72,9 @@ impl std::str::FromStr for Status {
             "resolving" => Ok(Self::Resolving),
             "dispatching" => Ok(Self::Dispatching),
             "downloading" => Ok(Self::Downloading),
+            "extracting" => Ok(Self::Extracting),
             "dispatched" => Ok(Self::Dispatched),
+            "completed" => Ok(Self::Completed),
             "failed" => Ok(Self::Failed),
             other => Err(Error::Runtime(format!("unknown queue status: {other}"))),
         }
@@ -232,6 +240,45 @@ impl Queue {
         Ok(job)
     }
 
+    /// Add an archive extraction request to the queue.
+    pub fn enqueue_extract(
+        &self,
+        slug: String,
+        version: String,
+        platform: String,
+        zip_path: String,
+        target_dir: String,
+    ) -> Result<QueueJob, Error> {
+        let mut g = self.inner.lock().unwrap_or_else(|p| p.into_inner());
+        if g.jobs.len() >= MAX_QUEUED {
+            return Err(Error::Usage(
+                "queue is full — wait for active jobs to finish".to_string(),
+            ));
+        }
+        let id = g.next_id;
+        g.next_id += 1;
+        let now = now_secs();
+        let job = QueueJob {
+            id,
+            slug,
+            version,
+            platform,
+            tab: "extract".to_string(),
+            source: Some(zip_path),
+            status: Status::Queued,
+            message: Some(target_dir),
+            bytes_done: 0,
+            bytes_total: 0,
+            created_at: now,
+            updated_at: now,
+        };
+        g.jobs.push(job.clone());
+        drop(g);
+        self.persist(&job)?;
+        self.wake.notify_one();
+        Ok(job)
+    }
+
     /// All jobs, newest first (the Downloads page's view).
     pub fn snapshot(&self) -> Vec<QueueJob> {
         let g = self.inner.lock().unwrap_or_else(|p| p.into_inner());
@@ -290,12 +337,15 @@ impl Queue {
         Ok(())
     }
 
-    /// Delete all completed (dispatched) or failed jobs from memory and persistence.
+    /// Delete all completed (dispatched/completed) or failed jobs from memory and persistence.
     pub fn clear_finished(&self) -> Result<usize, Error> {
         let mut g = self.inner.lock().unwrap_or_else(|p| p.into_inner());
         let before_len = g.jobs.len();
-        g.jobs
-            .retain(|j| j.status != Status::Dispatched && j.status != Status::Failed);
+        g.jobs.retain(|j| {
+            j.status != Status::Dispatched
+                && j.status != Status::Completed
+                && j.status != Status::Failed
+        });
         let count = before_len - g.jobs.len();
         drop(g);
         if let Some(path) = &self.db_path {
@@ -368,6 +418,123 @@ pub fn process(
     if entry.status != Status::Queued {
         return;
     }
+
+    if entry.tab == "extract" {
+        queue.update(id, |j| {
+            j.status = Status::Extracting;
+            j.bytes_done = 0;
+            j.bytes_total = 0;
+        });
+
+        let zip_path = entry.source.as_deref().map(std::path::Path::new);
+        let target_dir = entry.message.as_deref().map(std::path::Path::new);
+
+        let Some(zip_path) = zip_path else {
+            queue.update(id, |j| {
+                j.status = Status::Failed;
+                j.message = Some("missing archive path for extraction".to_string());
+            });
+            return;
+        };
+
+        let Some(target_dir) = target_dir else {
+            queue.update(id, |j| {
+                j.status = Status::Failed;
+                j.message = Some("missing target directory for extraction".to_string());
+            });
+            return;
+        };
+
+        let lzapps = match crate::core::folder::lzapps_root(ctx) {
+            Ok(p) => p,
+            Err(e) => {
+                queue.update(id, |j| {
+                    j.status = Status::Failed;
+                    j.message = Some(format!("cannot resolve lzapps folder: {e}"));
+                });
+                return;
+            }
+        };
+
+        let (post_id, engine, clean_title) = if let Ok(conn) = ctx.open_db() {
+            let stmt =
+                conn.prepare("SELECT post_id, engine, title FROM game WHERE slug = ?1 LIMIT 1");
+            match stmt {
+                Ok(mut s) => s
+                    .query_row(rusqlite::params![&entry.slug], |r| {
+                        let pid: Option<i64> = r.get(0)?;
+                        let eng: Option<String> = r.get(1)?;
+                        let title: Option<String> = r.get(2)?;
+                        Ok((pid, eng, title))
+                    })
+                    .unwrap_or((None, None, None)),
+                Err(_) => (None, None, None),
+            }
+        } else {
+            (None, None, None)
+        };
+
+        let title = clean_title.as_deref().unwrap_or(&entry.slug);
+
+        let meta = crate::core::extract::InstallMeta {
+            slug: &entry.slug,
+            post_id,
+            title,
+            version: &entry.version,
+            platform: &entry.platform,
+            tab: "archive",
+            engine: engine.as_deref(),
+            download_url: "local-archive",
+        };
+
+        let mut progress = |done: u64, total: u64| -> Result<(), Error> {
+            let mut cancelled = false;
+            queue.update(id, |j| {
+                if j.status == Status::Failed {
+                    cancelled = true;
+                } else {
+                    j.status = Status::Extracting;
+                    j.bytes_done = done;
+                    j.bytes_total = total;
+                }
+            });
+            if cancelled || queue.get(id).is_none() {
+                return Err(Error::Usage("extraction cancelled by user".to_string()));
+            }
+            Ok(())
+        };
+
+        match crate::core::extract::install_from_custom_archive(
+            zip_path,
+            target_dir,
+            &meta,
+            &lzapps,
+            &mut progress,
+        ) {
+            Ok(_) => {
+                if let Some(j) = queue.get(id) {
+                    if j.status != Status::Failed {
+                        queue.update(id, |j| {
+                            j.status = Status::Completed;
+                            j.message = Some(format!("Extracted to {}", target_dir.display()));
+                        });
+                    }
+                }
+            }
+            Err(err) => {
+                if let Some(j) = queue.get(id) {
+                    if j.status != Status::Failed {
+                        queue.update(id, |j| {
+                            j.status = Status::Failed;
+                            j.message = Some(err.to_string());
+                        });
+                    }
+                }
+            }
+        }
+        return;
+    }
+
     queue.update(id, |j| {
         j.status = Status::Resolving;
         j.message = None;
@@ -386,19 +553,35 @@ pub fn process(
     let jobs = match download::jobs_for(ctx, &select, fetch, resolve) {
         Ok(jobs) => jobs,
         Err(err) => {
-            queue.update(id, |j| {
-                j.status = Status::Failed;
-                j.message = Some(err.to_string());
-            });
+            if let Some(j) = queue.get(id) {
+                if j.status != Status::Failed {
+                    queue.update(id, |j| {
+                        j.status = Status::Failed;
+                        j.message = Some(err.to_string());
+                    });
+                }
+            }
             return;
         }
     };
 
     if jobs.is_empty() {
-        queue.update(id, |j| {
-            j.status = Status::Failed;
-            j.message = Some("no matching download entries found".to_string());
-        });
+        if let Some(j) = queue.get(id) {
+            if j.status != Status::Failed {
+                queue.update(id, |j| {
+                    j.status = Status::Failed;
+                    j.message = Some("no matching download entries found".to_string());
+                });
+            }
+        }
+        return;
+    }
+
+    if let Some(j) = queue.get(id) {
+        if j.status == Status::Failed {
+            return;
+        }
+    } else {
         return;
     }
 
@@ -412,42 +595,70 @@ pub fn process(
         .count();
     let opened = jobs.len() - streamed;
     let mut dispatch_adapt = |job: &Job| {
+        if let Some(j) = queue.get(id) {
+            if j.status == Status::Failed {
+                return Err(Error::Usage("download cancelled by user".to_string()));
+            }
+        } else {
+            return Err(Error::Usage("download cancelled by user".to_string()));
+        }
         queue.update(id, |j| {
             j.status = Status::Dispatching;
         });
-        let mut progress = |done: u64, total: u64| {
+        let mut progress = |done: u64, total: u64| -> Result<(), Error> {
+            let mut cancelled = false;
             queue.update(id, |j| {
-                j.status = Status::Downloading;
-                j.bytes_done = done;
-                j.bytes_total = total;
+                if j.status == Status::Failed {
+                    cancelled = true;
+                } else {
+                    j.status = Status::Downloading;
+                    j.bytes_done = done;
+                    j.bytes_total = total;
+                }
             });
+            if cancelled || queue.get(id).is_none() {
+                return Err(Error::Usage("download cancelled by user".to_string()));
+            }
+            Ok(())
         };
         dispatch(job, &mut progress)
     };
 
     match crate::core::scheduler::paced(grace, &jobs, &mut dispatch_adapt, sleep) {
-        Ok(()) => queue.update(id, |j| {
-            j.status = Status::Dispatched;
-            let (done, total) = (j.bytes_done, j.bytes_total);
-            let suffix = if opened > 0 {
-                format!(", {opened} opened")
-            } else {
-                String::new()
-            };
-            j.message = Some(if total > 0 {
-                format!("downloaded {done} of {total} bytes{suffix}")
-            } else if done > 0 {
-                format!("downloaded {done} bytes{suffix}")
-            } else if opened > 0 {
-                format!("{opened} job(s) opened in the default handler")
-            } else {
-                format!("{streamed} job(s) dispatched")
-            });
-        }),
-        Err(err) => queue.update(id, |j| {
-            j.status = Status::Failed;
-            j.message = Some(err.to_string());
-        }),
+        Ok(()) => {
+            if let Some(j) = queue.get(id) {
+                if j.status != Status::Failed {
+                    queue.update(id, |j| {
+                        j.status = Status::Dispatched;
+                        let (done, total) = (j.bytes_done, j.bytes_total);
+                        let suffix = if opened > 0 {
+                            format!(", {opened} opened")
+                        } else {
+                            String::new()
+                        };
+                        j.message = Some(if total > 0 {
+                            format!("downloaded {done} of {total} bytes{suffix}")
+                        } else if done > 0 {
+                            format!("downloaded {done} bytes{suffix}")
+                        } else if opened > 0 {
+                            format!("{opened} job(s) opened in the default handler")
+                        } else {
+                            format!("{streamed} job(s) dispatched")
+                        });
+                    });
+                }
+            }
+        }
+        Err(err) => {
+            if let Some(j) = queue.get(id) {
+                if j.status != Status::Failed {
+                    queue.update(id, |j| {
+                        j.status = Status::Failed;
+                        j.message = Some(err.to_string());
+                    });
+                }
+            }
+        }
     }
 }
 
@@ -659,8 +870,8 @@ mod tests {
             &mut |_| Ok(GAME_FIXTURE.to_string()),
             &mut stub_resolve,
             &mut |_job, progress| {
-                progress(3, 10);
-                progress(10, 10);
+                progress(3, 10)?;
+                progress(10, 10)?;
                 Ok(())
             },
             Duration::ZERO,
@@ -671,6 +882,55 @@ mod tests {
         assert_eq!(job.bytes_done, 10);
         assert_eq!(job.bytes_total, 10);
         assert!(job.message.unwrap().contains("bytes"));
+    }
+
+    #[test]
+    fn cancel_and_delete_work_on_queued_and_active_jobs() {
+        let q = Queue::new();
+        let a = enqueue_sample(&q);
+        let b = enqueue_sample(&q);
+
+        // Cancel job a: marks it failed with "Cancelled by user"
+        q.cancel(a).unwrap();
+        let job_a = q.get(a).unwrap();
+        assert_eq!(job_a.status, Status::Failed);
+        assert_eq!(job_a.message.as_deref(), Some("Cancelled by user"));
+
+        // Delete job b: completely removes it from the queue
+        q.delete(b).unwrap();
+        assert!(q.get(b).is_none());
+        assert_eq!(q.snapshot().len(), 1);
+
+        // Clear finished removes cancelled/failed job a
+        let cleared = q.clear_finished().unwrap();
+        assert_eq!(cleared, 1);
+        assert_eq!(q.snapshot().len(), 0);
+    }
+
+    #[test]
+    fn cancel_during_progress_aborts() {
+        let q = Queue::new();
+        let id = enqueue_sample(&q);
+        process(
+            &q,
+            &mem_ctx(),
+            id,
+            &mut |_| Ok(GAME_FIXTURE.to_string()),
+            &mut stub_resolve,
+            &mut |_job, progress| {
+                progress(1, 10)?;
+                // User cancels the job mid-stream
+                q.cancel(id).unwrap();
+                let res = progress(2, 10);
+                assert!(res.is_err(), "progress must error out when cancelled");
+                res
+            },
+            Duration::ZERO,
+            &mut |_| {},
+        );
+        let job = q.get(id).unwrap();
+        assert_eq!(job.status, Status::Failed);
+        assert_eq!(job.message.as_deref(), Some("Cancelled by user"));
     }
 
     #[test]

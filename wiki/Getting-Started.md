@@ -2,71 +2,95 @@
 
 > Links between wiki pages are relative and omit the `.md` extension.
 
+LewdZone Launcher is an all-in-one desktop game launcher and native CLI engine. This guide walks you through requirements, initial configuration, and your first download.
+
+---
+
 ## ✅ Requirements
 
-- **Windows**, **Linux**, or **macOS**
-- **Rust toolchain** (stable) + **Node.js/npm** when building from source
-- No download manager needed. Direct-file hosts (`fileknot`) stream in-app;
-  cloud-host pages open in the OS default handler — the installed desktop app
-  for that service (MEGA, Google Drive, Dropbox, ...) or the browser if none is
-  installed.
+1. **Operating System:** Windows 10/11 (x64/arm64), Linux (x86_64/arm64), or macOS (Intel/Apple Silicon).
+2. **7-Zip Console Executable (Recommended):**
+   - For fast, multi-threaded extraction of downloaded `.zip`, `.7z`, `.rar`, and `.exe` archives, download the standalone console tool from the **[Archive Extraction & 7-Zip Setup Guide](Archive-Extraction)** (e.g. `7za.exe` for Windows, `7zz` for Linux/macOS).
+   - If not installed, basic zip extraction falls back to the native Rust extractor or system `tar`.
+3. **Build Dependencies (if building from source):**
+   - Rust (stable toolchain)
+   - Node.js (v18+) & npm (or pnpm)
+   - OS-specific WebView2 / WebKitGTK prerequisites (see [Installing & Building](Installing-and-Building)).
 
-## ⚡ Quick start (CLI)
+---
 
-```sh
-# build the CLI (from a source checkout) — see Installing & Building
-cargo build --release          # from src-tauri/
-./target/release/lewdzone --help
+## ⚡ Quick Start (CLI)
 
-# point the tool at your download root
-lewdzone settings set download-root "D:/Games"
+Build or run the CLI directly from `src-tauri/` or use the installed binary:
 
-# refresh the catalog from LewdZone
+```bash
+# 1. Check version and help
+lewdzone --version
+lewdzone --help
+
+# 2. Point launcher to your library root
+lewdzone settings set library-root "G:\LewdZone"
+
+# 3. Configure 7-Zip console executable path
+lewdzone settings set 7z-path "C:\Utilities\7z\7za.exe"
+
+# 4. Synchronize catalog from LewdZone (incremental)
 lewdzone sync --json
 
-# browse the archive (or list the synced catalog)
-lewdzone search --json
-lewdzone list
+# 5. Search or list catalog titles
+lewdzone list --limit 10
 
-# show a game's versions and download entries
-lewdzone info --game treasure-of-nadia --json
+# 6. View game details, versions, and platforms
+lewdzone info treasure-of-nadia
 
-# choose the download source and stream / open the download
-lewdzone download --game treasure-of-nadia --version latest \
-  --platform PC --tab official --json
+# 7. Download and automatically extract a game
+lewdzone download --game treasure-of-nadia --version latest --platform PC --tab official
 
-# list installed/library games
-lewdzone list --library --json
+# 8. List installed games and launch
+lewdzone list --library
+lewdzone launch treasure-of-nadia
 ```
 
-## 🖥️ Quick start (desktop app)
+---
 
-Build steps are in [Installing & Building](Installing-and-Building). On first
-launch:
+## 🖥️ Quick Start (Desktop App)
 
-1. **Store** page — browse or search; pick a game; choose version/platform;
-   enqueue.
-2. **Downloads** page — watch live progress; cancel if needed.
-3. **Library** — launched/installed games with artwork; right-click for
-   Launch, Rebuild shortcuts, Uninstall.
-4. **Settings** — download root, preferred sources, artwork cache, and
-   content-provider API keys (SteamGridDB / IGDB etc.).
+1. **Launch the App:** Run `npm run tauri dev` or open the installed application.
+2. **Configure Settings:**
+   - Go to **Settings** (`/settings`).
+   - Set your **Library root** (e.g., `G:\LewdZone`).
+   - Set your **7-Zip console executable path** (e.g., `C:\Utilities\7z` or `C:\Utilities\7z\7za.exe`).
+   - Choose your favorite **Theme** (Default, Nord, Dracula, or Material).
+3. **Browse & Download:**
+   - Open **Store** to browse trending games, filter by engine/genre/platform, or search by keyword.
+   - Click a game card to view descriptions, screenshots, version dropdowns, and download host sources.
+   - Choose your preferred host and click **Download**.
+4. **Monitor Downloads:**
+   - Head to the **Downloads** view to monitor real-time streaming and extraction progress.
+   - You can cancel or delete active and queued items at any time.
+5. **Play in Library:**
+   - Once extracted, the game appears in the **Library** with its cover art.
+   - Click **Play** to launch the game executable directly from its `app.json` manifest.
+   - Use **Scan Games** to discover any games you previously extracted manually into your configured games directory.
+6. **System Tray:**
+   - Minimizing or closing the window minimizes to the system tray so downloads continue in the background. Right-click the tray icon to quickly navigate to Store, Library, Downloads, Settings, or Quit.
 
-## 📁 Where things live
+---
 
-- Catalog + download jobs: SQLite database in the data dir per OS
-  (e.g. `%APPDATA%\lewdzone\lewdzone.db`; see [Configuration](Configuration)).
-- Download files: `<downloads>/Games/<Title>/` (`.zip` files are extracted and
-  removed automatically).
-- Installed apps: `<lzapps>/<slug>/` with an `app.json` manifest (see
-  [Downloads & Streaming](Download-Managers)).
-- Steam-style library metadata: `<data_root>/library/` with `common/<Title>/`,
-  `downloading/`, and `artwork/`.
-- Start-menu / desktop shortcuts: `lewdzone` group (per OS).
+## 📁 Where Files Live
 
-## 🔄 First sync
+- **SQLite Database:** `<data_root>/lewdzone.db` (stores scraped games, tokens, and download queue).
+- **Configuration:** `<config_root>/config.json` (persists settings such as `library-root`, `games-dir`, `7z-path`, and `theme`).
+- **Secrets:** Stored in the SQLite `secret` table and never written to `config.json` ([Security](Security)).
+- **Downloads Directory:** `<library-root>/downloads/<archive>` (stores downloaded archives flat).
+- **Installed Directory:** `<library-root>/installed/<slug>/` (contains extracted game files and `app.json`).
 
-`sync` fetches catalog data by paging the site's archive. It's rate-limited to
-be polite (see [Design Conventions](Design-Conventions) and
-[Security](Security)). A full sync can take a while; it resumes incrementally
-on later runs.
+---
+
+## 🔗 Related Pages
+
+- [Archive Extraction & 7-Zip Guide](Archive-Extraction)
+- [Downloads & In-App Streaming](Download-Managers)
+- [Configuration Reference](Configuration)
+- [CLI Reference](CLI-Reference)
+- [Troubleshooting](Troubleshooting)

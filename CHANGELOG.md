@@ -8,55 +8,39 @@ the top; the current development state lives under `Unreleased`.
 
 ## ⏳ Unreleased
 
+(No unreleased changes.)
+
+---
+
+## v0.1.0 — 2026-09-24
+
+Initial release of LewdZone Launcher — a cross-platform desktop game launcher and native CLI engine for lewdzone.com.
+
 ### ✨ Added
 
-- **feat(download): replace download-manager layer with in-app streaming and OS-native dispatch** [8c691f9](https://github.com/HELIX-Origin/LewdZone-Launcher/commit/8c691f9)
-- **feat(download): downloads/lzapps install layout, SQLite secrets, and agent cleanup** [b5b39e8](https://github.com/HELIX-Origin/LewdZone-Launcher/commit/b5b39e8)
-- **feat(library,launch): read lzapps app.json manifests, real launch, and GUI launch button** [71099dd](https://github.com/HELIX-Origin/LewdZone-Launcher/commit/71099dd)
-- **feat(queue): persist download queue to SQLite and resume on startup** [07d18f7](https://github.com/HELIX-Origin/LewdZone-Launcher/commit/07d18f7)
-- **feat(content): content-provider and artwork cache pipeline** [06477c2](https://github.com/HELIX-Origin/LewdZone-Launcher/commit/06477c2)
-- **feat(favorites): heart toggle on library tiles and real favorites page** [87c5869](https://github.com/HELIX-Origin/LewdZone-Launcher/commit/87c5869)
-- **feat(content,gui): proper genre support with external_genres field and LewdZone-default enrichment** [512cc92](https://github.com/HELIX-Origin/LewdZone-Launcher/commit/512cc92)
+- **feat(core): single Tauri 2 binary with native Rust CLI engine** (`lewdzone <cmd> --json`) sharing 1:1 parity with the desktop GUI (Rule 03, Rule 13).
+- **feat(scraper): rate-limited LewdZone web scraper** for catalog pagination, game cards, genre clouds, version tabs, and download sources.
+- **feat(resolver): two-step go-link token resolver** via `start` → `reveal` API with dead and malicious host blacklist protection (`gofile`, `gofiles`, `zippyshare`, `cdnclick`, `anonfile`, `anonfiles`, `anonzip`, `uptobox`, `yourfilestore`, `qiwi`, `transfersh`).
+- **feat(resolver): in-app sandboxed webview resolver** for countdown and captcha challenges, blocking popups, adware, and tracking scripts.
+- **feat(download): in-app direct file streaming** for `fileknot` with real-time byte counters and download speed calculation.
+- **feat(download): OS default handler dispatch** for cloud storage hosts (`mega`, `google`, `dropbox`, `mediafire`, `pixeldrain`, `workupload`, `uploadhaven`, `transfaze`).
+- **feat(extract): multi-format archive extraction** using the standalone 7-Zip console executable (`7za`/`7z`/`7zz`) with real-time percentage progress parsing (`-bsp1`), silent background execution, and cancellation.
+- **feat(folder): flat library directory layout** organizing downloads into `<library-root>/downloads/<archive>` and installs into `<library-root>/installed/<slug>/` with an `app.json` manifest.
+- **feat(library): automatic game discovery & launch** via "Scan Games" (`games-dir`), itch.io-style manifest generation, and game process launching.
+- **feat(queue): persistent SQLite download queue** supporting sequential workers, pause/resume, and active job cancel/delete controls.
+- **feat(tray): system tray integration** featuring custom tray icon, context menu (Open, Library, Downloads, Store, Settings, Quit), and minimize-to-tray window management.
+- **feat(theme): dynamic runtime theme engine** shipping Nord, Dracula, and Material reference skins with dynamic CSS token switching without app restart.
+- **feat(content): external metadata & artwork enrichment** pipeline supporting SteamGridDB, VNDB, IGDB, itch.io, Steam, and IndieDB with secure SQLite secret storage.
+- **docs(wiki): comprehensive GitHub wiki suite** including getting started, 7-Zip CLI setup guide, architecture, CLI reference, configuration, theme development, troubleshooting, and testing.
 
 ### 🛠 Fixed
 
-- **fix(content): use LewdZone scraped data as default metadata source before external providers** [cf36391](https://github.com/HELIX-Origin/LewdZone-Launcher/commit/cf36391)
-- **fix(favorites): create temp dir in test and remove invalid views column** [a08ca6a](https://github.com/HELIX-Origin/LewdZone-Launcher/commit/a08ca6a)
+- **fix(gui): remove redundant profile icon** from top navigation bar.
+- **fix(folder): flatten library downloads and installed folders**, removing cluttered engine subdirectories while retaining backward-compatible legacy detection.
+- **fix(resolver): replace restrictive host allowlist** with an open blacklist targeting defunct and malicious mirrors.
+- **fix(testing): hermetic offline test suites** passing 183 Rust tests and 31 Vitest frontend tests.
 
-### Removed
+### 🚫 Removed
 
-- Download-manager adapters (FDM, IDM, torrent) — replaced by OS-native pass-through.
-- Android platform support in the desktop app.
-
----
-
-## v0.1.0 — 2026-09-18
-
-### ✨ Added
-
-- **docs(repo): add AGENTS operating manual, ROADMAP, TODO, and BUGS trackers** [9673193](https://github.com/HELIX-Origin/LewdZone-Launcher/commit/967319311bae99e61a5965f0723169e7672e5e33)
-- **docs(repo): scaffold lewdzone-launcher with .agents ecosystem, wiki, and gitignore** [5d65506](https://github.com/HELIX-Origin/LewdZone-Launcher/commit/5d655068a11c0b84b3de6e0c70c3589eb7050093)
-
----
-
-| Component | Description | Status |
-| :--- | :--- | :--- |
-| Agent ecosystem | 10 families, rules 00–13, skills, dev templates | ✅ |
-| Wiki suite | 16 pages, GitHub-wiki synced, relative links | ✅ |
-| Root docs | `AGENTS.md`, `ROADMAP.md`, `TODO.md`, `BUGS.md`, `CHANGELOG.md` | ✅ |
-| Roadmap tracking | Tracking issue #1, roadmap-first (Rule 04) | ✅ |
-| Core implementation | Scraping, resolver, in-app streaming, CLI engine | ✅ |
-| Desktop app | Tauri 2 shell + Store/Library/Downloads/Favorites/Settings | ✅ |
-| Tests | cargo test 177, Vitest 29, clippy/fmt/svelte-check green | ✅ |
-| Release | Tagged releases (SemVer, Rule 08) | ⏳ pending v0.1.0 |
-
-## Additional
-
-- **Conventions:** commits follow the emoji/type/scope guide (Rule 04); mermaid
-  diagrams follow Rule 09; releases follow Rule 08.
-- **Where things are:** living spec in `.agents/rules/index.md`, operating manual
-  in `AGENTS.md`, roadmap in `ROADMAP.md`, open bugs in `BUGS.md`, fine-grained
-  work queue in `TODO.md`.
-- **Format guide for this file:** one release section per tag; change categories
-  (`Added` / `Removed` / `Fixed` / etc.); commit list with short-hash links;
-  summary table with status icons; extra notes under `Additional`.
+- Unreliable external download-manager adapters (FDM, IDM, torrent) in favor of integrated streaming and native OS dispatch.
+- Android platform downloads in the desktop application.

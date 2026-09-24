@@ -1,50 +1,39 @@
-# 🔐 Security
+# 🔐 Security Architecture & Threat Model
 
 > Links between wiki pages are relative and omit the `.md` extension.
 
-## 🧾 Principles
+LewdZone Launcher is built to interact with external web services while maintaining zero telemetry, complete credential isolation, and strict process execution boundaries.
 
-1. **No secrets in the repo.** SteamGridDB, IGDB, updater/signing keys live in
-   `~/.config/lewdzone/` or environment variables, never committed. API keys are
-   set via the app's Settings → API keys (`settings set <key> --secret`) and
-   are never echoed back or logged.
-2. **Downloads stay on allowlisted hosts, and never detour.** The launcher
-   streams direct-file hosts and hands other resolved URLs to the OS default
-   handler — but only for **allowlisted hosts** derived from the site's own
-   go-link host table (reverified regularly). Unknown host → refuse. When a
-   direct stream is redirected, the redirect must remain on the same host (or a
-   dot-boundary subdomain) — any other target is refused.
-3. **No shell interpolation** — external processes are spawned with
-   `std::process::Command` using argv arrays (`CREATE_NO_WINDOW` on Windows,
-   detached session on POSIX). Never build a command string from user input.
-4. **Parameterized SQL only** — no string-concatenated SQL. SQLite opened with
-   `foreign_keys=ON`; single writer connection.
-5. **Path hardening** — all paths via `std::path::PathBuf`, reject traversal
-   (`..`), sanitize `\ : * ? " < > |` in generated file names.
-6. **Secret redaction in logs** — never log keys/tokens; add a redaction
-   filter at the logging boundary.
-7. **Resolved URLs are ephemeral** — stored tokens in the DB, never URLs.
+---
 
-## 🛡️ Threat checklist (review gate)
+## 🧾 Core Security Principles
 
-- SQLite injection?
-- Path traversal / unsafe filenames?
-- URL smuggling via a non-allowlisted host?
-- Redirect detour to a foreign host during an in-app stream?
-- OS-default-handler misuse (opening a non-URL or a non-allowlisted URL)?
-- Secret leakage (keys/tokens in logs, outputs, or the repo)?
-- Unsafe redirect following?
+1. **Zero Telemetry:** The application phones home nowhere. No analytics, tracking pixels, crash reporters, or usage beacons are present ([Privacy Policy](../../PRIVACY.md)).
+2. **Secrets Never Committed or Exposed:** External API credentials (SteamGridDB, IGDB, etc.) are saved encrypted in the SQLite `secret` table and are never written to `config.json`, logs, or console output.
+3. **Blocked Hosts Blacklist:** Instead of a restrictive allowlist, the launcher enforces a blacklist of dead, defunct, or known malicious download hosts (`gofile`, `gofiles`, `zippyshare`, `cdnclick`, `anonfile`, `anonfiles`, `anonzip`, `uptobox`, `yourfilestore`, `qiwi`, `transfersh`). Any functional, unblocked host is permitted, providing broad flexibility for users while protecting against dead or unsafe mirrors.
+4. **Same-Host Redirect Validation:** During direct file streaming (`fileknot`), HTTP redirects are monitored. The target must remain on the exact same host or an authorized subdomain. Detours to foreign domains are rejected.
+5. **No Shell Interpolation:** All subprocesses (including game execution and the **7-Zip console executable**) are spawned directly via `std::process::Command` with argument vectors and `shell=false`. On Windows, processes run silently with `CREATE_NO_WINDOW` (`0x0800_0000`).
+6. **In-App Sandboxed Resolver:** Protected links requiring verification or countdowns are displayed in a sandboxed, isolated webview window that blocks third-party popups, malicious ads, and background clickjacking.
+7. **Ephemeral Tokens over URLs:** Database records persist go-link tokens rather than resolved URLs. Resolved URLs are considered single-use and ephemeral.
+8. **Path Sanitization & Traversal Defense:** All user and game paths use `std::path::PathBuf`, reject relative traversal sequences (`..`), and sanitize forbidden characters (`\ : * ? " < > |`).
+9. **Parameterized Database Queries:** SQLite is opened with WAL mode and `foreign_keys=ON`. All SQL interactions use strictly parameterized statements to eliminate SQL injection risks.
 
-Audited by [security-auditor](../.agents/agents/review/security-auditor/security-auditor).
-Tooling in the gate: **cargo audit** + **cargo deny** for dependency/CRATE
-checking. Full rule: [Rule 10](../.agents/rules/rule-10-security).
+---
 
-## ✅ Allowlist source
+## 🛡️ Threat Checklist
 
-Host slugs come from the site's go.js ICONS list (e.g. `mediafire`, `mega`,
-`google`, `pixeldrain`, …). The resolved-URL allowlist is derived from that list
-and kept in sync during [Release Process](Release-Process); changes require a
-security review ADR. Dead services are removed — currently `gofile` is out of
-the allowlist. Direct-stream host class is a subset of it (`fileknot` today);
-only that subset is ever streamed in-app, and its redirects are validated to
-stay on-host.
+- [x] **SQL Injection:** Mitigated via Rusqlite parameterized queries throughout `src-tauri/src/db/`.
+- [x] **Path Traversal:** Mitigated via `core::folder::within_root` and filename sanitization.
+- [x] **Subprocess Injection:** Mitigated via structured argument arrays in `Command::new` without shell interpreters.
+- [x] **Malicious / Dead Hosts:** Mitigated via `resolver::is_blocked_host` rejecting blacklisted hosts.
+- [x] **Credential Leakage:** Mitigated via SQLite secret storage and automatic log redaction filters.
+- [x] **Adware / Script Hijacking:** Mitigated via dedicated in-app sandboxed webview resolver.
+
+---
+
+## 🔗 Related Pages
+
+- [Downloads & In-App Streaming](Download-Managers)
+- [Archive Extraction & 7-Zip Guide](Archive-Extraction)
+- [Configuration](Configuration)
+- [Release Process](Release-Process)

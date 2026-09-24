@@ -142,28 +142,180 @@ pub fn within_root(root: &Path, out: &Path) -> bool {
 }
 
 /// Resolve where in-app downloads land: `download-root` when set, then
-/// `library-root/downloads`, then the per-OS `downloads/` folder.
+/// `games_dir/downloads` (or `games_dir`), `library-root/downloads`, then the per-OS `downloads/` folder.
 pub fn download_root(ctx: &Context) -> Result<PathBuf, Error> {
     let settings = crate::core::settings::Settings::load(&ctx.config_path)?;
     if let Some(root) = settings.download_root.filter(|r| !r.trim().is_empty()) {
         return Ok(PathBuf::from(root));
     }
+    if let Some(gdir) = settings.games_dir.filter(|r| !r.trim().is_empty()) {
+        let p = PathBuf::from(gdir);
+        if p.join("downloads").is_dir() {
+            return Ok(p.join("downloads"));
+        }
+        return Ok(p.join("downloads"));
+    }
     if let Some(root) = settings.library_root.filter(|r| !r.trim().is_empty()) {
-        return Ok(PathBuf::from(root).join("downloads"));
+        let p = PathBuf::from(root);
+        if p.join("downloads").is_dir() {
+            return Ok(p.join("downloads"));
+        }
+        return Ok(p.join("downloads"));
     }
     crate::core::paths::downloads_dir()
         .ok_or_else(|| Error::Runtime("cannot resolve download root (no app data dir)".into()))
 }
 
-/// Resolve where installed / extracted apps land: `library-root/lzapps` when
-/// set, otherwise the per-OS `lzapps/` folder.
+/// Build the canonical download target for an archive directly inside downloads:
+/// `downloads/<archive>` (or `<root>/<archive>` if root is already the downloads dir).
+pub fn archive_download_target(root: &Path, archive_name: &str) -> PathBuf {
+    let dir = if root
+        .file_name()
+        .and_then(|n| n.to_str())
+        .is_some_and(|s| s.eq_ignore_ascii_case("downloads"))
+    {
+        root.to_path_buf()
+    } else {
+        root.join("downloads")
+    };
+    non_colliding(&dir.join(archive_name))
+}
+
+pub fn engine_download_target(root: &Path, _engine: Option<&str>, archive_name: &str) -> PathBuf {
+    archive_download_target(root, archive_name)
+}
+
+/// Build the canonical installed app folder directly inside installed:
+/// `installed/<slug>/` (or `<root>/<slug>/` if root is already the installed dir).
+pub fn engine_install_dir(installed_root: &Path, _engine: Option<&str>, slug: &str) -> PathBuf {
+    let dir = if installed_root
+        .file_name()
+        .and_then(|n| n.to_str())
+        .is_some_and(|s| s.eq_ignore_ascii_case("installed"))
+    {
+        installed_root.to_path_buf()
+    } else {
+        installed_root.join("installed")
+    };
+    install_dir(&dir, slug)
+}
+
+/// Normalize an engine name to a lowercase directory-friendly folder name.
+pub fn engine_to_folder(engine: Option<&str>) -> String {
+    let Some(raw) = engine else {
+        return "other".to_string();
+    };
+    let lower = raw.trim().to_lowercase();
+    if lower.contains("renpy") || lower.contains("ren'py") {
+        "renpy".to_string()
+    } else if lower.contains("rpg") {
+        "rpgm".to_string()
+    } else if lower.contains("unity") {
+        "unity".to_string()
+    } else if lower.contains("unreal") {
+        "unreal".to_string()
+    } else if lower.contains("html") || lower.contains("nw.js") || lower.contains("nwjs") {
+        "html".to_string()
+    } else if lower.contains("godot") {
+        "godot".to_string()
+    } else if lower.contains("flash") {
+        "flash".to_string()
+    } else if lower.contains("wolf") {
+        "wolfrpg".to_string()
+    } else if lower.contains("qsp") {
+        "qsp".to_string()
+    } else if lower.contains("twine") {
+        "twine".to_string()
+    } else if lower.contains("tyrano") {
+        "tyrano".to_string()
+    } else if lower.contains("rags") {
+        "rags".to_string()
+    } else if lower.contains("tads") {
+        "tads".to_string()
+    } else if lower.contains("java") {
+        "java".to_string()
+    } else if lower.contains("python") {
+        "python".to_string()
+    } else if lower.contains("webgl") {
+        "webgl".to_string()
+    } else {
+        let s: String = lower
+            .chars()
+            .filter(|c| c.is_ascii_alphanumeric())
+            .collect();
+        if s.is_empty() {
+            "other".to_string()
+        } else {
+            s
+        }
+    }
+}
+
+/// Resolve where installed / extracted games live: `games_dir/installed` or `games_dir`,
+/// `library-root/installed`, `library-root/lzapps`, or the per-OS `lzapps/` folder.
+pub fn installed_root(ctx: &Context) -> Result<PathBuf, Error> {
+    let settings = crate::core::settings::Settings::load(&ctx.config_path)?;
+    if let Some(gdir) = settings.games_dir.filter(|r| !r.trim().is_empty()) {
+        let p = PathBuf::from(&gdir);
+        if p.join("installed").is_dir() {
+            return Ok(p.join("installed"));
+        }
+        return Ok(p);
+    }
+    if let Some(root) = settings.library_root.filter(|r| !r.trim().is_empty()) {
+        let p = PathBuf::from(&root);
+        if p.join("installed").is_dir() {
+            return Ok(p.join("installed"));
+        }
+        if p.join("lzapps").is_dir() {
+            return Ok(p.join("lzapps"));
+        }
+        return Ok(p.join("installed"));
+    }
+    if let Some(lz) = crate::core::paths::lzapps_dir() {
+        if let Some(parent) = lz.parent() {
+            let inst = parent.join("installed");
+            if inst.exists() {
+                return Ok(inst);
+            }
+        }
+    }
+    crate::core::paths::lzapps_dir()
+        .ok_or_else(|| Error::Runtime("cannot resolve installed root (no app data dir)".into()))
+}
+
+/// Resolve where installed / extracted apps land: `library-root/installed` (if exists),
+/// `library-root/lzapps`, otherwise the per-OS `lzapps/` folder.
 pub fn lzapps_root(ctx: &Context) -> Result<PathBuf, Error> {
     let settings = crate::core::settings::Settings::load(&ctx.config_path)?;
     if let Some(root) = settings.library_root.filter(|r| !r.trim().is_empty()) {
-        return Ok(PathBuf::from(root).join("lzapps"));
+        let p = PathBuf::from(&root);
+        if p.join("installed").is_dir() {
+            return Ok(p.join("installed"));
+        }
+        return Ok(p.join("lzapps"));
     }
     crate::core::paths::lzapps_dir()
         .ok_or_else(|| Error::Runtime("cannot resolve lzapps root (no app data dir)".into()))
+}
+
+/// Supported standard game engines for directory organization.
+pub const STANDARD_ENGINES: &[&str] = &[
+    "renpy", "rpgm", "unity", "unreal", "html", "godot", "flash", "wolfrpg", "qsp", "twine",
+    "tyrano", "rags", "tads", "java", "python", "webgl", "other",
+];
+
+/// Automatically create the canonical `downloads/` and `installed/` folders under `root`.
+pub fn initialize_library_structure(root: &Path) -> Result<(), Error> {
+    if !root.exists() {
+        std::fs::create_dir_all(root)?;
+    }
+    let dl_root = root.join("downloads");
+    let inst_root = root.join("installed");
+
+    std::fs::create_dir_all(&dl_root)?;
+    std::fs::create_dir_all(&inst_root)?;
+    Ok(())
 }
 
 #[cfg(test)]
@@ -336,5 +488,66 @@ mod tests {
         assert!(lz.ends_with("lzapps"), "lzapps default: {lz:?}");
         assert!(dl.is_absolute());
         assert!(lz.is_absolute());
+    }
+
+    #[test]
+    fn initialize_library_structure_creates_flat_directories() {
+        let tmp = std::env::temp_dir().join(format!(
+            "lz-lib-struct-test-{}",
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        let _ = std::fs::remove_dir_all(&tmp);
+        initialize_library_structure(&tmp).expect("initializes library structure");
+
+        assert!(tmp.join("downloads").is_dir());
+        assert!(tmp.join("installed").is_dir());
+
+        let _ = std::fs::remove_dir_all(&tmp);
+    }
+
+    #[test]
+    fn engine_to_folder_normalizes_correctly() {
+        assert_eq!(engine_to_folder(Some("Ren'Py")), "renpy");
+        assert_eq!(engine_to_folder(Some("RenPy")), "renpy");
+        assert_eq!(engine_to_folder(Some("RPG Maker MV")), "rpgm");
+        assert_eq!(engine_to_folder(Some("Unity")), "unity");
+        assert_eq!(engine_to_folder(Some("Unreal Engine 5")), "unreal");
+        assert_eq!(engine_to_folder(Some("HTML/NW.js")), "html");
+        assert_eq!(engine_to_folder(Some("Godot")), "godot");
+        assert_eq!(engine_to_folder(Some("Flash")), "flash");
+        assert_eq!(engine_to_folder(Some("QSP")), "qsp");
+        assert_eq!(engine_to_folder(Some("Twine")), "twine");
+        assert_eq!(engine_to_folder(Some("TyranoBuilder")), "tyrano");
+        assert_eq!(engine_to_folder(Some("RAGS")), "rags");
+        assert_eq!(engine_to_folder(Some("TADS")), "tads");
+        assert_eq!(engine_to_folder(Some("Java")), "java");
+        assert_eq!(engine_to_folder(Some("Python")), "python");
+        assert_eq!(engine_to_folder(Some("WebGL")), "webgl");
+        assert_eq!(engine_to_folder(None), "other");
+    }
+
+    #[test]
+    fn archive_download_target_organizes_directly_under_downloads() {
+        let root = Path::new("G:/LewdZone/downloads");
+        let target = archive_download_target(root, "game.zip");
+        assert_eq!(target, PathBuf::from("G:/LewdZone/downloads/game.zip"));
+
+        let lib_root = Path::new("G:/LewdZone");
+        let target2 = archive_download_target(lib_root, "game2.zip");
+        assert_eq!(target2, PathBuf::from("G:/LewdZone/downloads/game2.zip"));
+    }
+
+    #[test]
+    fn engine_install_dir_organizes_directly_under_installed() {
+        let root = Path::new("G:/LewdZone/installed");
+        let target = engine_install_dir(root, None, "my-slug");
+        assert_eq!(target, PathBuf::from("G:/LewdZone/installed/my-slug"));
+
+        let lib_root = Path::new("G:/LewdZone");
+        let target2 = engine_install_dir(lib_root, None, "rpg-game");
+        assert_eq!(target2, PathBuf::from("G:/LewdZone/installed/rpg-game"));
     }
 }

@@ -11,7 +11,9 @@
     | "resolving"
     | "dispatching"
     | "downloading"
+    | "extracting"
     | "dispatched"
+    | "completed"
     | "failed";
 
   interface QueueJob {
@@ -34,7 +36,9 @@
     resolving: "Resolving",
     dispatching: "Dispatching",
     downloading: "Downloading",
+    extracting: "Extracting",
     dispatched: "Dispatched",
+    completed: "Completed",
     failed: "Failed",
   };
 
@@ -80,7 +84,12 @@
   }
 
   const hasFinishedJobs = $derived(
-    jobs.some((j) => j.status === "dispatched" || j.status === "failed")
+    jobs.some(
+      (j) =>
+        j.status === "dispatched" ||
+        j.status === "completed" ||
+        j.status === "failed"
+    )
   );
 
   let timer: ReturnType<typeof setInterval> | undefined;
@@ -154,7 +163,7 @@
             <span class="item-name">{job.slug}</span>
             <div class="item-actions">
               <span class="badge {job.status}">{statusLabel[job.status]}</span>
-              {#if job.status === "queued" || job.status === "resolving" || job.status === "downloading" || job.status === "dispatching"}
+              {#if job.status === "queued" || job.status === "resolving" || job.status === "downloading" || job.status === "dispatching" || job.status === "extracting"}
                 <button
                   class="action-btn cancel"
                   onclick={() => cancelJob(job.id)}
@@ -163,7 +172,15 @@
                 >
                   Cancel
                 </button>
-              {:else if job.status === "dispatched" || job.status === "failed"}
+                <button
+                  class="action-btn delete"
+                  onclick={() => deleteJob(job.id)}
+                  title="Remove from queue"
+                  aria-label={`Remove ${job.slug} from downloads`}
+                >
+                  ✕
+                </button>
+              {:else if job.status === "dispatched" || job.status === "completed" || job.status === "failed"}
                 <button
                   class="action-btn delete"
                   onclick={() => deleteJob(job.id)}
@@ -190,23 +207,27 @@
               <span>{job.source}</span>
             {/if}
           </div>
-          {#if job.status === "downloading"}
+          {#if job.status === "downloading" || job.status === "extracting"}
             <div
               class="bar"
               role="progressbar"
               aria-valuemin="0"
               aria-valuemax="100"
               aria-valuenow={progressPct(job)}
-              aria-label={`Download progress for ${job.slug}`}
+              aria-label={`${job.status === "extracting" ? "Extraction" : "Download"} progress for ${job.slug}`}
             >
-              <div class="bar-fill" style={`width: ${progressPct(job)}%`}></div>
+              <div
+                class="bar-fill"
+                class:extracting={job.status === "extracting"}
+                style={`width: ${progressPct(job)}%`}
+              ></div>
             </div>
             <p class="item-bytes">
               {fmtBytes(job.bytes_done)}
               {#if job.bytes_total > 0}
-                / {fmtBytes(job.bytes_total)} · {progressPct(job)}%
+                / {fmtBytes(job.bytes_total)} · {progressPct(job)}% {job.status === "extracting" ? "extracted" : "downloaded"}
               {:else}
-                downloaded
+                {job.status === "extracting" ? "extracted" : "downloaded"}
               {/if}
             </p>
           {/if}
@@ -379,6 +400,10 @@
     transition: width 0.3s ease;
   }
 
+  .bar-fill.extracting {
+    background: linear-gradient(90deg, #ff9e00, var(--lz-accent));
+  }
+
   .item-bytes {
     margin: 4px 0 0;
     font-size: 11px;
@@ -406,11 +431,13 @@
 
   .badge.resolving,
   .badge.dispatching,
-  .badge.downloading {
+  .badge.downloading,
+  .badge.extracting {
     color: var(--lz-accent);
   }
 
-  .badge.dispatched {
+  .badge.dispatched,
+  .badge.completed {
     color: var(--lz-cyan);
   }
 

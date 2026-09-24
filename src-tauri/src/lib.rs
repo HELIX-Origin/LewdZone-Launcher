@@ -431,6 +431,24 @@ fn library_list(
     crate::core::list::library_listing(&ctx).map_err(|e| e.to_string())
 }
 
+/// Scan a directory for extracted games and register them in the library.
+#[tauri::command]
+fn library_scan(
+    state: tauri::State<'_, AppState>,
+    path: Option<String>,
+) -> Result<crate::core::library::ScanReport, String> {
+    let ctx = state
+        .context
+        .lock()
+        .map_err(|_| "state lock poisoned".to_string())?;
+    crate::core::library::scan_games_dir(
+        &ctx,
+        path.as_deref().map(std::path::Path::new),
+        Some(&state.queue),
+    )
+    .map_err(|e| e.to_string())
+}
+
 /// Launch an installed game from its `lzapps/<slug>/app.json` manifest.
 #[tauri::command]
 fn game_launch(state: tauri::State<'_, AppState>, slug: String) -> Result<(), String> {
@@ -507,6 +525,12 @@ fn downloads_clear(state: tauri::State<'_, AppState>) -> Result<usize, String> {
 #[tauri::command]
 fn resolve_go_link(go_link: String) -> Result<crate::resolver::ResolvedUrl, String> {
     crate::resolver::resolve(&go_link).map_err(|e| e.to_string())
+}
+
+/// Fully terminate the application (called from the GUI File > Quit action).
+#[tauri::command]
+fn app_quit(app: tauri::AppHandle) {
+    app.exit(0);
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -669,6 +693,78 @@ pub fn run() {
             page_cache: Mutex::new(HashMap::new()),
             genres_cache: Mutex::new(None),
         })
+        .setup(|app| {
+            use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
+            use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
+            use tauri::Manager;
+
+            let show_i = MenuItem::with_id(app, "show", "Show LewdZone", true, None::<&str>)?;
+            let min_i = MenuItem::with_id(app, "minimize", "Minimize to Tray", true, None::<&str>)?;
+            let sep = PredefinedMenuItem::separator(app)?;
+            let quit_i = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
+
+            let menu = Menu::with_items(app, &[&show_i, &min_i, &sep, &quit_i])?;
+
+            let mut tray_builder = TrayIconBuilder::new()
+                .menu(&menu)
+                .show_menu_on_left_click(false)
+                .tooltip("LewdZone Launcher")
+                .on_menu_event(|app, event| match event.id().as_ref() {
+                    "show" => {
+                        if let Some(window) = app.get_webview_window("main") {
+                            let _ = window.show();
+                            let _ = window.unminimize();
+                            let _ = window.set_focus();
+                        }
+                    }
+                    "minimize" => {
+                        if let Some(window) = app.get_webview_window("main") {
+                            let _ = window.hide();
+                        }
+                    }
+                    "quit" => {
+                        app.exit(0);
+                    }
+                    _ => {}
+                })
+                .on_tray_icon_event(|tray, event| {
+                    if let TrayIconEvent::Click {
+                        button: MouseButton::Left,
+                        button_state: MouseButtonState::Up,
+                        ..
+                    } = event
+                    {
+                        let app = tray.app_handle();
+                        if let Some(window) = app.get_webview_window("main") {
+                            if window.is_visible().unwrap_or(false) {
+                                let _ = window.hide();
+                            } else {
+                                let _ = window.show();
+                                let _ = window.unminimize();
+                                let _ = window.set_focus();
+                            }
+                        }
+                    }
+                });
+
+            let tray_icon =
+                tauri::image::Image::from_bytes(include_bytes!("../icons/tray-icon.png")).ok();
+            if let Some(icon) = tray_icon.or_else(|| app.default_window_icon().cloned()) {
+                tray_builder = tray_builder.icon(icon);
+            }
+
+            tray_builder.build(app)?;
+
+            Ok(())
+        })
+        .on_window_event(|window, event| {
+            if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                if window.label() == "main" {
+                    api.prevent_close();
+                    let _ = window.hide();
+                }
+            }
+        })
         .invoke_handler(tauri::generate_handler![
             greet,
             settings_get,
@@ -688,6 +784,7 @@ pub fn run() {
             favorite_add,
             favorite_remove,
             library_list,
+            library_scan,
             create_shortcut,
             game_launch,
             content_enrich,
@@ -696,7 +793,8 @@ pub fn run() {
             download_cancel,
             download_delete,
             downloads_clear,
-            resolve_go_link
+            resolve_go_link,
+            app_quit
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

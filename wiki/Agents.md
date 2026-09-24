@@ -1,86 +1,76 @@
-# 🤖 Agent Ecosystem
+# 🤖 Agent Ecosystem & Governance
 
 > Links between wiki pages are relative and omit the `.md` extension.
 
-The repository is governed by an **extensible agent ecosystem** living in
-`.agents/` — plain Markdown with standardized YAML frontmatter, designed to be
-consumable by any agent that reads Markdown (works with opencode, GitHub
-Copilot-style workflows, and others). Everything is documented with
-**GitHub-compatible Mermaid diagrams**.
+The LewdZone Launcher repository is governed by a formalized **agent ecosystem** residing in `.agents/`. Each agent family has strict ownership boundaries, codified procedures (skills), and enforceable rules (Rule 00 through Rule 13).
 
-## 📁 Layout
+---
 
-```
+## 📁 Ecosystem Layout
+
+```text
 .agents/
-  agents/{family}/{family}.md          # primary agent per family
-  agents/{family}/{sub-agent}/{sub}.md # sub-agents
-  skills/{name}/SKILL.md               # reusable procedures
-  rules/rule-[00..13]-*.md + index.md  # enforceable conventions
-  templates/                           # reusable scaffolds
-  README.md                            # the ecosystem index
+├── agents/{family}/{family}.md          # Primary agent specification per family
+├── agents/{family}/{sub-agent}.md       # Sub-agent responsibilities
+├── skills/{name}/SKILL.md               # Reusable engineering procedures
+├── rules/rule-[00..13]-*.md             # Non-negotiable repository rules
+├── templates/                           # Scaffolds for agents, rules, ADRs, and issues
+└── adr/                                 # Architecture Decision Records
 ```
 
-## 🧩 Families at a glance
+---
 
-| Family | Primary | Sub-agents |
+## 🧩 Agent Families & Ownership
+
+| Family | Primary Responsibility | Key Sub-Agents |
 | --- | --- | --- |
-| **architect** | structure + contracts | systems-designer, module-contractor |
-| **scraper** | catalog + page scraping | archive-scraper, game-page-scraper, fixture-engineer |
-| **resolver** | go-token resolution | token-prober, dispatch-builder |
-| **database** | schema + sync | schema-designer, sync-orchestrator |
-| **dm** | downloads + folder folding | folder-organizer |
-| **cli** | the engine | command-designer, output-formatter |
-| **gui** | Tauri app | app-shell, view-designer |
-| **shortcuts** | artwork + shortcuts | artwork-fetch, shortcut-builder |
-| **content** | external info + art enrichment | provider-registry, steamgriddb-provider, vndb-provider, igdb-provider, itch-provider, steam-provider, indiedb-provider |
-| **testing** | QA suite | fixture-crafter, mock-engineer, test-suite-architect, debugger |
-| **review** | gates | security-auditor, perf-auditor |
+| **`architect`** | System topology, ADR governance, contract locking | `systems-designer`, `module-contractor` |
+| **`scraper`** | HTML page parsing, catalog pagination, fixtures | `archive-scraper`, `game-page-scraper`, `fixture-engineer` |
+| **`resolver`** | Go-link token resolution via start/reveal API | `token-prober`, `dispatch-builder` |
+| **`database`** | SQLite migrations, schema design, sync pipeline | `schema-designer`, `sync-orchestrator` |
+| **`dm`** | Direct-stream routing, 7-Zip CLI integration, folder folding | `folder-organizer` |
+| **`cli`** | Native Rust CLI commands, JSON formatting | `command-designer`, `output-formatter` |
+| **`gui`** | Tauri 2 application, Svelte 5 views, system tray | `app-shell`, `view-designer` |
+| **`content`** | External metadata & artwork enrichment | `provider-registry`, `steamgriddb-provider`, `vndb-provider`, `igdb-provider` |
+| **`testing`** | QA test layers, fakes, coverage floors | `fixture-crafter`, `mock-engineer`, `test-suite-architect`, `debugger` |
+| **`review`** | Security threat modeling, performance budgets | `security-auditor`, `perf-auditor` |
 
-## 🧠 Skills
+---
 
-Reusable procedures with checkoffs, e.g.:
+## ⚖️ Repository Rules (00–13)
 
-- `scrape-game-page` — parse a game detail page into canonical models
-- `scrape-catalog` — page the archive into the catalog
-- `resolve-go-token` — the two-step start/reveal resolution
-- `parse-version-prompts` — normalize version strings
-- `launch-download` — stream direct-file hosts in-app or hand other resolved URLs to the OS default handler
-- `enrich-game-and-art` — fill info + art gaps from the content-provider layer
-
-## ⚖️ Rules 00-13
-
-| # | Rule | File |
+| # | Name | Governing Principle |
 | --- | --- | --- |
-| 00 | Governance | `rule-00-governance.md` |
-| 01 | Code style (Rust) | `rule-01-code-style-python.md` |
-| 02 | Naming conventions | `rule-02-naming-conventions.md` |
-| 03 | Module architecture | `rule-03-module-architecture.md` |
-| 04 | Remote issue protocol | `rule-04-remote-issue-protocol.md` |
-| 05 | Network etiquette | `rule-05-network-etiquette.md` |
-| 06 | SQLite conventions | `rule-06-sqlite-conventions.md` |
-| 07 | Download dispatch | `rule-07-download-manager-integration.md` |
-| 08 | Release standards | `rule-08-release-standards.md` |
-| 09 | Mermaid standards | `rule-09-mermaid-standards.md` |
-| 10 | Security | `rule-10-security.md` |
-| 11 | Testing | `rule-11-testing.md` |
-| 12 | Error handling | `rule-12-error-handling.md` |
-| 13 | GUI conventions | `rule-13-gui-conventions.md` |
+| **00** | Governance & Delegation | Command chain, single owner per artifact. |
+| **01** | Code Style | Rust formatting (`cargo fmt`), clippy (`-D warnings`). |
+| **02** | Naming Conventions | Canonical vocabulary and identifier rules. |
+| **03** | Module Architecture | Inward dependency rule, crate layer boundaries. |
+| **04** | Remote Issue Protocol | Roadmap-first tracking, structured commit messages. |
+| **05** | Network Etiquette | Rate-limited requests (1 req/s), bounded retries, offline testing. |
+| **06** | SQLite Conventions | WAL mode, foreign keys ON, migrations, store tokens not URLs. |
+| **07** | Download Dispatch | Direct-file streaming, OS-native dispatch, 7-Zip extraction. |
+| **08** | Release Standards | Semantic versioning, verification gate before tag. |
+| **09** | Mermaid Standards | GitHub v10 renderer compatibility, quoted node labels. |
+| **10** | Security | Parameterized SQL, secret storage in DB, no shell interpolation. |
+| **11** | Testing | Hermetic unit/integration tests, coverage floors. |
+| **12** | Error Handling | Exit codes 0–5, strongly typed error models. |
+| **13** | GUI Conventions | One core, two entry points; GUI/CLI parity. |
 
-Index: [`.agents/rules/index.md`](https://github.com/helix-origin/lewdzone-launcher/tree/main/.agents/rules/index.md)
+---
 
-## 📄 Templates
+## 🏛️ Governance Principles
 
-Scaffolds for: agents, skills, rules, ADRs, Rust modules, tests, migrations,
-issues, roadmaps, release notes, and commit messages — all under
-`.agents/templates/`.
+1. **One Owner per Artifact:** Every source file or subsystem has exactly one owning agent family.
+2. **One Core, Two Entry Points:** The desktop application and the CLI must share identical core Rust logic (Rule 03, Rule 13).
+3. **Rules Before Code:** Architectural rules precede implementation.
+4. **Fail Loudly:** Never swallow errors or panic in core paths.
+5. **ADR Before Contract Changes:** Breaking contract or layout changes require an ADR.
 
-## 🏛️ Governance principles
+---
 
-1. **One owner per artifact.** Two agents on one module is an anti-pattern.
-2. **One core, two entry points.** The GUI and the CLI share the same Rust
-   core functions.
-3. **Rules before code.** Unwritten rule + code = unreviewable.
-4. **Fail loudly.** Errors surface with codes, not swallowed.
-5. **ADR before contract change.**
+## 🔗 Related Pages
 
-Full detail: [Rule 00](https://github.com/helix-origin/lewdzone-launcher/tree/main/.agents/rules/rule-00-governance.md).
+- [Architecture](Architecture)
+- [Design Conventions](Design-Conventions)
+- [Development Guide](Development)
+- [Security](Security)

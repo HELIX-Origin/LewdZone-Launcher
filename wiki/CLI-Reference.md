@@ -1,150 +1,172 @@
 # 💻 CLI Reference
 
 > Links between wiki pages are relative and omit the `.md` extension. The CLI
-> and the desktop app are entry points into the same Rust core: every GUI
-> action maps 1:1 to a CLI command.
+> and the desktop app are two entry points into the same Rust core: every GUI
+> action maps 1:1 to a CLI command (Rule 03, Rule 13).
+
+---
 
 ## 🖥️ Usage
 
-```
+```bash
 lewdzone <command> [options]
 ```
 
-## 🎛️ Global options
+---
 
-| Option | Meaning |
+## 🎛️ Global Options
+
+| Option | Description |
 | --- | --- |
-| `--json` | one JSON document per command on stdout |
-| `-v`, `--verbose` | debug logging to stderr |
-| `--no-color` | disable colorized output |
-| `--db <PATH>` | override the SQLite catalog path |
-| `--config <PATH>` | override the config file path |
-| `--version` | print the app version |
-| `--help` | print command help |
+| `--json` | Output machine-readable JSON on stdout. |
+| `-v`, `--verbose` | Enable verbose diagnostic logging to stderr. |
+| `--no-color` | Disable ANSI color codes in terminal output. |
+| `--db <PATH>` | Override the default SQLite catalog path. |
+| `--config <PATH>` | Override the default JSON configuration path. |
+| `--version` | Display application and CLI version. |
+| `--help` | Print command usage and help. |
+
+---
 
 ## 📟 Commands
 
 | Command | Purpose |
 | --- | --- |
-| `sync` | Refresh catalog from the site (paged, incremental; `--full` resyncs) |
-| `search` | Browse the archive (Popularity); free-text search not yet wired |
-| `info` | Game detail: versions, download entries, metadata |
-| `list` | List the catalog, the installed library, or the job queue |
-| `settings` | Read/write config (`get` / `set`) |
-| `shortcuts` | Build/rebuild native shortcuts for installed games |
-| `launch` | Launch an installed game |
+| `sync` | Fetch and update catalog records from lewdzone.com (incremental by default; `--full` resyncs all). |
+| `search` | Search titles or browse archive pages. |
+| `info` | Display comprehensive metadata, version list, platforms, and download host links for a game. |
+| `download` | Resolve download token, stream direct-file hosts in-app, extract with 7-Zip CLI, or dispatch to OS handler. |
+| `list` | Query the catalog, installed game library, or the download queue. |
+| `settings` | Read and write persistent configuration settings (`get` / `set`). |
+| `launch` | Launch an installed game executable from its `app.json` manifest. |
 
-Note: the previous `download` and `dm` subcommands are merged. `download`
-persists; `dm` was removed with the download-manager layer (see
-[Download Managers](Download-Managers)).
+---
 
 ### `sync`
 
+Synchronizes catalog data from LewdZone. Respects network etiquette (~1 req/s) and resumes from the last known page.
+
+```bash
+lewdzone sync                        # Incremental sync (continues where previous sync left off)
+lewdzone sync --full                 # Resyncs all pages from page 1
+lewdzone sync --platform PC          # Filter to specific platform (PC, Linux, Mac)
+lewdzone sync --platform PC --json   # Emits structured JSON summary upon completion
 ```
-lewdzone sync                # incremental (resumes from last synced page)
-lewdzone sync --full         # resync every archive page
-lewdzone sync --platform PC  # filter platform (PC | Android | Linux | Mac)
-```
+
+---
 
 ### `info`
 
+Retrieves metadata, download tabs, versions, and platforms for a game. Accepts slug, numeric post ID, or full lewdzone URL.
+
+```bash
+lewdzone info treasure-of-nadia
+lewdzone info --game treasure-of-nadia --versions --json
+lewdzone info 18212
 ```
-lewdzone info treasure-of-nadia            # summary
-lewdzone info --game treasure-of-nadia     # flag form (same thing)
-lewdzone info 18212                        # accepts slug, post id, or URL
-lewdzone info treasure-of-nadia --versions # full version + entry JSON
-```
+
+---
 
 ### `download`
 
-The game is given positionally or via `--game` (flag form). The handler is
-chosen automatically by host class — no manager to select:
+Resolves download tokens and processes game archives:
 
+```bash
+# Download latest version for PC from the official tab
+lewdzone download --game treasure-of-nadia --version latest --platform PC --tab official
+
+# Choose a specific host source
+lewdzone download --game treasure-of-nadia --source fileknot
+
+# Enqueue without immediate start
+lewdzone download --game treasure-of-nadia --queue
+
+# Resume an existing download job
+lewdzone download --game treasure-of-nadia --resume
 ```
-lewdzone download treasure-of-nadia
-lewdzone download --game treasure-of-nadia \
-  --version latest --platform PC --tab official --json
-lewdzone download --game treasure-of-nadia --source mega   # one specific source host
-lewdzone download treasure-of-nadia --resume   # resume an existing job
-lewdzone download treasure-of-nadia --queue    # enqueue without starting
-```
 
-`--source <host>` restricts the download to a single source from that game's
-page (e.g. `mega`, `fileknot`, `dropbox`). Without it, every available source
-is dispatched in the configured order (see `source-priority` below).
+- **Direct hosts (`fileknot`):** Downloaded directly into `<library-root>/downloads/` with real-time percentage progress printed to stderr, then automatically decompressed into `<library-root>/installed/<slug>/` using the configured 7-Zip CLI ([Archive Extraction & 7-Zip](Archive-Extraction)).
+- **Cloud hosts:** Dispatched to the OS default browser or desktop cloud client.
 
-Direct-file hosts (`fileknot`) stream in-app and print `[download] N%`
-progress to stderr. Other hosts open in the OS default handler (installed
-cloud app or browser). See [Download Managers](Download-Managers).
+---
 
 ### `list`
 
+Lists database contents, installed games, or queued jobs:
+
+```bash
+# List catalog entries
+lewdzone list --limit 20
+lewdzone list --search "hotel"
+
+# List installed games in the library (reads app.json manifests)
+lewdzone list --library
+lewdzone list --library --json
+
+# List current download and extraction queue
+lewdzone list --jobs
 ```
-lewdzone list            # catalog from the SQLite DB
-lewdzone list --library  # installed/library games
-lewdzone list --jobs     # job queue
-```
+
+---
 
 ### `settings`
 
+Reads or writes launcher configuration keys:
+
+```bash
+# View all settings as JSON
+lewdzone settings get
+
+# Inspect specific keys
+lewdzone settings get 7z-path
+lewdzone settings get library-root
+
+# Update settings
+lewdzone settings set 7z-path "C:\Utilities\7z\7za.exe"
+lewdzone settings set library-root "G:\LewdZone"
+lewdzone settings set games-dir "D:\Games\LewdZone"
+lewdzone settings set download-grace-seconds 15
+
+# Securely set API keys (persisted in SQLite secrets table)
+lewdzone settings set sgdb-api-key "<YOUR_KEY>" --secret
 ```
-lewdzone settings get              # all settings
-lewdzone settings get download-root
-lewdzone settings set download-root "D:/Games"
-lewdzone settings set download-grace-seconds 20   # pause between download starts
-lewdzone settings set source-priority "mega, google, dropbox"  # preferred source order
-lewdzone settings set sgdb-api-key <key> --secret
-```
+
+---
 
 ### `launch`
 
-Launch an installed game from the `lzapps/<slug>/` folder. The command reads
-`app.json`, uses the user-editable `launch_exe` override if set, and falls back
-to the auto-detected executable candidate.
+Launches an installed game by reading `<installed>/<slug>/app.json` (or legacy `<lzapps>/<slug>/app.json`). Spawns the executable candidate safely without shell injection.
 
-```
+```bash
 lewdzone launch treasure-of-nadia
-lewdzone launch --game treasure-of-nadia
+lewdzone launch --game harem-hotel
 ```
 
-### `dm`
+---
 
-> Removed. Download dispatch no longer uses an active manager — direct-file
-> hosts stream in-app, everything else opens in the OS default handler.
+## 🧾 Exit Codes
 
-## 🧾 Exit codes
+| Code | Meaning | Description |
+| --- | --- | --- |
+| `0` | Success | Command completed successfully. |
+| `1` | Runtime Error | File I/O, extraction error, or database failure. |
+| `2` | Usage Error | Invalid arguments, unknown command, or missing required parameter. |
+| `3` | Network Error | Connection timeout, HTTP failure, or rate limit encounter. |
+| `5` | Interrupted | User cancelled the operation (`SIGINT` / Ctrl+C). |
 
-| Code | Meaning |
-| --- | --- |
-| 0 | success |
-| 1 | runtime error |
-| 2 | usage error |
-| 3 | network error |
-| 5 | interrupted |
+---
 
-Exit **4** was the download-manager-missing code; it is now unused (gap left
-to keep earlier codes stable).
+## 🛠️ Machine Protocol (`--json`)
 
-## 🛠️ Protocol details
+- **Standard Output (`stdout`):** Dedicated exclusively to machine-readable JSON data when `--json` is supplied.
+- **Diagnostic Output (`stderr`):** Progress bars, logs, and human-readable diagnostics are routed to `stderr`.
+- **Parsing Contract:** Automation scripts and GUI callers parse `stdout` safely without interference from logs.
 
-- **Query commands:** single JSON doc, e.g.
-  `{"games":[...],"count":42}`.
-- **Long-running commands:** progress lines go to **stderr**; stdout stays
-  machine-clean.
-- Every long command with `--json` emits its final result as one JSON doc on
-  completion.
-- Errors go to **stderr**; stdout stays machine-parseable even on failure.
+---
 
-## ✨ Examples
+## 🔗 Related Pages
 
-```sh
-lewdzone sync --json
-lewdzone info --game treasure-of-nadia --json
-lewdzone download --game treasure-of-nadia --version latest \
-  --platform PC --tab official --json
-lewdzone launch treasure-of-nadia
-lewdzone list --library --json
-```
-
-See also [Exit codes & errors](https://github.com/helix-origin/lewdzone-launcher/tree/main/.agents/rules/rule-12-error-handling.md) in the
-repo (`.agents/rules/rule-12-error-handling.md`).
+- [Architecture](Architecture)
+- [Downloads & In-App Streaming](Download-Managers)
+- [Archive Extraction & 7-Zip Guide](Archive-Extraction)
+- [Configuration](Configuration)
