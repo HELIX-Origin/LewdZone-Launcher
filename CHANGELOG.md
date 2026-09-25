@@ -1,189 +1,174 @@
-# 📜 LewdZone Launcher Changelog
+# LewdZone Launcher Changelog
 
-Historical record of every change to the repository. Each release anchors to a
-tag URL; commit entries link to their full commit. Newer releases are added at
-the top; the current development state lives under `Unreleased`.
-
----
-
-## ⏳ Unreleased
+## Unreleased
 
 (No unreleased changes.)
 
----
+## [v0.4.1](https://github.com/HELIX-Origin/LewdZone-Launcher/releases/tag/v0.4.1)
 
-## [v0.4.1](https://github.com/HELIX-Origin/LewdZone-Launcher/releases/tag/v0.4.1) — 2026-09-25
-
-Patch release cleaning up the resolver UI, unifying archive extraction behavior across all direct-stream downloads, and making the unified installer titlebar consistent with the main application.
-
-### Removed
-
-- **🗑️ feat(release): remove "Open in Browser" resolver button** [(dd43e58)](https://github.com/HELIX-Origin/LewdZone-Launcher/commit/dd43e5897c0e613da4bf71b1d70e4ac3e46c1313)
-  - The Secure Ad-Free Resolver now only offers "Open in App" as the primary capture path.
-
-### Fixed
-
-- **🔧 feat(release): unify archive extraction across all supported formats** [(dd43e58)](https://github.com/HELIX-Origin/LewdZone-Launcher/commit/dd43e5897c0e613da4bf71b1d70e4ac3e46c1313)
-  - `stream_target` and `stream_target_accelerated` auto-extract every supported archive format (`.zip`, `.7z`, `.rar`, `.tar.gz`, `.tar.bz2`, `.tar.xz`, `.tgz`, `.tbz2`, `.txz`, and SFX `.exe`) instead of only `.zip`.
-  - Eliminates leftover archives alongside downloads.
-- **🔧 feat(release): prevent duplicate extractions from background scanner** [(dd43e58)](https://github.com/HELIX-Origin/LewdZone-Launcher/commit/dd43e5897c0e613da4bf71b1d70e4ac3e46c1313)
-  - `ingest_completed_archives` now skips archives modified in the last 60 seconds and any archive whose path or target slug is already being processed by an active queue job.
+### Added
 
 ### Changed
 
-- **🎨 feat(release): adopt main-app custom titlebar in unified installer** [(dd43e58)](https://github.com/HELIX-Origin/LewdZone-Launcher/commit/dd43e5897c0e613da4bf71b1d70e4ac3e46c1313)
-  - Replaced the installer’s custom dark header with the frameless traffic-light titlebar used by the main app (theme glass, drag-to-move, macOS/Windows ordering).
+* Removed the "Open in Browser" button from the Secure Ad-Free Resolver; "Open in App" remains the primary capture path[(dd43e58)](https://github.com/HELIX-Origin/LewdZone-Launcher/commit/dd43e5897c0e613da4bf71b1d70e4ac3e46c1313)
+* Unified archive auto-extraction across all supported formats and delete archives after successful extraction[(dd43e58)](https://github.com/HELIX-Origin/LewdZone-Launcher/commit/dd43e5897c0e613da4bf71b1d70e4ac3e46c1313)
+* Replaced the installer header with the main-app frameless traffic-light titlebar[(dd43e58)](https://github.com/HELIX-Origin/LewdZone-Launcher/commit/dd43e5897c0e613da4bf71b1d70e4ac3e46c1313)
+
+### Fixed
+
+* Prevented the background scanner from re-extracting archives already handled by active queue jobs[(dd43e58)](https://github.com/HELIX-Origin/LewdZone-Launcher/commit/dd43e5897c0e613da4bf71b1d70e4ac3e46c1313)
+
+## [v0.4.0](https://github.com/HELIX-Origin/LewdZone-Launcher/releases/tag/v0.4.0)
+
+### Added
+
+* Added multi-stream download acceleration with up to 4 concurrent HTTP byte-range streams for direct-file hosts[(0d2887c)](https://github.com/HELIX-Origin/LewdZone-Launcher/commit/0d2887c0362fd5f1b1cd50e8f409931f82b9eb6f)
+* Expanded `DIRECT_STREAM_HOSTS` to include `fileknot`, `pixeldrain`, `mediafire`, and `workupload`[(0d2887c)](https://github.com/HELIX-Origin/LewdZone-Launcher/commit/0d2887c0362fd5f1b1cd50e8f409931f82b9eb6f)
+
+### Changed
+
+* Increased single-stream I/O buffers from 128 KB to 512 KB with 1 MB `BufWriter` caching[(0d2887c)](https://github.com/HELIX-Origin/LewdZone-Launcher/commit/0d2887c0362fd5f1b1cd50e8f409931f82b9eb6f)
+
+### Fixed
+
+* Eliminated duplicate native title bars on the installer wizard[(0d2887c)](https://github.com/HELIX-Origin/LewdZone-Launcher/commit/0d2887c0362fd5f1b1cd50e8f409931f82b9eb6f)
+* Silenced PowerShell subprocess console windows during installation and shortcut creation[(0d2887c)](https://github.com/HELIX-Origin/LewdZone-Launcher/commit/0d2887c0362fd5f1b1cd50e8f409931f82b9eb6f)
+* Launched the installer as a detached process to avoid file-lock contention[(0d2887c)](https://github.com/HELIX-Origin/LewdZone-Launcher/commit/0d2887c0362fd5f1b1cd50e8f409931f82b9eb6f)
+
+## [v0.3.3](https://github.com/HELIX-Origin/LewdZone-Launcher/releases/tag/v0.3.3)
+
+### Added
+
+* Added native backend navigation and a desktop Chrome user agent for the resolver webview to bypass bot detection[(27a8b6e)](https://github.com/HELIX-Origin/LewdZone-Launcher/commit/27a8b6e890584ae9faaf4a96ad165884c0d78132)
+* Added an `isNavigating` loading state in the resolver view[(27a8b6e)](https://github.com/HELIX-Origin/LewdZone-Launcher/commit/27a8b6e890584ae9faaf4a96ad165884c0d78132)
+
+### Changed
+
+* Removed eager URL regex queueing; the resolver now waits for the user to click the actual download button[(27a8b6e)](https://github.com/HELIX-Origin/LewdZone-Launcher/commit/27a8b6e890584ae9faaf4a96ad165884c0d78132)
+
+### Fixed
+
+* Fixed in-window link capture by converting `target="_blank"` to `target="_self"` and overriding `window.open`[(27a8b6e)](https://github.com/HELIX-Origin/LewdZone-Launcher/commit/27a8b6e890584ae9faaf4a96ad165884c0d78132)
+
+## [v0.3.2](https://github.com/HELIX-Origin/LewdZone-Launcher/releases/tag/v0.3.2)
+
+### Added
+
+* Added automatic termination of stale background/tray instances on installer launch[(ab05908)](https://github.com/HELIX-Origin/LewdZone-Launcher/commit/ab05908c3812a2edcca098248caf24a4e815ebff)
+
+### Changed
+
+* Made the default main window invisible during installer mode and destroy it in `run_installer()`[(ab05908)](https://github.com/HELIX-Origin/LewdZone-Launcher/commit/ab05908c3812a2edcca098248caf24a4e815ebff)
+* Deferred app launch until the user explicitly clicks Finish with "Launch after finish" enabled[(ab05908)](https://github.com/HELIX-Origin/LewdZone-Launcher/commit/ab05908c3812a2edcca098248caf24a4e815ebff)
+
+### Fixed
+
+* Fixed WebView2 `Chrome_WidgetWin_0` unregistration error by destroying all webview windows before exit[(ab05908)](https://github.com/HELIX-Origin/LewdZone-Launcher/commit/ab05908c3812a2edcca098248caf24a4e815ebff)
+
+## [v0.3.1](https://github.com/HELIX-Origin/LewdZone-Launcher/releases/tag/v0.3.1)
+
+### Added
+
+* Added platform-specific installer naming to avoid CI asset collisions[(081803d)](https://github.com/HELIX-Origin/LewdZone-Launcher/commit/081803d6df3926e7591747ee3accbe8903065d42)
+* Added detection and cleanup of legacy Tauri NSIS install directories[(081803d)](https://github.com/HELIX-Origin/LewdZone-Launcher/commit/081803d6df3926e7591747ee3accbe8903065d42)
+
+### Changed
+
+* Enhanced the installer to terminate running `lewdzone` processes before install/uninstall[(081803d)](https://github.com/HELIX-Origin/LewdZone-Launcher/commit/081803d6df3926e7591747ee3accbe8903065d42)
+
+### Fixed
+
+* Fixed direct archive URL detection in the Secure Resolver so archive links enqueue immediately[(081803d)](https://github.com/HELIX-Origin/LewdZone-Launcher/commit/081803d6df3926e7591747ee3accbe8903065d42)
+
+## [v0.3.0](https://github.com/HELIX-Origin/LewdZone-Launcher/releases/tag/v0.3.0)
+
+### Added
+
+* Added single-instance enforcement via `tauri-plugin-single-instance`[(4745093)](https://github.com/HELIX-Origin/LewdZone-Launcher/commit/4745093e04c7b4c96a906211e7680c5ddaf776df)
+* Added client cache and smart polling stores for catalog, details, library, favorites, and settings[(4745093)](https://github.com/HELIX-Origin/LewdZone-Launcher/commit/4745093e04c7b4c96a906211e7680c5ddaf776df)
+* Added a persistent background service for queue execution and archive ingestion[(4745093)](https://github.com/HELIX-Origin/LewdZone-Launcher/commit/4745093e04c7b4c96a906211e7680c5ddaf776df)
+* Added the in-app Unified Installer / Uninstaller wizard[(4745093)](https://github.com/HELIX-Origin/LewdZone-Launcher/commit/4745093e04c7b4c96a906211e7680c5ddaf776df)
+* Added child-window archive interception via Tauri `on_download`[(4745093)](https://github.com/HELIX-Origin/LewdZone-Launcher/commit/4745093e04c7b4c96a906211e7680c5ddaf776df)
+* Added 2-column Store and Library detail layouts with metadata sidebars[(4745093)](https://github.com/HELIX-Origin/LewdZone-Launcher/commit/4745093e04c7b4c96a906211e7680c5ddaf776df)
+* Added clean story synopsis scraping from `.content-block.main-content`[(4745093)](https://github.com/HELIX-Origin/LewdZone-Launcher/commit/4745093e04c7b4c96a906211e7680c5ddaf776df)
+* Added clean library title formatting across manifests and UI[(4745093)](https://github.com/HELIX-Origin/LewdZone-Launcher/commit/4745093e04c7b4c96a906211e7680c5ddaf776df)
+* Added `enqueue_intercept()` and an intercept processing branch to the download queue[(4745093)](https://github.com/HELIX-Origin/LewdZone-Launcher/commit/4745093e04c7b4c96a906211e7680c5ddaf776df)
+
+### Changed
+
+* Added a `title` column to `queue_job` for Title Case game names[(4745093)](https://github.com/HELIX-Origin/LewdZone-Launcher/commit/4745093e04c7b4c96a906211e7680c5ddaf776df)
+* Replaced legacy WiX/NSIS installers with the unified `LewdZone-Setup` wizard[(4745093)](https://github.com/HELIX-Origin/LewdZone-Launcher/commit/4745093e04c7b4c96a906211e7680c5ddaf776df)
+* Removed all LewdClips video and external clip references[(4745093)](https://github.com/HELIX-Origin/LewdZone-Launcher/commit/4745093e04c7b4c96a906211e7680c5ddaf776df)
+
+### Fixed
+
+* Fixed the redirect loop in the go-token resolver window[(4745093)](https://github.com/HELIX-Origin/LewdZone-Launcher/commit/4745093e04c7b4c96a906211e7680c5ddaf776df)
+
+## [v0.2.1](https://github.com/HELIX-Origin/LewdZone-Launcher/releases/tag/v0.2.1)
+
+### Added
+
+* Added SteamGridDB API key settings with masked input and SQLite secret storage[(4cb0a36)](https://github.com/HELIX-Origin/LewdZone-Launcher/commit/4cb0a362922771d7370d72ccc7d244119e659f95)
+
+### Changed
+
+* Aligned CI packaging with the official Tauri v2 GitHub Actions workflow[(4cb0a36)](https://github.com/HELIX-Origin/LewdZone-Launcher/commit/4cb0a362922771d7370d72ccc7d244119e659f95)
+* Switched `beforeBuildCommand` to `npm run build` and enforced `shell: true` in the build script[(4cb0a36)](https://github.com/HELIX-Origin/LewdZone-Launcher/commit/4cb0a362922771d7370d72ccc7d244119e659f95)
+
+### Fixed
+
+* Fixed `ENOENT` spawn failures on Linux/macOS during Tauri release bundling[(4cb0a36)](https://github.com/HELIX-Origin/LewdZone-Launcher/commit/4cb0a362922771d7370d72ccc7d244119e659f95)
+
+## [v0.2.0](https://github.com/HELIX-Origin/LewdZone-Launcher/releases/tag/v0.2.0)
+
+### Added
+
+* Added native per-OS desktop and Start Menu shortcuts[(2511138)](https://github.com/HELIX-Origin/LewdZone-Launcher/commit/2511138b4477bdc6e7456c458b6806378d267a94)
+* Added gameplay playtime and session tracking via detached background workers[(2511138)](https://github.com/HELIX-Origin/LewdZone-Launcher/commit/2511138b4477bdc6e7456c458b6806378d267a94)
+* Added library sort controls with playtime badges and last-played timestamps[(2511138)](https://github.com/HELIX-Origin/LewdZone-Launcher/commit/2511138b4477bdc6e7456c458b6806378d267a94)
+* Added migration `006_game_playtime` for `game_stats`[(2511138)](https://github.com/HELIX-Origin/LewdZone-Launcher/commit/2511138b4477bdc6e7456c458b6806378d267a94)
+* Added the `lewdzone shortcuts [SLUG]` CLI command[(2511138)](https://github.com/HELIX-Origin/LewdZone-Launcher/commit/2511138b4477bdc6e7456c458b6806378d267a94)
+
+### Changed
+
+* Updated `launch.rs` and `library.rs` to record and load playtime statistics[(2511138)](https://github.com/HELIX-Origin/LewdZone-Launcher/commit/2511138b4477bdc6e7456c458b6806378d267a94)
+
+### Fixed
+
+## [v0.1.0](https://github.com/HELIX-Origin/LewdZone-Launcher/releases/tag/v0.1.0)
+
+### Added
+
+* Initial Tauri 2 + Rust desktop GUI and native CLI sharing one core[(b290bfc)](https://github.com/HELIX-Origin/LewdZone-Launcher/commit/b290bfc765399c941db27fc3679d5cb9e594d056)
+* Catalog browsing, search, and filtering for lewdzone.com[(b290bfc)](https://github.com/HELIX-Origin/LewdZone-Launcher/commit/b290bfc765399c941db27fc3679d5cb9e594d056)
+* Two-step go-link token resolver with sandboxed challenge webview[(b290bfc)](https://github.com/HELIX-Origin/LewdZone-Launcher/commit/b290bfc765399c941db27fc3679d5cb9e594d056)
+* In-app streaming for direct-file hosts and OS default-handler dispatch for cloud hosts[(b290bfc)](https://github.com/HELIX-Origin/LewdZone-Launcher/commit/b290bfc765399c941db27fc3679d5cb9e594d056)
+* Host blacklist for defunct/malicious mirrors[(b290bfc)](https://github.com/HELIX-Origin/LewdZone-Launcher/commit/b290bfc765399c941db27fc3679d5cb9e594d056)
+* 7-Zip CLI multi-format extraction with real-time progress[(b290bfc)](https://github.com/HELIX-Origin/LewdZone-Launcher/commit/b290bfc765399c941db27fc3679d5cb9e594d056)
+* Flat library layout with `app.json` manifests and game scanner/launcher[(b290bfc)](https://github.com/HELIX-Origin/LewdZone-Launcher/commit/b290bfc765399c941db27fc3679d5cb9e594d056)
+* Persistent SQLite download queue[(b290bfc)](https://github.com/HELIX-Origin/LewdZone-Launcher/commit/b290bfc765399c941db27fc3679d5cb9e594d056)
+* System tray integration with quick-access context menu[(b290bfc)](https://github.com/HELIX-Origin/LewdZone-Launcher/commit/b290bfc765399c941db27fc3679d5cb9e594d056)
+* Dynamic Nord/Dracula/Material theming[(b290bfc)](https://github.com/HELIX-Origin/LewdZone-Launcher/commit/b290bfc765399c941db27fc3679d5cb9e594d056)
+* External metadata and artwork enrichment from SteamGridDB, VNDB, IGDB, itch.io, Steam, and IndieDB[(b290bfc)](https://github.com/HELIX-Origin/LewdZone-Launcher/commit/b290bfc765399c941db27fc3679d5cb9e594d056)
+
+### Changed
+
+### Fixed
 
 ---
 
-| Component | Description | Status |
-| :--- | :--- | :--- |
-| Resolver UI | "Open in Browser" button removed | ✅ |
-| Download core | All supported archives auto-extract and are deleted after extraction | ✅ |
-| Background service | Scanner skips active downloads and recently modified archives | ✅ |
-| Unified installer | Custom titlebar matches main app | ✅ |
+| Version | Title | Description | Status |
+| :---: | :---: | :---: | :---: |
+| v0.4.1 | Resolver cleanup, unified extraction, installer titlebar | Removed browser resolver button; auto-extract all archive formats; matching installer titlebar | ✅ |
+| v0.4.0 | Accelerated downloads, installer UI fixes | Multi-stream downloads; expanded direct-stream hosts; fixed installer titlebar and console flashes | ✅ |
+| v0.3.3 | Resolver navigation fixes | Desktop user agent; removed premature queueing; in-window capture; loading state | ✅ |
+| v0.3.2 | Installer process isolation | Hidden main window during setup; stale-instance termination; deferred launch; clean WebView2 teardown | ✅ |
+| v0.3.1 | Installer naming and capture fixes | Platform-specific installer names; legacy NSIS cleanup; process termination; direct-archive capture | ✅ |
+| v0.3.0 | Unified installer wizard and UI refresh | Single-instance enforcement; background service; installer wizard; archive interception; 2-column layouts | ✅ |
+| v0.2.1 | CI packaging and SteamGridDB settings | Tauri v2 CI alignment; SteamGridDB API key persistence | ✅ |
+| v0.2.0 | Shortcuts, playtime tracking, and CI packaging | Native shortcuts; session tracking; library sorting; multi-platform CI packaging | ✅ |
+| v0.1.0 | Initial release | First public release with catalog, resolver, downloads, extraction, library, and theming | ✅ |
 
 ---
 
-## [v0.4.0](https://github.com/HELIX-Origin/LewdZone-Launcher/releases/tag/v0.4.0) — 2026-09-25
-
-Minor release introducing multi-threaded accelerated downloads for in-app archive downloads, eliminating duplicate title bars on the installer wizard, and preventing background console windows from spawning during installation and maintenance tasks.
-
-### 🚀 Key Improvements & Features
-
-- **Multi-Stream Download Acceleration:** Implemented parallel segmented chunk downloading (`scraper::download_file`) supporting up to 4 concurrent HTTP byte-range (`Range: bytes=start-end`) streams writing directly into preallocated archive files via OS positioned writes (`seek_write` on Windows, `write_all_at` on Unix). Multiplies throughput by 3x–6x on remote direct-file hosts (Pixeldrain, Fileknot, Mediafire, Workupload).
-- **Optimized Single-Stream Buffer:** Expanded streaming I/O buffers from 128KB to 512KB with 1MB `BufWriter` caching for non-range streams and small archives, reducing syscall overhead and improving drive write performance.
-- **Direct-Stream Host Expansion:** Synchronized `DIRECT_STREAM_HOSTS` across download core and background service to include `fileknot`, `pixeldrain`, `mediafire`, and `workupload`.
-
-### 🐛 Bug Fixes & Improvements
-
-- **Eliminated Duplicate Installer Title Bars:** Configured `decorations: false` on the setup webview window in both `run_installer` and `open_installer_window`, ensuring only the custom HTML frameless titlebar header renders without an overlapping OS native titlebar.
-- **Silenced Subprocess Console Windows:** Added `CREATE_NO_WINDOW` (`0x08000000`) flags to all PowerShell process invocations in `core/installer.rs` and `core/shortcuts.rs`, completely preventing flashing console (`conhost.exe`) popups during installation, shortcut creation, and registry modifications.
-- **Isolated Installer Process Launch:** Updated `open_installer_window` to spawn the installer as an independent detached process (`--installer` / `--maintenance`) and cleanly exit the main launcher application, avoiding file lock contention.
-
----
-
-## [v0.3.3](https://github.com/HELIX-Origin/LewdZone-Launcher/releases/tag/v0.3.3) — 2026-09-25
-
-Patch release fixing in-app download resolver navigation against bot detection mechanisms, eliminating premature download queueing prior to user interaction, and ensuring seamless native archive download capture.
-
-### 🐛 Bug Fixes & Improvements
-
-- **Resolver In-App Navigation (Blank Page Fix):** Configured the resolver webview with a standard desktop Chrome user agent, enabled cross-origin navigation, and added native backend navigation (`resolver_navigate_in_app`). Bypasses embedded WebView2 bot/Cloudflare detection on file hosts (Pixeldrain, Mediafire, Mega) that previously rendered a blank white page.
-- **Removed Premature Download Queueing:** Eliminated the eager URL regex check in `openInApp()` that immediately added landing page URLs containing filenames to the download queue. The launcher now correctly waits for the user to view the host page and click the actual download button.
-- **In-Window Link & Popup Capture:** Injected an initialization script converting `target="_blank"` anchor clicks to `target="_self"` and overriding `window.open` to navigate inside the same window, guaranteeing that download clicks are caught by the native `on_download` hook.
-- **Resolver Navigation Loading State:** Added an `isNavigating` loading state in the resolver view informing the user that the host download page is loading in-app.
-
----
-
-## [v0.3.2](https://github.com/HELIX-Origin/LewdZone-Launcher/releases/tag/v0.3.2) — 2026-09-24
-
-Patch release isolating the installer into its own dedicated process, preventing premature application window spawning during setup, deferring launch until setup completion, and fixing WebView2 window unregistration errors on exit.
-
-### 🐛 Bug Fixes & Improvements
-
-- **Installer Process Isolation:** Configured the application's default `"main"` window to `visible: false` and explicitly destroy it in `run_installer()`, preventing the main game launcher window and background services from spawning alongside the installer wizard.
-- **Immediate Stale Instance Termination:** The unified installer terminates any older or lingering background/tray application instances immediately upon launch so they cannot intercept single-instance focus or show obsolete UI during setup.
-- **Deferred Launch on Completion:** Removed premature executable spawning from `perform_install()`. The installed launcher now only launches via `installer_launch_app` when the user explicitly clicks "Finish" on the completion screen with "Launch after finish" enabled.
-- **WebView2 Clean Window Teardown (Error 1412 Fix):** Fixed `Failed to unregister class Chrome_WidgetWin_0. Error = 1412` by explicitly destroying all open webview windows before `app.exit(0)` and when closing the installer and resolver windows.
-
----
-
-## [v0.3.1](https://github.com/HELIX-Origin/LewdZone-Launcher/releases/tag/v0.3.1) — 2026-09-24
-
-Patch release fixing installer file naming collisions across platforms, adding automatic stale instance termination during installation/uninstallation, migrating legacy install directories, and improving direct archive link interception.
-
-### 🐛 Bug Fixes & Improvements
-
-- **Platform-Specific Installer Naming:** Updated the installer packager (`scripts/build-installer.mjs`) to generate clearly distinguished binaries for each operating system and architecture (`LewdZone-Setup-v0.3.1-windows-x64.exe`, `LewdZone-Setup-v0.3.1-linux-x64`, `LewdZone-Setup-v0.3.1-macos-x64`/`arm64`). Prevents CI asset collisions between Linux and macOS and makes platform targets immediately clear to users.
-- **Running Instance Termination During Install/Uninstall:** Enhanced the installer engine (`core/installer.rs`) to automatically detect and terminate any running `lewdzone` processes before deploying files or uninstalling. Resolves file locks (`Access is denied`) and prevents old background/tray instances from intercepting single-instance focus on update.
-- **Legacy Installation Migration:** Added detection and automatic cleanup for legacy Tauri NSIS directories (`%LOCALAPPDATA%\LewdZone Launcher\`) to prevent stale executable versions from persisting alongside new unified installs.
-- **Instant In-App Capture for Direct Archives:** Enhanced "Open in App" in the Secure Resolver child window to detect direct archive URLs (`.zip`, `.7z`, `.rar`, `.001`, `.part1.rar`, etc.) and immediately enqueue them to the download worker, seamlessly closing the resolver window. Expanded archive format detection in Tauri's webview download interceptor.
-
----
-
-## [v0.3.0](https://github.com/HELIX-Origin/LewdZone-Launcher/releases/tag/v0.3.0) — 2026-09-24
-
-Milestone release featuring the modern in-app Unified Installer / Uninstaller wizard, child-window archive download interception, 2-column store and library layouts with dedicated metadata sidebars, clean synopsis scraping, and clean game title handling across manifests and UI.
-
-### ✨ Highlights
-
-- **Single-Instance Enforcement (`tauri-plugin-single-instance`):** Integrated single-instance plugin ensuring launching duplicate instances automatically focuses the existing running application window.
-- **Client Cache & Smart Polling (`src/lib/stores/clientCache.ts`):** Centralized Svelte stores for catalog, details, library, favorites, and settings with smart conditional polling that eliminates redundant page reloads and network queries while keeping download progress responsive.
-- **Canonical Release Descriptors & Title Case Formatting:** Added dedicated `title` column to `queue_job` (DB migration `008_queue_job_title`), ensuring Title Case game names across the Downloads page and resolving chapter/version separation (`Version 1.01 Chapter 1-4`) across the Secure Ad-Free Resolver child window, download queue, and filesystem archives.
-- **Persistent Background Service (`src-tauri/src/core/service.rs`):** A dedicated background worker running alongside the launcher application, coordinating task queue execution, external host URL resolution (Pixeldrain, Mediafire, Fileknot), streaming downloads, and automatic ingestion of completed archives from the downloads directory.
-- **Privacy & Secure Database Architecture:** Ensured the SQLite database (`lewdzone.db`) is strictly local and never bundled or committed to the repository. The installer checks and initializes a fresh database schema on install (preserved if it already exists), keeping user tokens, secrets, and library progress completely private in `%APPDATA%\lewdzone\`.
-- **Resolver Window & In-App Interception:** Fixed redirect loop in the go-token resolver window. Added an "Open in App" option alongside "Open in Browser" so users can navigate hosting landing pages directly in-app, where the Tauri webview's `on_download` hook captures the archive trigger automatically.
-- **Modern Unified Installer Wizard (`LewdZone-Setup.exe`):** Replaced legacy WiX/NSIS installers with an in-app setup and maintenance wizard (`src/routes/installer/+page.svelte`). Handles clean installs, component selection, start menu shortcuts, uninstallation, and maintenance mode directly in a single lightweight binary.
-- **Child-Window Archive Interception:** Intercepts archive download requests (`.zip`, `.7z`, `.rar`, `.exe` SFX, `.tar.gz`) clicked within the redirect resolver window via Tauri 2's `on_download` hook. Cancels the OS browser dialog, captures the direct URL, and streams the archive directly in-app to `<LibraryRoot>/downloads/` with live byte progress, automatically queuing extraction upon completion.
-- **2-Column Layout & Metadata Sidebars:** Restructured both Store (`/store/[slug]`) and Library (`/library/[slug]`) views into a modern 2-column layout (`1fr 320px`) with a sticky metadata card. Displays game status badges, developer, engine, size on disk, rating, censorship, platform badges, and direct external links to LewdZone, VNDB, Steam, and itch.io.
-- **Clean Story Synopsis:** Upgraded the scraper to parse clean game plot and synopsis paragraphs directly from `.content-block.main-content`, eliminating SEO promotional boilerplate (such as version numbers, file sizes, walkthrough adverts, and download links).
-- **Clean Library Titles:** Sanitized game titles across local folder scanning, manifest generation (`app.json`), and UI display, stripping archive extensions, version suffixes, and platform tags.
-
-### 🚀 Key Improvements & Features
-
-- **Queue & Download Engine:** Added `enqueue_intercept()` and `"intercept"` processing branch in `core/queue.rs`, enabling direct-URL streaming and extraction dispatch without going through go-link resolvers.
-- **Library & Title Parsing:** Added `clean_archive_stem()`, `clean_folder_title()`, `format_display_title()`, and frontend format module (`src/lib/format.ts`) to ensure consistent display titles across all views.
-- **LewdClips Removal:** Completely removed all third-party video and external clip links and fixture references from the codebase.
-- **CI / Distribution Build:** Added `scripts/build-installer.mjs` and updated GitHub Actions packaging to build and publish the unified setup binary to `dist/installer/`.
-
----
-
-## [v0.2.1](https://github.com/HELIX-Origin/LewdZone-Launcher/releases/tag/v0.2.1) — 2026-09-24
-
-Patch release fixing cross-platform CI packaging builds for Linux and macOS, aligning workflow configuration with the official Tauri v2 GitHub Actions guide, and adding SteamGridDB API key settings persistence to the SQLite secret table.
-
-### 🐛 Bug Fixes
-
-- **CI Packaging Pipeline:** Fixed `ENOENT` spawn failure on Linux and macOS during Tauri release bundling. `beforeBuildCommand` in `tauri.conf.json` was switched to standard `npm run build` and `scripts/build-with-log.mjs` was updated to enforce `shell: true` across all operating systems.
-- **Official Tauri v2 Alignment:** Updated `.github/workflows/package.yml` per the official Tauri v2 pipeline guide, installing dual macOS targets (`aarch64-apple-darwin` and `x86_64-apple-darwin`), setting `node-version: lts/*`, and providing native system libraries (`libwebkit2gtk-4.1-dev`, `libappindicator3-dev`, `librsvg2-dev`, `patchelf`).
-- **Tauri Native Artifact Dropping:** Replaced the legacy `build/` root directory and `copy-installers.mjs` script with native bundle collection directly from `src-tauri/target/release/bundle/`. Cleaned `.gitignore` and `package.json` scripts.
-- **Workflow Dispatch Safety:** Scoped `tagName` in `tauri-action` to `v*` tag push events so manual packaging test dispatches upload artifacts cleanly without attempting to publish duplicate release tags.
-
-### ✨ Features
-
-- **SteamGridDB API Key Settings:** Added a new *Content Providers* section to the Settings page. Users can input their SteamGridDB API key with masked password display. Keys are securely stored in the SQLite `secret` table via `settings_set` (`secret: true`) and never written to `config.json`. Displays live *● Key saved* / *○ Not configured* status indicators and provides Save and Clear controls.
-
----
-
-## [v0.2.0](https://github.com/HELIX-Origin/LewdZone-Launcher/releases/tag/v0.2.0) — 2026-09-24
-
-Milestone v0.2.0 release introducing native operating system desktop shortcuts, gameplay playtime and session tracking, library sort controls, and automated cross-platform CI/CD packaging.
-
-### ✨ Highlights
-
-- **Native Per-OS Shortcuts:** Generate desktop and start menu shortcuts with a single click in the Library or via `lewdzone shortcuts <slug>` from the terminal. On Windows, shortcuts point directly to the game binary with the executable's embedded icon index.
-- **Playtime & Session Tracking:** The launcher monitors game child processes in detached background worker threads, calculating elapsed playtime upon exit and persisting metrics to SQLite (`game_stats`).
-- **Library Sorting:** Sort games by A–Z, Recently Played, Most Played, or Recently Installed, accompanied by formatted playtime badges and last-played timestamps.
-- **Automated Multi-Platform Packaging:** Multi-OS CI/CD packaging workflow (`.github/workflows/package.yml`) building Windows (NSIS + MSI), macOS (.app + DMG), and Linux (AppImage + DEB) packages.
-
-### 🚀 Key Improvements & Features
-
-- **Database:** Added migration `006_game_playtime` creating `game_stats` table tracking `playtime_seconds`, `play_count`, and `last_played_at`.
-- **Core Engine:** Updated `launch.rs` with child process wait listener, and updated `library.rs` (`InstalledApp`) with playtime statistics loading.
-- **Shortcuts Generator:** Added `shortcuts.rs` implementing cross-platform shortcut generation for Windows (`.lnk`), Linux (`.desktop`), and macOS (`.command`).
-- **CLI Commands:** Added `lewdzone shortcuts [SLUG]` command and updated CLI parser with full feature parity.
-- **UI / Svelte Frontend:** Added shortcut button on game cards, shortcut toast alert, sort dropdown, and playtime badges.
-- **Documentation:** Added `Shortcuts & Playtime Tracking` guide to the GitHub Wiki and updated CLI reference.
-
----
-
-## [v0.1.0](https://github.com/HELIX-Origin/LewdZone-Launcher/releases/tag/v0.1.0) — 2026-09-24
-
-Initial release of LewdZone Launcher — a cross-platform desktop game launcher and native CLI engine for lewdzone.com.
-
-### ✨ Features & Capabilities
-
-- **Unified Desktop GUI & Native Rust CLI**: Built on Tauri 2 and Rust, sharing a single core engine between the desktop GUI and the standalone command-line client (`lewdzone <cmd> --json`) with 100% feature parity.
-- **Built-in Catalog Browsing & Search**: Built-in scraper for lewdzone.com catalog with tag/genre filtering, engine selectors (Ren'Py, RPG Maker, Unity, HTML), release status, and pagination.
-- **Two-Step Go-Link Token Resolver**: Automatic resolution of `#t=v1...` go-links via API and sandboxed challenge webview for countdown and turnstile verification.
-- **Smart Download Routing**: In-app streaming with real-time byte counters and speed tracking for direct hosts (`fileknot`), plus seamless OS default handler dispatch for cloud storage hosts (`mega`, `google`, `dropbox`, `mediafire`, `pixeldrain`, `workupload`, `uploadhaven`, `transfaze`).
-- **Defunct & Malicious Host Shielding**: Host blacklist rejecting dead, defunct, or malicious mirrors (`gofile`, `zippyshare`, `cdnclick`, `anonfiles`, `uptobox`, `yourfilestore`, `qiwi`, `transfersh`).
-- **High-Performance 7-Zip CLI Extraction**: High-speed, multi-format archive extraction (`.7z`, `.zip`, `.rar`, `.tar`, `.tar.xz`) utilizing standalone 7-Zip console binaries (`7za`/`7z`/`7zz`) with real-time progress parsing (`-bsp1`) and background execution.
-- **Organized Flat Library Layout**: Clean file hierarchy (`<library-root>/downloads/<archive>` and `<library-root>/installed/<slug>/app.json`) removing engine subfolder clutter.
-- **Game Scanner & Launcher**: Automatic game discovery scanner, itch.io-compatible manifest generation, and game launch process tracking.
-- **Persistent SQLite Queue**: Sequential download queue with pause, resume, and cancellation controls.
-- **System Tray Integration**: Minimize-to-tray background operation with quick access context menu (Open, Library, Downloads, Store, Settings, Quit).
-- **Dynamic Theming**: Runtime stylesheet switching across Nord, Dracula, and Material themes without restarting the app.
-- **External Metadata & Artwork Enrichment**: Metadata and artwork pipeline fetching posters and hero banners from SteamGridDB, VNDB, IGDB, itch.io, Steam, and IndieDB with secure SQLite secret storage.
-- **Offline Test Suite & Verification**: 100% passing hermetic test suites with 183 Rust core tests and 31 Svelte Vitest frontend tests.
+**Last updated:** 2026-09-25
