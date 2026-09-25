@@ -1,43 +1,45 @@
----
-name: release-notes
-description: Template for GitHub release notes
----
-
-# Release Notes: v{{ version }}
+# LewdZone Launcher v{{ version }}
 
 **Release date:** {{ YYYY-MM-DD }}
 
-## Highlights
+## ✨ Highlights
 
-{{ 2–3 sentence summary. }}
+{{ 2–3 sentence summary for users. }}
 
-## What's new
+## 🚀 Key Improvements & Features
 
-- {{ Feature / change }}
-- {{ Feature / change }}
+- **{{ Feature name }}** — {{ Feature description }}
+- **{{ Feature name }}** — {{ Feature description }}
 
-## Fixed
+## ✅ Changed
 
-- {{ Bug fix }}
+- {{ Change description }}
 
-## Removed / deprecated
+## 🐛 Fixed
 
-- {{ Removed feature }}
+- {{ Bug fix description }}
 
-## Install
+## 📦 Install & Upgrading
 
 Download the installer for your platform from the Assets section below:
 
-- Windows: `LewdZone-Launcher_{{ version }}_x64-setup.exe` / `.msi`
-- macOS: `LewdZone-Launcher_{{ version }}_x64.dmg`
-- Linux: `LewdZone-Launcher_{{ version }}_amd64.AppImage` / `.deb`
+- Windows: `LewdZone-Setup-v{{ version }}-windows-x64.exe`
+- macOS: `LewdZone-Setup-v{{ version }}-macos-arm64` (or `macos-x64` if available)
+- Linux: `LewdZone-Setup-v{{ version }}-linux-x64`
+
+Upgrade in place: run the new installer over your existing installation. The unified installer will repair/replace files and update shortcuts.
 
 ## Verification
 
-- `cargo fmt --check`, `cargo clippy -- -D warnings`, `cargo test` — green
-- `npm run check`, `npm run test` — green
-- `npm run tauri build` — green
+- `cargo check` + `cargo test` (src-tauri) — passed
+- `npm run check` (svelte-check) — 0 errors, 0 warnings
+- `npm run test` (vitest) — passed
+- `npm run build` — adapter-static site generated successfully
 
-## Full changelog
+## 📄 Changes & Commits
 
-See [CHANGELOG.md](../CHANGELOG.md).
+- `{{ commit title / description }}`
+- `{{ commit title / description }}`
+
+Full commit history: `git log --oneline {{ prev_tag }}..v{{ version }}`
+
