@@ -49,7 +49,10 @@ npm run test
 # 3. Build smoke test
 npm run tauri build
 
-# 4. CLI smoke test
+# 4. Installer build smoke test
+npm run build:installer
+
+# 5. CLI smoke test
 lewdzone --version
 lewdzone --help
 ```
@@ -58,13 +61,21 @@ lewdzone --help
 
 ## 📦 Distribution Packages
 
-Each official release publishes signed, standalone platform artifacts:
+Each official release publishes a single, unified per-platform installer built by
+`npm run build:installer`:
 
-- **Windows:** NSIS executable installer (`.exe`) and Windows Installer package (`.msi`).
-- **macOS:** Universal `.app` bundle and Apple Disk Image (`.dmg`) for Apple Silicon and Intel.
-- **Linux:** Portable AppImage (`.AppImage`), Debian package (`.deb`), and Red Hat package (`.rpm`).
+- **Windows:** `LewdZone-Setup-v<version>-windows-<arch>.exe`
+- **macOS:** `LewdZone-Setup-v<version>-macos-<arch>`
+- **Linux:** `LewdZone-Setup-v<version>-linux-<arch>`
 
-No secondary CLI sidecar packages are distributed: the CLI is built directly into the launcher executable.
+Generic names (`LewdZone-Setup.exe`, `LewdZone-Setup-windows-<arch>.exe`, etc.)
+are also emitted for stable CI links. No secondary CLI sidecar packages are
+distributed: the CLI is built directly into the launcher executable.
+
+Releases are created automatically when an annotated `v*` tag is pushed; the
+`.github/workflows/package.yml` workflow builds all three platforms, extracts
+release notes from `CHANGELOG.md`, and attaches the artifacts to the GitHub
+Release.
 
 ---
 

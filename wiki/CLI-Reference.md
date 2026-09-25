@@ -87,7 +87,7 @@ lewdzone download --game treasure-of-nadia --queue
 lewdzone download --game treasure-of-nadia --resume
 ```
 
-- **Direct hosts (`fileknot`):** Downloaded directly into `<library-root>/downloads/` with real-time percentage progress printed to stderr, then automatically decompressed into `<library-root>/installed/<slug>/` using the configured 7-Zip CLI ([Archive Extraction & 7-Zip](Archive-Extraction)).
+- **Direct hosts (`fileknot`, `pixeldrain`, `mediafire`, `workupload`):** Downloaded directly into the configured `download-dir` with real-time percentage progress printed to stderr, then automatically decompressed into `<library-root>/installed/<slug>/` using the configured 7-Zip CLI ([Archive Extraction & 7-Zip](Archive-Extraction)).
 - **Cloud hosts:** Dispatched to the OS default browser or desktop cloud client.
 
 ---
@@ -187,6 +187,7 @@ lewdzone favorites remove wild-life
 | `1` | Runtime Error | File I/O, extraction error, or database failure. |
 | `2` | Usage Error | Invalid arguments, unknown command, or missing required parameter. |
 | `3` | Network Error | Connection timeout, HTTP failure, or rate limit encounter. |
+| `4` | *(unused — reserved)* | Formerly download-manager-missing; kept open for script compatibility. |
 | `5` | Interrupted | User cancelled the operation (`SIGINT` / Ctrl+C). |
 
 ---

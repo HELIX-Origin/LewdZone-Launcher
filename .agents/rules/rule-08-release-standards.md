@@ -45,7 +45,7 @@ flowchart TD
    - `npm run check` (svelte-check) + `npm run test` (Vitest) clean
    - coverage ≥ floors (Rule 11)
    - `cargo audit` + `cargo deny` clean (Rule 10)
-   - CLI smoke: `lewdzone-launcher --version` prints the new version
+   - CLI smoke: `lewdzone --version` prints the new version
 3. **Tag format:** `vX.Y.Z` (e.g. `v1.4.2`), annotated, on the merge commit
    of the release branch.
 4. **Release title:** `vX.Y.Z — <Key Feature>`
@@ -66,14 +66,15 @@ flowchart TD
    Historical record: every change is listed there, newest releases on top. The
    release notes and the changelog entry are authored from the same commit list.
 
-6. **Publish via GitHub CLI, non-interactive, body from file:**
-   ```bash
-   gh release create vX.Y.Z \
-     --title "vX.Y.Z — <Key Feature>" \
-     --notes-file release-notes.md
-   ```
-7. **Post-release:** update the roadmap issue (Rule 04) to reflect the shipped
-   sub-issues; mark `Verification & Docs Sync` complete.
+6. **Publish by pushing the annotated tag.** The `.github/workflows/package.yml`
+    CI workflow triggers on every `v*` tag push, builds the unified installer on
+    all three platforms (`npm run build:installer`), extracts release notes from
+    `CHANGELOG.md`, and creates/publishes the GitHub Release with attached
+    artifacts. Do not run `gh release create` manually.
+7. **Post-release:** update the release body if needed (e.g. to use the
+    hand-authored notes file in `.agents/release-notes/vX.Y.Z.md`), update the
+    roadmap issue (Rule 04) to reflect the shipped sub-issues, and mark
+    `Verification & Docs Sync` complete.
 
 ## Pre-release (alpha/beta)
 

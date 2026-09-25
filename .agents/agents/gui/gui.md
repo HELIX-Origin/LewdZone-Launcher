@@ -24,9 +24,9 @@ efficient, cross-platform":
 | Installer size | ~5-15 MB | 80-200 MB | 30-140 MB |
 | Idle RAM | ~25-60 MB | 100-250 MB | 100-180 MB |
 | Cold start | ~0.2-0.5 s | 1-3 s | ~0.5-1 s |
-| Windows bundling | MSI + NSIS | NSIS/Squirrel | MSIX/NSIS |
-| macOS bundling | .app + DMG | DMG | .app + DMG |
-| Linux bundling | AppImage + deb + rpm | AppImage/deb | AppImage/deb |
+| Windows bundling | unified installer (exe) | NSIS/Squirrel | MSIX/NSIS |
+| macOS bundling | unified installer | DMG | .app + DMG |
+| Linux bundling | unified installer | AppImage/deb | AppImage/deb |
 | Auto-update | `@tauri-apps/plugin-updater` | electron-updater | desktop_updater |
 
 Web frontend uses Svelte + Vite inside the webview. The Rust core is the
@@ -56,7 +56,7 @@ the site, DB, or network directly (Rule 03 inward imports).
 ## CLI machine contract (for scripting)
 
 - **Query commands** (`catalog list`, `search`, `game info`): single
-  `lewdzone-launcher <cmd> --json` call; one JSON document on stdout.
+  `lewdzone <cmd> --json` call; one JSON document on stdout.
 - **Long-running commands** (`sync`, `download`, `rebuild shortcuts`): CLI
     prints progress on **stderr**; stdout stays machine-clean and yields one
     `--json` document on completion. Cancel via SIGTERM / graceful
@@ -127,19 +127,19 @@ The app is a **steam-like game launcher**, not a productivity tool:
 
 ```mermaid
 flowchart LR
-    B["tauri build"] --> W["Windows: MSI + NSIS"]
-    B --> M["macOS: .app + DMG"]
-    B --> L["Linux: AppImage + deb + rpm"]
+    B["npm run build:installer"] --> W["Windows: LewdZone-Setup.exe"]
+    B --> M["macOS: LewdZone-Setup"]
+    B --> L["Linux: LewdZone-Setup"]
     W --> CU["signed + auto-update (plugin-updater)"]
     M --> CU
-    L --> UP["repos update (apt/rpm) or AppImage"]
+    L --> CU
 ```
 
-- Windows: NSIS installer + optional MSI; uninstaller via OS Programs &
-  Features; signing optional (`signingIdentities`).
-- macOS: .app bundle + DMG; notarization for wide distribution.
-- Linux: AppImage (portable) + deb/rpm (system integration + uninstall via
-  package manager).
+- Windows: single executable installer; uninstaller via OS Apps & Features;
+  signing optional (`signingIdentities`).
+- macOS: single executable installer; notarization for wide distribution.
+- Linux: single executable installer (portable, no package manager
+  integration).
 - The CLI is the same binary as the app (Rule 13) — no sidecar artifact ships
   and no runtime language is required.
 
@@ -161,8 +161,6 @@ flowchart LR
 - `app-shell` — Tauri Rust core: windows, events, shared-core commands,
   bundling, signing, updater.
 - `view-designer` — web frontend views, layout, states, and the download flow.
-- `sidecar-driver` — GUI/CLI parity bridge: command-registry coverage,
-  exit-code mapping, progress adapters.
 
 ## Deliverables
 
@@ -175,9 +173,9 @@ flowchart LR
 
 - The **Steam-style grid** lists/searches/game-info and renders cover art from
   the shared core's catalog data scraped from the site.
-- A `tauri build` produces Windows installer, macOS DMG, Linux AppImage/deb/rpm
-  with working uninstall and clean stdout/stderr separation.
-- QueuePanel streams live progress from the core download command; cancel
-  records `status=interrupted` (exit code 5 mapping).
+- `npm run build:installer` produces a working unified installer for each
+  target OS with clean stdout/stderr separation.
+- QueuePanel streams live progress from the core download command; delete
+  removes finished or queued jobs.
 - Visual audit passes: colors match site palette via tokens, no default
   webview styling leaks, grid feels like a real game launcher.

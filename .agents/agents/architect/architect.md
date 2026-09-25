@@ -25,7 +25,8 @@ parsing details (Scraper family) or download-dispatch-specific details
 
 1. Modular Rust core. Each capability lives in its own module.
 2. The resolver hands resolved real URLs to the download family. Direct-file
-   hosts (e.g. `fileknot`) stream in-app with byte progress into the staging
+   hosts (`fileknot`, `pixeldrain`, `mediafire`, `workupload`) stream in-app
+   with byte progress into the staging
    folder; all other URLs open via the OS default handler (installed cloud
    app or browser).
 3. SQLite is the single source of persisted state (games, genres, versions,

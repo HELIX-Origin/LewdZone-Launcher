@@ -19,8 +19,7 @@ domain logic in the webview.
   functions the CLI calls — no subprocess management, no re-implementation.
 - Capability/permission model (Tauri v2 capabilities) so the webview only
   reaches the surfaces it needs.
-- Signing (`signingIdentities`, WiX/NSIS), notarization (macOS), updater
-  channel keys.
+- Signing (`signingIdentities`), notarization (macOS), updater channel keys.
 
 ## Shared-core wiring
 
@@ -39,15 +38,15 @@ flowchart TD
 
 | Platform | Bundle | Uninstall path |
 | --- | --- | --- |
-| Windows | NSIS (+ optional MSI) | Programs & Features |
-| macOS | .app + DMG | drag-out / Applications |
-| Linux | AppImage + deb + rpm | AppImage (portable) / pkgs |
+| Windows | unified installer (`.exe`) | Apps & Features |
+| macOS | unified installer | drag-out / Applications |
+| Linux | unified installer (portable) | delete executable |
 
 ## Rules
 
 1. Zero domain logic in the webview — the Rust core owns it; the webview is a
    thin renderer.
-2. One version for the whole binary; `lewdzone-launcher --version` reports it
+2. One version for the whole binary; `lewdzone --version` reports it
    (Rule 08).
 3. Never block the webview thread; commands are async, results via events or
    callback futures.
@@ -58,5 +57,5 @@ flowchart TD
 
 - `tauri dev` boots the app; `cargo run` runs the CLI — both hit the same
   core.
-- CI produces all three platform artifacts with working uninstall and a
-  `--version` smoke test on a sample build.
+- CI produces all three unified installer artifacts with working uninstall
+  and a `lewdzone --version` smoke test on a sample build.

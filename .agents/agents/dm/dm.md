@@ -26,8 +26,9 @@ subdomain) across at most 3 redirect hops; otherwise the stream is refused.
 
 - Manager detection was unreliable on real machines; the OS default handler is
   the only dependency present on every platform.
-- FDM/IDM are Windows-only; `fileknot` style direct hosts stream identically
-  on all platforms; cloud pages open in the app the user already installed.
+- FDM/IDM are Windows-only; `fileknot`, `pixeldrain`, `mediafire`, and
+  `workupload` style direct hosts stream identically on all platforms; cloud
+  pages open in the app the user already installed.
 - The stream seam (`download::StreamFn` + queue progress) is faked in tests,
   keeping the suite offline and fast.
 - "More" direct hosts later = one entry in `DIRECT_STREAM_HOSTS`, not a rewrite.
@@ -38,24 +39,26 @@ subdomain) across at most 3 redirect hops; otherwise the stream is refused.
 flowchart LR
     U["user requests download"] --> C["DownloadController.dispatch"]
     C --> D{"direct-file host?"}
-    D -- yes --> S["in-app stream (128 KiB chunks)"]
+    D -- yes --> S["in-app stream (512 KiB chunks)"]
     D -- no --> O["OS default handler (open_url)"]
     S --> P["queue bytes_done / bytes_total"]
     O --> P
     P --> FG["folder-organizer on completion"]
-    FG --> DB[""sqlite download_jobs""]
+    FG --> DB[""sqlite queue_job""]
 ```
 
 ### Contract
 
 - `core/download.rs`: `dispatch(job)` routes by
-  `DIRECT_STREAM_HOSTS = ["fileknot"]` (`is_direct_stream_host`); direct hosts
-  go to `stream_target`; everything else to `core::native::open_url`.
+  `DIRECT_STREAM_HOSTS = ["fileknot", "pixeldrain", "mediafire", "workupload"]`
+  (`is_direct_stream_host`); direct hosts go to `stream_target` or
+  `stream_target_accelerated`; everything else to `core::native::open_url`.
 - `core/download.rs` :: `stream_target` downloads via a streamable reader
-  (`scraper::download_stream`) in 128 KiB chunks, reporting
-  `(bytes_done, bytes_total)` through the progress seam.
+  (`scraper::download_stream`) in 512 KiB chunks with a 1 MiB `BufWriter`,
+  reporting `(bytes_done, bytes_total)` through the progress seam.
 - `core/queue.rs`: job statuses `queued → resolving → dispatching →
-  downloading → dispatched | failed`; byte progress is surfaced on the job.
+  downloading → extracting → dispatched | completed | failed | cancelled`; byte
+  progress is surfaced on the job.
 - `scraper/fetch.rs` :: `download_stream` follows redirects manually (≤3 hops,
   same-owner only) with `max_redirects(0)`, connect/header timeouts, and **no
   body-read timeout** that would abort a multi-GB stream.

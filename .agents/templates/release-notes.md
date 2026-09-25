@@ -32,9 +32,12 @@ Upgrade in place: run the new installer over your existing installation. The uni
 ## Verification
 
 - `cargo check` + `cargo test` (src-tauri) — passed
+- `cargo clippy -- -D warnings` — passed with 0 warnings
+- `cargo fmt --check` — clean
 - `npm run check` (svelte-check) — 0 errors, 0 warnings
 - `npm run test` (vitest) — passed
 - `npm run build` — adapter-static site generated successfully
+- `npm run build:installer` — unified installer packaged successfully
 
 ## 📄 Changes & Commits
 

@@ -17,7 +17,7 @@ redirect artifact. The token MUST be resolved here first.
 
 ```mermaid
 sequenceDiagram
-    participant App as lewdzone-launcher
+    participant App as lewdzone
     participant API as /go/api.php
 
     App->>App: extract token from go-link href

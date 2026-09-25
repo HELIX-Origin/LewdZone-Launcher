@@ -27,18 +27,19 @@ and the bundle must produce a working binary.
    ```
    - The first run builds the Rust crate; subsequent runs are incremental.
    - Watch the terminal for both Vite and cargo errors.
-3. **Build a release bundle** (produces installer artifacts):
+3. **Build a release binary** (produces the executable; no installer bundle):
    ```bash
    npm run tauri build
    ```
-   - Artifacts land in `src-tauri/target/release/bundle/`.
+   - The release binary lands in `src-tauri/target/release/lewdzone` (or
+     `lewdzone.exe` on Windows).
+   - To produce the unified installer artifact locally, run
+     `npm run build:installer`; artifacts land in `dist/installer/`.
 4. **Diagnose common failures**:
    - `svelte-check` errors → run `npm run check` and fix TypeScript/Svelte issues.
    - `cargo clippy` warnings → run `cargo clippy -- -D warnings` in `src-tauri/`.
    - Missing system dependencies on Linux → install `libwebkit2gtk-4.1-dev`,
      `libappindicator3-dev`, etc. (see Tauri Linux prerequisites).
-   - Windows NSIS/MSI missing → install WiX Toolset / NSIS and ensure they are on
-     `PATH`.
 
 ## Checkoff
 
@@ -46,5 +47,6 @@ and the bundle must produce a working binary.
 - [ ] `npm run tauri dev` launches the app window
 - [ ] `npm run check` reports 0 errors / 0 warnings
 - [ ] `npm run test` passes (Vitest)
-- [ ] `npm run tauri build` produces a bundle for the host OS
+- [ ] `npm run tauri build` produces a release binary for the host OS
+- [ ] `npm run build:installer` produces the unified installer artifact (when needed)
 - [ ] `cargo fmt --check` and `cargo clippy -- -D warnings` are clean

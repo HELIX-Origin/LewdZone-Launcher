@@ -14,7 +14,7 @@ LewdZone Launcher is built with **Tauri 2**, utilizing a Rust backend and a mode
    - **Windows:** Microsoft Visual Studio C++ Build Tools and WebView2 Runtime (pre-installed on Windows 10/11).
    - **Linux:** WebKitGTK and development libraries (e.g. `libwebkit2gtk-4.1-dev`, `libssl-dev`, `libayatana-appindicator3-dev`).
    - **macOS:** Xcode Command Line Tools (`xcode-select --install`).
-4. **7-Zip Console Executable (Runtime Tool):** Recommended for extracting `.zip`, `.7z`, and `.rar` downloads. See the **[Archive Extraction & 7-Zip Setup Guide](Archive-Extraction)**.
+4. **7-Zip Console Executable (Runtime Tool):** Recommended for extracting `.zip`, `.7z`, `.rar`, `.tar.gz`, `.tar.bz2`, `.tar.xz`, and SFX `.exe` downloads. See the **[Archive Extraction & 7-Zip Setup Guide](Archive-Extraction)**.
 
 ---
 
@@ -41,23 +41,35 @@ Test the binary:
 
 ## 💻 Building the Desktop Application
 
-To compile the production desktop application and bundle platform installers:
+To compile the production desktop application:
 
 ```bash
 # Install frontend dependencies from the repository root
 npm install
 
-# Build release bundles
+# Build the release binary
 npm run tauri build
 ```
 
-Generated installer artifacts:
+The release binary lands in `src-tauri/target/release/lewdzone` (or
+`lewdzone.exe` on Windows). It is the same executable the installer wraps.
 
-| Operating System | Output Formats |
+To produce the **unified installer** artifact that CI ships:
+
+```bash
+npm run build:installer
+```
+
+Generated installer artifacts land in `dist/installer/`:
+
+| Operating System | Output File |
 | --- | --- |
-| **Windows** | NSIS installer (`.exe`), MSI installer (`.msi`) |
-| **macOS** | Application bundle (`.app`), Apple Disk Image (`.dmg`) |
-| **Linux** | AppImage (`.AppImage`), Debian package (`.deb`), RPM (`.rpm`) |
+| **Windows** | `LewdZone-Setup-v<version>-windows-<arch>.exe` |
+| **macOS** | `LewdZone-Setup-v<version>-macos-<arch>` |
+| **Linux** | `LewdZone-Setup-v<version>-linux-<arch>` |
+
+Generic names (`LewdZone-Setup.exe`, `LewdZone-Setup-windows-<arch>.exe`, etc.)
+are also emitted for stable CI links.
 
 ---
 

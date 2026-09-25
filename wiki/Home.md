@@ -21,11 +21,11 @@ The GUI and the CLI call the same Rust core functions; every GUI action maps
 - **Catalog Scraping:** Scrapes games, tags, versions, download links, and header details from LewdZone.
 - **Go-Link Token Resolution:** Resolves ephemeral `#t=v1...` tokens through the site's two-step `start` → `reveal` API.
 - **In-App Sandboxed Resolver:** Safely verifies protected download links inside an isolated, script-filtered webview window without third-party popups or adware.
-- **Direct-File Streaming:** Streams direct file hosts (e.g. `fileknot`) inside the app with real-time byte counters and progress metrics.
-- **OS Native Cloud Dispatch:** Hands cloud hosts (`mega`, `google`, `dropbox`, `mediafire`, `pixeldrain`) directly to the OS default handler or browser.
-- **7-Zip Multi-Format Extraction:** Fast, multi-threaded decompression of `.zip`, `.7z`, `.rar`, `.tar`, and SFX archives using the standalone 7-Zip CLI with real-time progress tracking.
-- **Flat Library Organization:** Downloads land directly under `<library-root>/downloads/` and installs unpack to `<library-root>/installed/<slug>/` with an `app.json` manifest.
-- **System Tray Integration:** Runs silently in the background with tray icon controls (Open, Library, Downloads, Store, Settings, Check for Updates, Quit) and minimize-to-tray capability.
+- **Direct-File Streaming:** Streams direct file hosts (`fileknot`, `pixeldrain`, `mediafire`, `workupload`) inside the app with real-time byte counters and progress metrics.
+- **OS Native Cloud Dispatch:** Hands cloud hosts (`mega`, `google`, `dropbox`, `oneDrive`) directly to the OS default handler or browser.
+- **7-Zip Multi-Format Extraction:** Fast, multi-threaded decompression of `.zip`, `.7z`, `.rar`, `.tar.gz`, `.tar.bz2`, `.tar.xz`, and SFX archives using the standalone 7-Zip CLI with real-time progress tracking.
+- **Flat Library Organization:** Downloads land under the configured download directory and installs unpack to `<library-root>/installed/<slug>/` with an `app.json` manifest.
+- **System Tray Integration:** Runs silently in the background with tray icon controls (Show LewdZone, Minimize to Tray, Quit) and minimize-to-tray capability.
 - **Playtime & Session Tracking:** Accurately tracks gameplay duration, play count, and last played timestamps, with full library sort controls and CLI inspection.
 - **Native Desktop & Start Menu Shortcuts:** One-click generation of native operating system shortcuts for Windows (`.lnk` with embedded executable icons), Linux (`.desktop`), and macOS.
 - **External Enrichment:** Augments thin LewdZone listings with external metadata and artwork from SteamGridDB, VNDB, IGDB, itch.io, Steam, and IndieDB.

@@ -17,9 +17,11 @@ favor of a simpler dispatch model.
 
 Downloads are dispatched by host class:
 
-- **Direct-file hosts** (`fileknot` today) stream in-app with byte progress to
-  the staging folder (`<downloads>/Games/<Title>/`), then auto-extract `.zip`
-  archives into `<lzapps>/<slug>/` and write an `app.json` manifest.
+- **Direct-file hosts** (`fileknot`, `pixeldrain`, `mediafire`, `workupload`)
+  stream in-app with byte progress to the staging folder
+  (`<downloads>/<archive>`), then auto-extract supported archives
+  (`.zip`, `.7z`, `.rar`, `.tar.*`, SFX `.exe`) into `<lzapps>/<slug>/` and
+  write an `app.json` manifest.
 - **All other hosts** hand the resolved URL to the OS default handler
   (`core::native::open_url`). This opens the installed cloud app or browser
   with zero configuration.
@@ -37,9 +39,10 @@ Exit code 4 (download manager missing) is reserved/unused.
 
 - **Benefits:** zero download-manager setup; no per-manager detection or argv
   drift; cross-platform by default; direct downloads get live progress.
-- **Costs/risks:** page-gated hosts (workupload, mixdrop) open in the browser
-  and require the user to click; non-zip archives stay in `downloads/` and must
-  be handled manually.
+- **Costs/risks:** page-gated hosts (mixdrop) open in the browser and require
+  the user to click. Direct-file hosts that return supported archives are
+  auto-extracted; the background scanner ingests any archive left in the
+  download folder by OS-handler downloads.
 - **Migration:** forward-only; the old adapter files were deleted.
 
 ## Verification

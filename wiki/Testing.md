@@ -42,7 +42,7 @@ npm run check
 To guarantee that the test suite runs hermetically and safely without internet connectivity:
 - **HTTP Transport Fake:** Intercepts outgoing requests to return canned HTML and JSON fixtures for LewdZone catalog and game pages.
 - **7-Zip Probe Harness:** Tests detection of 7-Zip binaries across directories, executables, and PATH variables without executing live external installations.
-- **Queue Test Double:** Exercises cancel, delete, and progress callback semantics in memory.
+- **Queue Test Double:** Exercises delete and progress callback semantics in memory.
 - **SQLite In-Memory Migrations:** Every database test operates on a fresh temporary SQLite database with all migrations applied.
 
 ---

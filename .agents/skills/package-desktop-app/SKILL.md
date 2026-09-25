@@ -1,25 +1,21 @@
 ---
 name: package-desktop-app
-description: Package the Tauri app into cross-platform installers (MSI/NSIS, .app/DMG, AppImage/deb/rpm) and prepare release artifacts. Use when cutting an official release or testing the distribution build.
+description: Build the unified per-platform installer executable and prepare release artifacts. Use when cutting an official release or testing the distribution build.
 ---
 
 # Package Desktop App
 
-Build the Tauri app into native installers for distribution. The same
-`src-tauri/` crate produces the binary; `tauri.conf.json` configures the bundle
-formats per platform.
+Build the Tauri app into the unified per-platform installer executable. The same
+`src-tauri/` crate produces the binary; `scripts/build-installer.mjs` packages it
+as `dist/installer/LewdZone-Setup-*` without using Tauri's native MSI/NSIS/.dmg
+bundles.
 
 ## Preconditions
 
 - The app builds and passes all gates (`cargo test`, `npm run check`,
   `npm run test`).
-- `tauri.conf.json` bundle configuration is correct (identifier, icon paths,
-  category, short/long descriptions).
-- Target OS build tools are installed:
-  - **Windows:** WiX Toolset (MSI) and/or NSIS.
-  - **macOS:** Xcode command-line tools for `.app` + DMG.
-  - **Linux:** `dpkg-deb`/`rpm-build` for deb/rpm packages; AppImage tooling is
-    bundled by Tauri.
+- `tauri.conf.json` is configured with the correct identifier and icon paths.
+- Rust stable and Node.js LTS are installed.
 
 ## Steps
 
@@ -28,24 +24,27 @@ formats per platform.
 2. **Update `CHANGELOG.md`** with the release section and summary table.
 3. **Run the release build** on each target OS:
    ```bash
-   npm run tauri build
+   npm run build:installer
    ```
-4. **Collect artifacts** from `src-tauri/target/release/bundle/`:
-   - Windows: `.msi`, `.nsis.exe`
-   - macOS: `.app`, `.dmg`
-   - Linux: `.AppImage`, `.deb`, `.rpm`
+4. **Collect artifacts** from `dist/installer/`:
+   - Windows: `LewdZone-Setup-v<version>-windows-<arch>.exe`
+   - macOS: `LewdZone-Setup-v<version>-macos-<arch>`
+   - Linux: `LewdZone-Setup-v<version>-linux-<arch>`
+   The script also emits generic names (`LewdZone-Setup.exe`,
+   `LewdZone-Setup-windows-<arch>.exe`, etc.).
 5. **Smoke-test the installer** on a clean VM or machine:
    - Install completes.
    - App launches to the Store view.
    - CLI binary answers `--version` and `--help`.
-6. **Upload to GitHub Releases** with the version tag (e.g. `v0.1.0`) and
-   attach all per-platform artifacts.
+6. **Publish by pushing the annotated tag** (e.g. `v0.1.0`). The
+   `.github/workflows/package.yml` CI workflow creates the GitHub Release and
+   attaches the per-platform artifacts automatically.
 
 ## Checkoff
 
-- [ ] Version numbers synced across package.json, Cargo.toml, tauri.conf.json
+- [ ] Version numbers synced across package.json, package-lock.json, Cargo.toml, tauri.conf.json
 - [ ] CHANGELOG.md updated for the target version
-- [ ] `npm run tauri build` succeeds on each target OS
-- [ ] Installer artifacts exist for Windows, macOS, and Linux
+- [ ] `npm run build:installer` succeeds on each target OS
+- [ ] Unified installer artifacts exist in `dist/installer/` for Windows, macOS, and Linux
 - [ ] Smoke tests pass on each platform
-- [ ] GitHub Release created with artifacts attached
+- [ ] Annotated `v*` tag pushed and CI release workflow completed

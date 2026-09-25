@@ -156,7 +156,7 @@ flowchart LR
 ## Settings page
 
 The Settings page (Svelte) lets users configure the launcher. Providers:
-`download-root`, stream progress / dispatch behavior, artwork-cache, API keys
+`download-dir`, stream progress / dispatch behavior, artwork-cache, API keys
 for the content-provider layer.
 
 ```mermaid

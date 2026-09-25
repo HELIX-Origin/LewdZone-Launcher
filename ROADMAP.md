@@ -48,9 +48,9 @@ All foundational architecture, core engine, desktop GUI, CLI, and v0.1.0 release
 - [x] **LewdZone Scraper:** Rate-limited catalog pagination, game detail extraction, version tabs, and genre cloud parsing.
 - [x] **Resolver:** Go-link `#t=v1...` token resolution via `start` → `reveal` API with active host blacklist protection (`gofile`, `zippyshare`, `cdnclick`, `anonfiles`, `uptobox`, `yourfilestore`, `qiwi`, `transfersh`).
 - [x] **In-App Sandboxed Resolver:** Child webview for verification countdowns and captcha challenges, blocking adware, popups, and tracker redirects.
-- [x] **Downloads & Streaming:** In-app direct file streaming (`fileknot`) with live byte progress, speed calculation, and native OS dispatch for cloud file lockers.
-- [x] **Queue Management:** Multi-state queue (`queued`, `resolving`, `downloading`, `extracting`, `complete`, `failed`, `cancelled`), with cancel and delete controls for active and queued jobs.
-- [x] **7-Zip Multi-Format Extraction:** Fast, multi-threaded archive extraction (`.zip`, `.7z`, `.rar`, `.tar`, `.tar.xz`, `.exe`) using standalone 7-Zip CLI (`7za`/`7z`/`7zz`) with real-time percentage progress streaming and immediate cancellation.
+- [x] **Downloads & Streaming:** In-app direct file streaming (`fileknot`, `pixeldrain`, `mediafire`, `workupload`) with live byte progress, speed calculation, and native OS dispatch for cloud file lockers.
+- [x] **Queue Management:** Multi-state queue (`queued`, `resolving`, `dispatching`, `downloading`, `extracting`, `completed`, `dispatched`, `failed`, `cancelled`), with cancel and delete controls for active and queued jobs.
+- [x] **7-Zip Multi-Format Extraction:** Fast, multi-threaded archive extraction (`.zip`, `.7z`, `.rar`, `.tar.gz`, `.tar.bz2`, `.tar.xz`, SFX `.exe`) using standalone 7-Zip CLI (`7za`/`7z`/`7zz`) with real-time percentage progress streaming and immediate cancellation.
 - [x] **Flat Library Layout:** Archives land flat in `<library-root>/downloads/<archive>` and installs reside in `<library-root>/installed/<slug>/` with an `app.json` manifest.
 - [x] **Library Scanning & Launch:** Scans personal games directory (`games-dir`), generates manifests, and launches installed games safely.
 - [x] **System Tray Integration:** Custom tray icon with context menu (Open, Library, Downloads, Store, Settings, Quit) and minimize-to-tray.
@@ -63,21 +63,27 @@ All foundational architecture, core engine, desktop GUI, CLI, and v0.1.0 release
 
 ---
 
-## Now 🚧 (Milestone v0.2.0 — Packaging, Shortcuts & Session Tracking)
+## Done ✅ (v0.4.1 — Resolver cleanup, unified extraction, installer titlebar)
 
-- [x] **Playtime & Session Tracking**:
-  - SQLite `game_stats` tracking (`playtime_seconds`, `play_count`, `last_played_at`).
-  - Detached background process monitoring in `launch.rs` recording elapsed session duration.
-  - Svelte Library sort modes (A–Z, Recently Played, Most Played, Recently Installed) and playtime badges.
-- [x] **Native Desktop & Start Menu Shortcuts**:
-  - Windows: `.lnk` shortcut creation pointing to game exe with embedded icon.
-  - Linux: FreeDesktop `.desktop` launcher entry generation in `~/Desktop/` and `~/.local/share/applications/`.
-  - macOS: Application command alias generation in `~/Desktop/`.
-  - Full CLI parity (`lewdzone shortcuts <slug>`) and 1-click GUI shortcut button on library cards.
-- [x] **Cross-Platform Automated Packaging**:
-  - Automated GitHub Actions matrix workflow (`.github/workflows/package.yml`) packaging Windows (MSI + NSIS), Linux (AppImage + DEB), and macOS (.app + DMG) on release tags and workflow dispatch.
+- [x] **Resolver UI Cleanup:** Removed the redundant "Open in Browser" button from the Secure Ad-Free Resolver; "Open in App" remains the primary capture path.
+- [x] **Unified Archive Extraction:** Direct-stream downloads now auto-extract every supported archive format (`.zip`, `.7z`, `.rar`, `.tar.*`, SFX `.exe`) instead of only `.zip`, and delete the archive after successful extraction.
+- [x] **Duplicate Folder Prevention:** Background scanner skips archives that are still being written or are already handled by an active queue job.
+- [x] **Unified Installer Titlebar:** Installer wizard uses the same frameless traffic-light titlebar as the main app.
+
+## Now 🚧 (Milestone v0.5.0 — Application Self-Updater)
+
 - [ ] **Application Self-Updater**:
   - Configure Tauri updater (`@tauri-apps/plugin-updater`) for automated background updates from GitHub Releases.
+
+## Next ⏳ (Milestone v0.6.0 — Offline Catalog & Version Tracking)
+
+- [ ] **Offline Catalog Synchronization**:
+  - Background SQLite catalog sync for instant search, filtering, and offline catalog browsing.
+- [ ] **Game Update Detection**:
+  - Periodic background checks detecting new game versions released on LewdZone.
+  - One-click update workflow preserving save files and user data.
+- [ ] **Custom Theme Creator GUI**:
+  - Visual theme editor in Settings allowing users to customize CSS tokens and export theme files.
 
 ---
 

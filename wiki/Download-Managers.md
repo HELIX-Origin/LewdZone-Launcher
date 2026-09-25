@@ -12,8 +12,8 @@ When a user initiates a download, the launcher takes the go-link token (`#t=v1..
 
 | Host Class | Examples | Handling |
 | --- | --- | --- |
-| **Direct-file hosts** | `fileknot` | **Streamed in-app** with real-time byte progress, downloaded directly to `<downloads>/<archive>`, and automatically unpacked into `<installed>/<slug>/`. |
-| **Cloud storage & file hosts** | `mega`, `google`, `dropbox`, `mediafire`, `pixeldrain`, `workupload`, `uploadhaven` | **Dispatched to OS default handler** (installed native desktop client or default web browser). |
+| **Direct-file hosts** | `fileknot`, `pixeldrain`, `mediafire`, `workupload` | **Streamed in-app** with real-time byte progress, downloaded directly to `<downloads>/<archive>`, and automatically unpacked into `<installed>/<slug>/`. |
+| **Cloud storage & file hosts** | `mega`, `google`, `dropbox`, `uploadhaven` | **Dispatched to OS default handler** (installed native desktop client or default web browser). |
 | **Verification-required links** | Go-links requiring countdown or captcha | Opened in the launcher's **in-app sandboxed webview resolver**, completely isolating third-party trackers, popups, and malicious scripts. |
 
 > 🚫 **Platform notice:** Android downloads are not supported on the desktop launcher. The store UI filters them out, and CLI attempts will return an explicit error.
@@ -31,11 +31,11 @@ When a user initiates a download, the launcher takes the go-link token (`#t=v1..
 
 ## 📦 Multi-Format Archive Extraction with 7-Zip CLI
 
-Downloaded games are packed in diverse archive formats (`.zip`, `.7z`, `.rar`, `.tar`, `.tar.gz`, and SFX `.exe`). To maximize decompression speed and ensure universal format compatibility, LewdZone Launcher utilizes the **7-Zip console executable** (`7za` / `7z` / `7zz`).
+Downloaded games are packed in diverse archive formats (`.zip`, `.7z`, `.rar`, `.tar.gz`, `.tar.bz2`, `.tar.xz`, and SFX `.exe`). To maximize decompression speed and ensure universal format compatibility, LewdZone Launcher utilizes the **7-Zip console executable** (`7za` / `7z` / `7zz`).
 
 ### Why 7-Zip CLI?
 - **Speed & Multi-threading:** Decompresses multi-gigabyte archives substantially faster than native single-threaded extractors.
-- **Universal Archive Support:** Seamlessly unpacks `.zip`, `.7z`, `.rar` (including RAR5), `.tar.gz`, and multi-part archives.
+- **Universal Archive Support:** Seamlessly unpacks `.zip`, `.7z`, `.rar` (including RAR5), `.tar.gz`, `.tar.bz2`, `.tar.xz`, and multi-part archives.
 - **Real-Time Progress:** Streams decompression progress percentage (`-bsp1`) back to the launcher UI in real time.
 - **Clean Background Execution:** Spawns completely hidden (`CREATE_NO_WINDOW` on Windows) and cancels immediately if requested.
 
@@ -92,22 +92,26 @@ The library structure is organized flat to make browsing and backup simple:
 
 ```
 <library-root>/
-├── downloads/
-│   ├── Game Title [Ongoing] - Version 1.0.zip
-│   └── Another Game - Version 0.5.rar
-└── installed/
-    ├── game-slug/
-    │   ├── app.json                  # itch.io-style launcher manifest
-    │   ├── Game.exe                  # executable
-    │   └── game_data/
-    └── another-slug/
-        ├── app.json
-        └── Launch.exe
+├── installed/
+│   ├── game-slug/
+│   │   ├── app.json                  # itch.io-style launcher manifest
+│   │   ├── Game.exe                  # executable
+│   │   └── game_data/
+│   └── another-slug/
+│       ├── app.json
+│       └── Launch.exe
+└── games/                            # optional custom games directory
+    └── ...
+<download-dir>/
+├── Game Title [Ongoing] - Version 1.0.zip
+└── Another Game - Version 0.5.rar
 ```
 
-- **Downloads Directory (`<library-root>/downloads/`):** All downloaded archives land flat in this folder. Engine subfolders are avoided to eliminate confusion.
+- **Downloads Directory:** By default the launcher uses the OS downloads folder
+  (`%USERPROFILE%\Downloads`, `~/Downloads`, etc.). Configure a custom path in
+  Settings with `download-dir`.
 - **Installed Directory (`<library-root>/installed/<slug>/`):** Each extracted game resides in its own slug folder. An `app.json` manifest records the game metadata, engine, install path, launch executable candidates, and custom overrides.
-- **Backwards Compatibility:** The launcher continues to recognize existing games located in legacy `<library-root>/lzapps/<slug>/` or engine subfolders (`installed/<engine>/<slug>/`).
+- **Backwards Compatibility:** The launcher continues to recognize existing games located in legacy `<library-root>/lzapps/<slug>/` folders.
 - **Custom Games Directory (`games-dir`):** If you store games in another custom directory (e.g. `D:\Games\LewdZone`), you can configure this in Settings and use the **Scan Games** button in the Library to automatically register them.
 
 ---
@@ -119,9 +123,10 @@ The **Downloads** page exposes full queue control:
 - **Live Statuses:**
   - `queued`: Waiting for scheduler turn.
   - `resolving`: Contacting LewdZone API for download tokens.
+  - `dispatching`: Routing to in-app stream or OS default handler.
   - `downloading`: Direct file streaming with byte progress and speed calculation.
   - `extracting`: Archive extraction with real-time percentage and byte progress from 7-Zip.
-  - `complete`: Successfully extracted, registered in Library, and ready to play.
+  - `completed`: Successfully extracted, registered in Library, and ready to play.
   - `dispatched`: Dispatched to OS browser or desktop cloud client.
   - `failed`: Errored with a descriptive message.
   - `cancelled`: Terminated by user.

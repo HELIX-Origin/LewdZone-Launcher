@@ -26,9 +26,9 @@ Configuration is stored in two locations per operating system:
 | Key | Type | Default | Description |
 | --- | --- | --- | --- |
 | `7z-path` | string | `""` | Path to the 7-Zip console executable (`7za.exe`, `7z.exe`, `7zz`, or directory containing them). Alias: `seven-zip-path`. See [Archive Extraction & 7-Zip](Archive-Extraction). |
-| `library-root` | string | `""` | Base directory containing `downloads/` and `installed/` game directories. |
+| `library-root` | string | `""` | Base directory containing `installed/` game directories and optional `games/` custom scan folder. |
 | `games-dir` | string | `""` | Folder where you personally extract games. Scanned by the Library view to discover and register games. |
-| `download-root` | string | `""` | Override path for downloaded archives (defaults to `<library-root>/downloads`). |
+| `download-dir` | string | `""` | Override path for downloaded archives (defaults to the OS downloads folder). |
 | `download-grace-seconds`| integer | `20` | Pacing delay (in seconds) between sequential download dispatches to protect against host throttling. |
 | `source-priority` | string | `"mega, google, dropbox, mediafire"` | Comma-separated list of preferred download hosts; used to reorder host options in the game detail view. |
 | `home-page` | string | `"store"` | Initial view loaded when the application launches (`store`, `library`, `favorites`, `downloads`, `settings`). |
@@ -75,22 +75,25 @@ Setting `library-root` establishes a flat, clean structure on disk:
 
 ```text
 <library-root>/
-├── downloads/
-│   ├── Game Title [Ongoing] - Version 0.19.1.zip
-│   └── Another Game - Version 1.0.rar
-└── installed/
-    ├── game-slug/
-    │   ├── app.json
-    │   ├── Game.exe
-    │   └── game_data/
-    └── another-slug/
-        ├── app.json
-        └── Game.exe
+├── installed/
+│   ├── game-slug/
+│   │   ├── app.json
+│   │   ├── Game.exe
+│   │   └── game_data/
+│   └── another-slug/
+│       ├── app.json
+│       └── Game.exe
+└── games/                  # optional custom scan folder
+    └── ...
+<download-dir>/
+├── Game Title [Ongoing] - Version 0.19.1.zip
+└── Another Game - Version 1.0.rar
 ```
 
-- **Flat Downloads:** Raw download archives land in `<library-root>/downloads/` without cluttered engine subdirectories.
+- **Downloads:** Raw download archives land in the configured `download-dir`
+  (defaults to OS downloads folder). Configure a custom path in Settings.
 - **Flat Installs:** Each extracted game resides directly inside `<library-root>/installed/<slug>/`.
-- **Legacy Compatibility:** The launcher continues to detect and run existing games located in legacy `<library-root>/lzapps/<slug>/` or engine subfolders (`installed/<engine>/<slug>/`).
+- **Legacy Compatibility:** The launcher continues to detect and run existing games located in legacy `<library-root>/lzapps/<slug>/` folders.
 
 ---
 

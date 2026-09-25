@@ -83,7 +83,8 @@ lewdzone-launcher/
 
 ## Verify
 
-- `cargo build` / `cargo check` green in `src-tauri/`
+- `cargo build` / `cargo check` / `cargo test` green in `src-tauri/`
 - `npm run tauri dev` / `npm run tauri build` green
-- `src-tauri/target/` binary answers `--help` AND launches the app when run
-  bare — CLI path and GUI path both smoke-test.
+- `npm run build:installer` produces the unified installer artifact
+- `src-tauri/target/release/lewdzone` answers `--help` AND launches the app
+  when run bare — CLI path and GUI path both smoke-test.

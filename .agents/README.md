@@ -40,8 +40,10 @@ workflows, and others).
   Direct-file hosts stream in-app; other hosts open via the OS default handler.
   See `agents/dm/dm.md` and `adr/0002-download-manager-adapters.md`.
 - **API keys** live in the SQLite `secret` table, not the JSON config.
-- **Install layout**: `downloads/` for staging, `lzapps/<slug>/` for extracted
-  games, plus an itch.io-style `app.json` manifest.
+- **Install layout**: configured `download-dir` for staging archives,
+  `<library-root>/installed/<slug>/` for extracted games, plus an
+  itch.io-style `app.json` manifest. Legacy `lzapps/<slug>/` folders remain
+  supported.
 
 ## Templates
 

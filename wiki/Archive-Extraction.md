@@ -8,13 +8,12 @@ LewdZone Launcher uses the **7-Zip console executable** (`7za`, `7z`, or `7zz`) 
 
 ## 🚀 Why 7-Zip CLI?
 
-Game releases on LewdZone are distributed in many archive formats, including large multi-gigabyte `.zip`, `.7z`, `.rar`, and self-extracting `.exe` (SFX) archives. Using the standalone 7-Zip command-line tool provides:
+Game releases on LewdZone are distributed in many archive formats, including large multi-gigabyte `.zip`, `.7z`, `.rar`, `.tar.gz`, `.tar.bz2`, `.tar.xz`, and self-extracting `.exe` (SFX) archives. Using the standalone 7-Zip command-line tool provides:
 
 1. **High Decompression Performance:** Up to 5-10× faster extraction speeds compared to basic zip readers, utilizing all CPU cores.
-2. **Universal Format Support:** Full decompression support for `.zip`, `.7z`, `.rar` (including RAR5), `.tar`, `.tar.gz`, `.tar.xz`, and `.exe` SFX.
+2. **Universal Format Support:** Full decompression support for `.zip`, `.7z`, `.rar` (including RAR5), `.tar.gz`, `.tar.bz2`, `.tar.xz`, and `.exe` SFX.
 3. **Real-Time Progress Streaming:** Outputs interactive percentage benchmarks (`-bsp1`), allowing the launcher to calculate byte-accurate extraction progress in real time.
 4. **No Full Installation Required:** The standalone console version is a portable binary that requires no system installer, registry changes, or administrator privileges.
-5. **Immediate Cancellation:** If you cancel an extraction in the Downloads queue, the launcher terminates the background 7-Zip process instantly.
 
 ---
 
@@ -44,7 +43,7 @@ You can also check the [7-Zip Official Download Page](https://www.7-zip.org/down
    ```text
    C:\Utilities\7z\
    ```
-   *(Ensure `7za.exe` and `x64\7za.exe` are inside that directory).*
+    *(Ensure `7za.exe` and `x64\7za.exe` are inside that directory; `7z.exe` from a standard 7-Zip install is also accepted).*
 3. Open **LewdZone Launcher** and navigate to the **Settings** page.
 4. Locate the **7-Zip console executable path** setting.
 5. Enter either the directory or the executable path:
@@ -114,10 +113,7 @@ Configuration aliases recognized:
 
 ## 🔄 Automatic Fallback Hierarchy
 
-If 7-Zip CLI is not detected or fails to process a file:
-1. **7-Zip Console Executable:** Primary engine for all formats.
-2. **Built-in Native Zip Reader:** Handles standard `.zip` files directly in Rust.
-3. **Operating System `tar` (bsdtar):** Utilizes the system `tar` utility (shipped with modern Windows, Linux, and macOS) to unpack `.tar`, `.gz`, and `.zip` archives.
+If 7-Zip CLI is not detected or fails to process a file, the launcher reports the failure and the archive remains in the configured download directory. The background scanner will later retry extraction once 7-Zip is configured.
 
 ---
 

@@ -17,10 +17,10 @@ A **Tauri 2 desktop app** (Windows, Linux, macOS) paired with a **native Rust CL
 |---|---|
 | 🖥️ **Full Desktop Launcher** | Store, Library, Downloads, Favorites, and Settings views built with Svelte 5 and Tauri 2. |
 | ⌨️ **Native Rust CLI Engine** | Headless and scriptable CLI sharing the exact same core logic with `--json` output. |
-| 📦 **7-Zip Archive Extraction** | Fast multi-threaded decompression of `.zip`, `.7z`, `.rar`, and `.exe` archives with real-time progress. |
-| 🗂️ **Flat Library Layout** | Clean organization with `<library-root>/downloads/` and `<library-root>/installed/<slug>/`. |
-| 🛎️ **System Tray Integration** | Custom tray icon with context menu (Open, Library, Downloads, Store, Settings, Quit) and minimize-to-tray. |
-| 🛡️ **In-App Sandboxed Resolver** | Secure child webview for countdown and captcha verification links, isolating ads and trackers. |
+| 📦 **7-Zip Archive Extraction** | Fast multi-threaded decompression of `.zip`, `.7z`, `.rar`, `.tar.gz`, `.tar.bz2`, `.tar.xz`, and SFX `.exe` archives with real-time progress. |
+| 🗂️ **Flat Library Layout** | Clean organization with per-OS `downloads/` and `installed/<slug>/` folders; configurable via `library-root`. |
+| 🛎️ **System Tray Integration** | Custom tray icon with context menu (Show LewdZone, Minimize to Tray, Quit) and minimize-to-tray. |
+| 🛡️ **In-App Sandboxed Resolver** | Secure child webview for countdown and captcha verification links, isolating ads and trackers; resolves directly into the in-app download queue. |
 | 🚫 **Dead/Malicious Host Blacklist** | Open dispatch to all functional mirrors, blocking only dead or unsafe domains (`gofile`, `gofiles`, `zippyshare`, `cdnclick`, `anonfile`, `uptobox`, `qiwi`, etc.). |
 | 🕷️ **LewdZone Web Scraper** | Polite, rate-limited scraping of games, tags, versions, download links, and pagination. |
 | 🗄️ **Local SQLite Database** | Robust WAL storage holding catalog cache and download jobs; tokens stored instead of URLs. |
@@ -41,7 +41,7 @@ npm run tauri dev                                     # launch desktop app in de
 ### Use the CLI
 
 ```bash
-cargo build --manifest-path src-tauri/Cargo.toml      # builds src-tauri/target/debug/lewdzone
+cargo build --manifest-path src-tauri/Cargo.toml      # builds src-tauri/target/debug/lewdzone (or lewdzone.exe on Windows)
 
 # Synchronize catalog from LewdZone
 lewdzone sync

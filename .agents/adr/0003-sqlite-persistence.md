@@ -25,7 +25,7 @@ per-OS config/data dirs.
   order via a `schema_migrations` table; CI verifies a scratch DB migrates
   clean (Rule 06). No destructive migration ever rewrites history.
 - Config is per-OS JSON at `config_dir()/config.json` (Rule 03 `_config.py`)
-  with settings: `download-root`, `dm`, site flags, `content_*` keys.
+  with settings: `download-dir`, site flags, `content_*` keys.
   Secrets (`sgdb_api_key`, `igdb_client_id/secret`) validate as set/unset
   only — never echoed (Rule 10).
 

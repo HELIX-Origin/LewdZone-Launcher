@@ -31,7 +31,7 @@ source of truth** for behavior:
 ```mermaid
 flowchart TD
     U[user] --> APP[Tauri launcher app]
-    U --> CLI["lewdzone-launcher (same binary, CLI args)"]
+    U --> CLI["lewdzone (same binary, CLI args)"]
     APP -->|"invoke()"| CMD["lib.rs #[tauri::command]"]
     CLI -->|"arg dispatch"| CMD
     CMD --> CORE["shared Rust core - db / scrape / resolve / download / artwork"]
@@ -51,7 +51,7 @@ are thin entry points over the same Rust core.
 
 ```mermaid
 flowchart LR
-    L["lewdzone-launcher"] --> sync[sync]
+    L["lewdzone"] --> sync[sync]
     L --> search[search]
     L --> info[info]
     L --> download[download]
@@ -64,7 +64,7 @@ flowchart LR
     search --> ss1[QUERY --json]
     info --> si1[GAME --versions]
     download --> sd1[GAME --version V --platform PC --tab official]
-    download --> sd2["--resume | --queue"]
+    download --> sd2["--queue"]
     shortcuts --> sk1["--game GAME --skip-artwork"]
     launch --> lg1[launch GAME - engine hook for the app]
 
@@ -74,7 +74,7 @@ flowchart LR
 
 ## Command conventions
 
-1. `lewdzone-launcher <command> [subcommand] [options] [args]`
+1. `lewdzone <command> [subcommand] [options] [args]`
 2. Global options: `--db PATH`, `--config PATH`, `--json`, `--verbose`,
    `--debug`, `--no-color`.
 3. Stable exit codes: `0` success, `1` runtime error, `2` usage error,
@@ -113,7 +113,7 @@ flowchart LR
 
 ## Definition of done
 
-- `lewdzone-launcher --help` and every `--help` render cleanly in PowerShell
+- `lewdzone --help` and every `--help` render cleanly in PowerShell
   and bash; running the binary bare launches the app.
 - `download --json` returns a parseable JSON document with `job_id`.
 - The app's Tauri commands map 1:1 onto CLI subcommands (parity test green);

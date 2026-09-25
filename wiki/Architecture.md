@@ -49,10 +49,10 @@ flowchart TD
    - Exposes `#[tauri::command]` handlers for the webview.
    - Defines and parses CLI commands and formats structured `--json` output.
 3. **Core Services Layer (`src-tauri/src/core/`):**
-   - `download`: Manages chunked HTTP streaming, byte counting, and download speeds.
-   - `queue`: Sequential, persistent download worker with cancel and delete capabilities.
+    - `download`: Manages chunked HTTP streaming, byte counting, and download speeds.
+    - `queue`: Sequential, persistent download worker with delete capabilities.
    - `extract`: Multi-format archive decompression utilizing the **7-Zip console executable** (`7za`/`7z`/`7zz`) with real-time `-bsp1` progress monitoring.
-   - `folder`: Manages flat library layout (`downloads/<archive>` and `installed/<slug>/`).
+    - `folder`: Manages flat library layout (`<download-dir>/<archive>` and `installed/<slug>/`).
    - `library`: Manifest inspection (`app.json`), game launching, and directory scanning (`games-dir`).
    - `settings`: Config JSON management, migrations, and SQLite encrypted secret storage.
    - `skins`: Runtime theme resolution and bundle validation.
@@ -79,9 +79,6 @@ The launcher follows a modern, user-accessible directory layout:
     └── Material/theme.json
 
 <library-root>/                           # Configurable via library-root setting
-├── downloads/                            # Flat archive downloads (no engine folders)
-│   ├── Game Title [Ongoing] - Version 0.19.1.zip
-│   └── Another Game - Version 1.0.rar
 └── installed/                            # Flat game installs (no engine folders)
     ├── game-slug/
     │   ├── app.json                      # itch.io-style install manifest
@@ -90,6 +87,10 @@ The launcher follows a modern, user-accessible directory layout:
     └── another-slug/
         ├── app.json
         └── Game.exe
+
+<download-dir>/                           # Configurable via download-dir; defaults to OS downloads
+├── Game Title [Ongoing] - Version 0.19.1.zip
+└── Another Game - Version 1.0.rar
 ```
 
 ### Manifest Specifications (`app.json`)
@@ -115,10 +116,10 @@ sequenceDiagram
     GUI->>Worker: Enqueue Download Job
     Worker->>Res: Resolve Token (#t=v1...) via start->reveal API
     Res-->>Worker: Return Direct URL (or cloud host URL)
-    alt Direct File Host (e.g. fileknot)
-        Worker->>FS: Stream Bytes to downloads/<archive>
+    alt Direct File Host (e.g. fileknot, pixeldrain, mediafire, workupload)
+        Worker->>FS: Stream Bytes to <download-dir>/<archive>
         Worker-->>GUI: Emit Real-Time Byte & Speed Progress
-        Worker->>Ext: Spawn 7z CLI (7za x -y -bsp1)
+        Worker->>Ext: Spawn 7z CLI (7z x -y -bsp1)
         loop Extraction Progress
             Ext-->>Worker: Emit Progress Percentage (\r XX%)
             Worker-->>GUI: Emit Real-Time Extraction Progress
@@ -126,7 +127,7 @@ sequenceDiagram
         Ext-->>Worker: Extraction Finished
         Worker->>FS: Write installed/<slug>/app.json
         Worker->>FS: Remove Original Archive
-        Worker-->>GUI: Job Complete (Ready in Library)
+        Worker-->>GUI: Job Completed (Ready in Library)
     else Cloud Host (e.g. mega, google)
         Worker->>GUI: Dispatch to OS Default Handler / Browser
     end
@@ -147,7 +148,7 @@ If a go-link requires countdown timers or verification, the launcher opens a ded
 
 The desktop app integrates natively with the OS system tray:
 - Displays a custom tray icon.
-- Context menu: **Open LewdZone Launcher**, **Library**, **Downloads**, **Store**, **Settings**, **Check for Updates**, and **Quit LewdZone**.
+- Context menu: **Show LewdZone**, **Minimize to Tray**, and **Quit**.
 - Closing or minimizing the main window automatically docks to the tray, allowing background downloads and extractions to continue uninterrupted.
 
 ---

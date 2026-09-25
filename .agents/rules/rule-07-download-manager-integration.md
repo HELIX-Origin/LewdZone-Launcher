@@ -27,16 +27,17 @@ flowchart LR
 ```
 
 `DIRECT_STREAM_HOSTS` lists the hosts that return the file directly
-(`fileknot` today); every other allowlisted host opens via the OS default
-handler (cloud app or browser).
+(`fileknot`, `pixeldrain`, `mediafire`, `workupload`); every other allowlisted
+host opens via the OS default handler (cloud app or browser).
 
 ## Hard rules
 
 1. **Resolve first.** Never dispatch a `#fragment` go-link. Resolve via
    `api.php` (Rule 05) and strip the trailing literal `\r`.
 2. **Direct-file hosts stream in-app.** GET the resolved URL and write to
-   `job.target` in 128 KiB chunks, reporting `(bytes_done, bytes_total)` into
-   the queue job (Rule 11 seam for offline tests).
+   `job.target` in 512 KiB chunks with a 1 MiB `BufWriter`, reporting
+   `(bytes_done, bytes_total)` into the queue job (Rule 11 seam for offline
+   tests).
 3. **Redirects stay same-owner.** A stream redirect must remain on the same
    host or a dot-boundary subdomain; a cross-domain detour is refused
    (`Error::Network`). Max 3 redirect hops.

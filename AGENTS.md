@@ -74,8 +74,8 @@ cargo test
 npm run check          # svelte-check
 npm run test           # Vitest unit tests for frontend views
 
-# GUI build
-npm run tauri build    # all platforms
+# Unified installer build (CI packages on tag push; local smoke)
+npm run build:installer
 
 # CLI smoke
 lewdzone --version

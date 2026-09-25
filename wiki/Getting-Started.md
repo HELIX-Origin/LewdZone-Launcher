@@ -10,7 +10,7 @@ LewdZone Launcher is an all-in-one desktop game launcher and native CLI engine. 
 
 1. **Operating System:** Windows 10/11 (x64/arm64), Linux (x86_64/arm64), or macOS (Intel/Apple Silicon).
 2. **7-Zip Console Executable (Recommended):**
-   - For fast, multi-threaded extraction of downloaded `.zip`, `.7z`, `.rar`, and `.exe` archives, download the standalone console tool from the **[Archive Extraction & 7-Zip Setup Guide](Archive-Extraction)** (e.g. `7za.exe` for Windows, `7zz` for Linux/macOS).
+   - For fast, multi-threaded extraction of downloaded `.zip`, `.7z`, `.rar`, `.tar.gz`, `.tar.bz2`, `.tar.xz`, and SFX `.exe` archives, download the standalone console tool from the **[Archive Extraction & 7-Zip Setup Guide](Archive-Extraction)** (e.g. `7zz` for all platforms, or `7za.exe` on Windows).
    - If not installed, basic zip extraction falls back to the native Rust extractor or system `tar`.
 3. **Build Dependencies (if building from source):**
    - Rust (stable toolchain)
@@ -70,7 +70,7 @@ lewdzone shortcuts treasure-of-nadia
    - Choose your preferred host and click **Download**.
 4. **Monitor Downloads:**
    - Head to the **Downloads** view to monitor real-time streaming and extraction progress.
-   - You can cancel or delete active and queued items at any time.
+   - You can delete active and queued items at any time.
 5. **Play in Library:**
    - Once extracted, the game appears in the **Library** with its cover art, playtime badges, and last-played info.
    - Click **Launch** to launch the game executable directly from its `app.json` manifest. Play duration is automatically tracked in SQLite.
@@ -78,7 +78,7 @@ lewdzone shortcuts treasure-of-nadia
    - Use the **Sort** dropdown to sort games by A–Z, Recently Played, Most Played, or Recently Installed.
    - Use **Scan Games** to discover any games you previously extracted manually into your configured games directory.
 6. **System Tray:**
-   - Minimizing or closing the window minimizes to the system tray so downloads continue in the background. Right-click the tray icon to quickly navigate to Store, Library, Downloads, Settings, or Quit.
+   - Minimizing or closing the window minimizes to the system tray so downloads continue in the background. Right-click the tray icon for Show LewdZone, Minimize to Tray, or Quit.
 
 ---
 
@@ -87,7 +87,7 @@ lewdzone shortcuts treasure-of-nadia
 - **SQLite Database:** `<data_root>/lewdzone.db` (stores scraped games, tokens, and download queue).
 - **Configuration:** `<config_root>/config.json` (persists settings such as `library-root`, `games-dir`, `7z-path`, and `theme`).
 - **Secrets:** Stored in the SQLite `secret` table and never written to `config.json` ([Security](Security)).
-- **Downloads Directory:** `<library-root>/downloads/<archive>` (stores downloaded archives flat).
+- **Downloads Directory:** `<download-dir>/<archive>` (defaults to the OS downloads folder; configure with `download-dir`).
 - **Installed Directory:** `<library-root>/installed/<slug>/` (contains extracted game files and `app.json`).
 
 ---

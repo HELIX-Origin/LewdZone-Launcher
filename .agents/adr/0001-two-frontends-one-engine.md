@@ -7,29 +7,27 @@
 
 ## Context
 
-The product must ship a desktop GUI and a scriptable engine. The GUI must not
-import the Python package (the app embeds a PyInstaller sidecar of the same
-CLI). We need a single source of truth for game logic and a stable cross-process
-contract that both a human and the Tauri app can use.
+The product must ship a desktop GUI and a scriptable engine. Both entry points
+must share the same Rust core logic and a stable contract so that neither the
+GUI webview nor the CLI re-implements behavior.
 
 ## Decision
 
-- The **CLI** (`lewdzone-launcher <cmd> [options]`) is the engine and the single
-  source of truth. It exposes every app capability headlessly.
-- The **app** (Tauri 2, Rust core + Svelte webview) never imports
-  `lewdzone_launcher`. It spawns the CLI sidecar as a subprocess and parses
-  machine output.
+- The **CLI** (`lewdzone <cmd> [options]`) is the scriptable headless entry point
+  into the same Rust core.
+- The **app** (Tauri 2, Rust core + Svelte webview) calls the same core
+  functions in-process via `#[tauri::command]` handlers. The webview never
+  touches the site, DB, or network directly.
 - **Query commands** (short, bounded): one invocation → one JSON document on
   stdout (`--json`). Process is reaped immediately.
-- **Long-running commands** (sync / download / shortcuts): machine mode
-  (`--jsonl`) streams newline-delimited JSON events
-  `{"event","progress","message",...}` with a final `{"event":"result",...}`.
+- **Long-running commands** (sync / download / shortcuts): `--json` emits a
+  single JSON result on completion; human mode prints progress on stderr.
 - `stdout` is the protocol channel; `stderr` is diagnostics only and never
   parsed as data.
 - Exit codes are authoritative per Rule 12 (0 ok, 1 runtime, 2 usage, 3
-  network, 4 dm missing, 5 interrupted).
-- Spawn rules: hidden console on Windows (`CREATE_NO_WINDOW`), detached session
-  on POSIX, `shell=False`, never a shell string.
+  network, 4 configuration/dependency, 5 interrupted).
+- Subprocess rules: hidden console on Windows (`CREATE_NO_WINDOW`), detached
+  session on POSIX, explicit argument arrays, never a shell string.
 
 ## Consequences
 
@@ -48,7 +46,6 @@ contract that both a human and the Tauri app can use.
 
 ## Verification
 
-- [x] Contract documented in `cli.md`, `gui.md`, `sidecar-driver.md`
-- [x] `lewdzone-launcher --help` / `--version` smoke
-- [ ] Parity tests (app bridge 1:1 with CLI) in Phase 3
+- [x] Contract documented in `cli.md`, `gui.md`, Rule 03, Rule 13
+- [x] `lewdzone --help` / `--version` smoke
 - [x] Wiki `Architecture` + `CLI-Reference` updated

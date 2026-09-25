@@ -25,8 +25,8 @@ SQLite database that you own:
   tokens as published by lewdzone.com.
 - **Content metadata:** enrichment data (descriptions, cover art, ratings,
   screenshots) fetched from third-party content providers you configure.
-- **Configuration:** your settings (download folder location, active download
-  manager, provider API keys you paste in yourself).
+- **Configuration:** your settings (download folder location, library root,
+  7-Zip path, provider API keys you paste in yourself).
 
 API keys you enter (e.g. SteamGridDB, IGDB, VNDB) are stored in your local
 configuration only and are used solely to authenticate with those providers on
@@ -49,8 +49,9 @@ user action.
 - Your data lives in your local database.
 - **Deleting the local database deletes all application data** — including
   catalog records, tokens, configuration, and provider caches.
-- Direct-file downloads stream in-app to your local `downloads/` staging folder
-  and are extracted into `lzapps/`; other resolved URLs are opened by your OS
+- Direct-file downloads stream in-app to your configured `download-dir`
+  staging folder (defaults to the OS downloads folder) and are extracted into
+  `<library-root>/installed/<slug>/`; other resolved URLs are opened by your OS
   default handler (installed cloud app or browser). The files are yours and are
   managed by you, not by this project.
 
