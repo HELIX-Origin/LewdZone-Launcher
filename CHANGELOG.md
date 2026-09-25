@@ -12,6 +12,19 @@ the top; the current development state lives under `Unreleased`.
 
 ---
 
+## [v0.3.3](https://github.com/HELIX-Origin/LewdZone-Launcher/releases/tag/v0.3.3) — 2026-09-25
+
+Patch release fixing in-app download resolver navigation against bot detection mechanisms, eliminating premature download queueing prior to user interaction, and ensuring seamless native archive download capture.
+
+### 🐛 Bug Fixes & Improvements
+
+- **Resolver In-App Navigation (Blank Page Fix):** Configured the resolver webview with a standard desktop Chrome user agent, enabled cross-origin navigation, and added native backend navigation (`resolver_navigate_in_app`). Bypasses embedded WebView2 bot/Cloudflare detection on file hosts (Pixeldrain, Mediafire, Mega) that previously rendered a blank white page.
+- **Removed Premature Download Queueing:** Eliminated the eager URL regex check in `openInApp()` that immediately added landing page URLs containing filenames to the download queue. The launcher now correctly waits for the user to view the host page and click the actual download button.
+- **In-Window Link & Popup Capture:** Injected an initialization script converting `target="_blank"` anchor clicks to `target="_self"` and overriding `window.open` to navigate inside the same window, guaranteeing that download clicks are caught by the native `on_download` hook.
+- **Resolver Navigation Loading State:** Added an `isNavigating` loading state in the resolver view informing the user that the host download page is loading in-app.
+
+---
+
 ## [v0.3.2](https://github.com/HELIX-Origin/LewdZone-Launcher/releases/tag/v0.3.2) — 2026-09-24
 
 Patch release isolating the installer into its own dedicated process, preventing premature application window spawning during setup, deferring launch until setup completion, and fixing WebView2 window unregistration errors on exit.
