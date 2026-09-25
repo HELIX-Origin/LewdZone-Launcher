@@ -12,6 +12,19 @@ the top; the current development state lives under `Unreleased`.
 
 ---
 
+## [v0.3.2](https://github.com/HELIX-Origin/LewdZone-Launcher/releases/tag/v0.3.2) — 2026-09-24
+
+Patch release isolating the installer into its own dedicated process, preventing premature application window spawning during setup, deferring launch until setup completion, and fixing WebView2 window unregistration errors on exit.
+
+### 🐛 Bug Fixes & Improvements
+
+- **Installer Process Isolation:** Configured the application's default `"main"` window to `visible: false` and explicitly destroy it in `run_installer()`, preventing the main game launcher window and background services from spawning alongside the installer wizard.
+- **Immediate Stale Instance Termination:** The unified installer terminates any older or lingering background/tray application instances immediately upon launch so they cannot intercept single-instance focus or show obsolete UI during setup.
+- **Deferred Launch on Completion:** Removed premature executable spawning from `perform_install()`. The installed launcher now only launches via `installer_launch_app` when the user explicitly clicks "Finish" on the completion screen with "Launch after finish" enabled.
+- **WebView2 Clean Window Teardown (Error 1412 Fix):** Fixed `Failed to unregister class Chrome_WidgetWin_0. Error = 1412` by explicitly destroying all open webview windows before `app.exit(0)` and when closing the installer and resolver windows.
+
+---
+
 ## [v0.3.1](https://github.com/HELIX-Origin/LewdZone-Launcher/releases/tag/v0.3.1) — 2026-09-24
 
 Patch release fixing installer file naming collisions across platforms, adding automatic stale instance termination during installation/uninstallation, migrating legacy install directories, and improving direct archive link interception.

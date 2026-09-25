@@ -158,7 +158,7 @@
     try {
       const { getCurrentWebviewWindow } = await import("@tauri-apps/api/webviewWindow");
       const current = getCurrentWebviewWindow();
-      await current.close();
+      await current.destroy();
     } catch (err) {
       window.close();
     }

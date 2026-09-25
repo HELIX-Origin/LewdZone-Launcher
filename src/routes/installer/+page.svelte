@@ -58,7 +58,13 @@
   let showLogs = $state(false);
 
   // Window drag & controls
-  const closeWindow = () => getCurrentWindow().close();
+  const closeWindow = async () => {
+    try {
+      await getCurrentWindow().destroy();
+    } catch {
+      getCurrentWindow().close();
+    }
+  };
   const minimizeWindow = () => getCurrentWindow().minimize();
 
   function onHeaderPointerDown(e: PointerEvent) {
@@ -129,6 +135,17 @@
     } finally {
       inProgress = false;
     }
+  }
+
+  async function onFinish() {
+    if (launchAfter && result?.success) {
+      try {
+        await invoke("installer_launch_app", { targetDir: targetDir || null });
+      } catch (e) {
+        console.warn("Failed to launch app after install:", e);
+      }
+    }
+    closeWindow();
   }
 
   async function startUninstallation() {
@@ -384,7 +401,7 @@
           <button class="btn" disabled>Installing…</button>
         {:else if installTab === "complete"}
           <div class="spacer"></div>
-          <button class="btn primary" onclick={closeWindow}>Finish</button>
+          <button class="btn primary" onclick={onFinish}>Finish</button>
         {/if}
       </footer>
     </div>

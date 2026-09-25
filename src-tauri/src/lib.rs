@@ -813,6 +813,10 @@ fn resolve_go_link(go_link: String) -> Result<crate::resolver::ResolvedUrl, Stri
 /// Fully terminate the application (called from the GUI File > Quit action).
 #[tauri::command]
 fn app_quit(app: tauri::AppHandle) {
+    use tauri::Manager;
+    for (_label, window) in app.webview_windows() {
+        let _ = window.destroy();
+    }
     app.exit(0);
 }
 
@@ -1176,6 +1180,45 @@ async fn open_installer_window(app: tauri::AppHandle, mode: Option<String>) -> R
     Ok(())
 }
 
+/// Launch the newly installed application upon installer wizard completion.
+#[tauri::command]
+fn installer_launch_app(target_dir: Option<String>) -> Result<(), String> {
+    let exe = match target_dir {
+        Some(d) => {
+            let p = PathBuf::from(d);
+            #[cfg(target_os = "windows")]
+            {
+                p.join("lewdzone.exe")
+            }
+            #[cfg(not(target_os = "windows"))]
+            {
+                p.join("lewdzone")
+            }
+        }
+        None => {
+            let d = crate::core::installer::default_install_dir();
+            #[cfg(target_os = "windows")]
+            {
+                d.join("lewdzone.exe")
+            }
+            #[cfg(not(target_os = "windows"))]
+            {
+                d.join("lewdzone")
+            }
+        }
+    };
+
+    if !exe.exists() {
+        return Err(format!("Executable not found at {}", exe.display()));
+    }
+
+    std::process::Command::new(&exe)
+        .spawn()
+        .map_err(|e| format!("Failed to spawn executable: {e}"))?;
+
+    Ok(())
+}
+
 /// CLI entry point called from `main.rs` when argv has subcommands.
 pub fn cli_main() -> std::process::ExitCode {
     use clap::Parser;
@@ -1257,6 +1300,9 @@ pub fn run() {
                         }
                     }
                     "quit" => {
+                        for (_label, window) in app.webview_windows() {
+                            let _ = window.destroy();
+                        }
                         app.exit(0);
                     }
                     _ => {}
@@ -1288,6 +1334,11 @@ pub fn run() {
             }
 
             tray_builder.build(app)?;
+
+            if let Some(window) = app.get_webview_window("main") {
+                let _ = window.show();
+                let _ = window.set_focus();
+            }
 
             Ok(())
         })
@@ -1342,7 +1393,8 @@ pub fn run() {
             installer_uninstall,
             open_installer_window,
             open_game_folder,
-            uninstall_game
+            uninstall_game,
+            installer_launch_app
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
@@ -1350,6 +1402,9 @@ pub fn run() {
 
 /// Launch the application directly into the unified installer/uninstaller wizard window.
 pub fn run_installer() {
+    // Terminate any running launcher instances immediately so the installer runs as its own isolated process
+    let _ = crate::core::installer::terminate_running_instances();
+
     let (db, config) = default_context();
     let initial_debug = crate::core::settings::Settings::load(&config)
         .ok()
@@ -1375,7 +1430,12 @@ pub fn run_installer() {
             artwork_cache: Mutex::new(HashMap::new()),
         })
         .setup(move |app| {
-            use tauri::{WebviewUrl, WebviewWindowBuilder};
+            use tauri::{Manager, WebviewUrl, WebviewWindowBuilder};
+
+            // Explicitly destroy the default main window so it never opens during installer mode
+            if let Some(main_win) = app.get_webview_window("main") {
+                let _ = main_win.destroy();
+            }
 
             let path = format!("installer?mode={mode}");
             let _ = WebviewWindowBuilder::new(app, "installer", WebviewUrl::App(path.into()))
@@ -1431,7 +1491,8 @@ pub fn run_installer() {
             installer_uninstall,
             open_installer_window,
             open_game_folder,
-            uninstall_game
+            uninstall_game,
+            installer_launch_app
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri installer application");

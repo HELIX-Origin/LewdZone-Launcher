@@ -74,6 +74,10 @@ jobs:
           path: dist/installer/*
           if-no-files-found: error
 
+      - name: Extract Release Notes from CHANGELOG.md
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: node scripts/extract-release-notes.mjs ${{ github.ref_name }}
+
       - name: Attach installer to GitHub Release
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
@@ -81,7 +85,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           name: 'LewdZone Launcher ${{ github.ref_name }}'
-          body: 'See CHANGELOG.md for release details.'
+          body_path: dist/release-notes.md
           draft: false
           prerelease: false
           files: dist/installer/*

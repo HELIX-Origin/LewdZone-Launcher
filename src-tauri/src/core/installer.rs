@@ -324,12 +324,6 @@ pub fn perform_install(options: InstallOptions) -> OperationResult {
         }
     }
 
-    // 5. Launch if requested
-    if options.launch_after {
-        let _ = std::process::Command::new(&dest_exe).spawn();
-        details.push("Launched LewdZone Launcher".to_string());
-    }
-
     OperationResult {
         success: true,
         message: "LewdZone Launcher successfully installed!".to_string(),
