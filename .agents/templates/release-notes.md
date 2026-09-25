@@ -1,4 +1,4 @@
-# LewdZone Launcher v{{ version }}
+# {{Project Name}} v{{ version }}
 
 **Release date:** {{ YYYY-MM-DD }}
 
@@ -23,9 +23,9 @@
 
 Download the installer for your platform from the Assets section below:
 
-- Windows: `LewdZone-Setup-v{{ version }}-windows-x64.exe`
-- macOS: `LewdZone-Setup-v{{ version }}-macos-arm64` (or `macos-x64` if available)
-- Linux: `LewdZone-Setup-v{{ version }}-linux-x64`
+- Windows: `{{Project Name}}-Setup-v{{ version }}-windows-x64.exe`
+- macOS: `{{Project Name}}-Setup-v{{ version }}-macos-arm64` (or `macos-x64` if available)
+- Linux: `{{Project Name}}-Setup-v{{ version }}-linux-x64`
 
 Upgrade in place: run the new installer over your existing installation. The unified installer will repair/replace files and update shortcuts.
 
