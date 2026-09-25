@@ -6,7 +6,18 @@ move it to the commit that resolved it (`git log`).
 
 ## 🚧 Open Bugs
 
-(No open bugs.)
+### 2026-09-25 — AI agents drift from Conventional Commits in release notes
+- [ ] Reproduced
+- [ ] Root cause identified
+- [ ] Fix in PR
+
+**Problem:** When generating `.agents/release-notes/vX.Y.Z.md`, AI agents repeatedly emit free-form bullet descriptions instead of the [commit-message](../.agents/templates/commit-message.md) standard format (`<type>(<scope>): <subject>`) and omit short-hash links to commits. Manual correction wastes credits and repeatedly confuses agents, causing cascading errors.
+
+**Impact:** Release notes do not strictly satisfy [Rule 08](../.agents/rules/rule-08-release-standards.md) and the [release-notes template](../.agents/templates/release-notes.md). Changelog entries must be hand-corrected after agent generation.
+
+**Expected:** Agents write release-note bullet points directly from `git log --oneline <prev>..<tag>` using the exact Conventional Commit subject lines and append `[(short-hash)](https://github.com/HELIX-Origin/LewdZone-Launcher/commit/<full-hash>)` links.
+
+**Actual:** Agents paraphrase changes into narrative prose and invent non-standard commit bullets (e.g. `fix(resolver): ...` descriptions that do not match any actual commit).
 
 ## 📝 Filing a bug
 

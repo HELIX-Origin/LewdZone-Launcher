@@ -16,12 +16,32 @@ the top; the current development state lives under `Unreleased`.
 
 Patch release cleaning up the resolver UI, unifying archive extraction behavior across all direct-stream downloads, and making the unified installer titlebar consistent with the main application.
 
-### 🐛 Bug Fixes & Improvements
+### Removed
 
-- **Resolver UI Cleanup:** Removed the now-redundant "Open in Browser" button from the Secure Ad-Free Resolver; "Open in App" remains the primary action for capturing downloads in-app.
-- **Consistent Archive Auto-Extraction:** `stream_target` and `stream_target_accelerated` now auto-extract every supported archive format (`.zip`, `.7z`, `.rar`, `.tar.gz`, `.tar.bz2`, `.tar.xz`, `.tgz`, `.tbz2`, `.txz`, and SFX `.exe`) instead of only `.zip`. Archives are deleted after successful extraction, eliminating leftover archives alongside downloads.
-- **Duplicate Folder Prevention:** `ingest_completed_archives` skips archives modified in the last 60 seconds and any archive whose path or target slug is already being processed by an active intercept/download/extract queue job, preventing the background scanner from re-extracting an archive the app is already handling.
-- **Unified Installer Titlebar:** Replaced the installer’s custom dark header with the same frameless traffic-light titlebar used by the main app, including theme-aware glass styling, drag-to-move, and correct macOS/Windows control ordering.
+- **🗑️ feat(release): remove "Open in Browser" resolver button** [(dd43e58)](https://github.com/HELIX-Origin/LewdZone-Launcher/commit/dd43e5897c0e613da4bf71b1d70e4ac3e46c1313)
+  - The Secure Ad-Free Resolver now only offers "Open in App" as the primary capture path.
+
+### Fixed
+
+- **🔧 feat(release): unify archive extraction across all supported formats** [(dd43e58)](https://github.com/HELIX-Origin/LewdZone-Launcher/commit/dd43e5897c0e613da4bf71b1d70e4ac3e46c1313)
+  - `stream_target` and `stream_target_accelerated` auto-extract every supported archive format (`.zip`, `.7z`, `.rar`, `.tar.gz`, `.tar.bz2`, `.tar.xz`, `.tgz`, `.tbz2`, `.txz`, and SFX `.exe`) instead of only `.zip`.
+  - Eliminates leftover archives alongside downloads.
+- **🔧 feat(release): prevent duplicate extractions from background scanner** [(dd43e58)](https://github.com/HELIX-Origin/LewdZone-Launcher/commit/dd43e5897c0e613da4bf71b1d70e4ac3e46c1313)
+  - `ingest_completed_archives` now skips archives modified in the last 60 seconds and any archive whose path or target slug is already being processed by an active queue job.
+
+### Changed
+
+- **🎨 feat(release): adopt main-app custom titlebar in unified installer** [(dd43e58)](https://github.com/HELIX-Origin/LewdZone-Launcher/commit/dd43e5897c0e613da4bf71b1d70e4ac3e46c1313)
+  - Replaced the installer’s custom dark header with the frameless traffic-light titlebar used by the main app (theme glass, drag-to-move, macOS/Windows ordering).
+
+---
+
+| Component | Description | Status |
+| :--- | :--- | :--- |
+| Resolver UI | "Open in Browser" button removed | ✅ |
+| Download core | All supported archives auto-extract and are deleted after extraction | ✅ |
+| Background service | Scanner skips active downloads and recently modified archives | ✅ |
+| Unified installer | Custom titlebar matches main app | ✅ |
 
 ---
 
