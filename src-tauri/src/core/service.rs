@@ -6,14 +6,14 @@
 //! - Downloads folder archive auto-ingestion & extraction into the library
 //! - Live progress & status event emission to the Tauri webview
 
-use std::fs;
-use std::sync::Arc;
-use std::time::{Duration, SystemTime};
 use crate::core::folder;
 use crate::core::library;
 use crate::core::queue::{Queue, QueueJob, Status};
 use crate::core::{Context, Error};
 use crate::resolver;
+use std::fs;
+use std::sync::Arc;
+use std::time::{Duration, SystemTime};
 
 /// Direct streamable hosts or hosts with known direct-link extraction.
 pub const DIRECT_STREAM_HOSTS: &[&str] = &["fileknot", "pixeldrain", "mediafire", "workupload"];
@@ -26,7 +26,9 @@ pub const ARCHIVE_EXTS: &[&str] = &[
 /// Check if a host slug is direct-streamable or extractable.
 pub fn is_direct_host(host: &str) -> bool {
     let lower = host.trim().to_lowercase();
-    DIRECT_STREAM_HOSTS.iter().any(|h| h.eq_ignore_ascii_case(&lower))
+    DIRECT_STREAM_HOSTS
+        .iter()
+        .any(|h| h.eq_ignore_ascii_case(&lower))
 }
 
 /// Try to extract a direct download URL from an external host URL.
@@ -104,10 +106,7 @@ impl From<&QueueJob> for BackgroundJobEvent {
 
 /// Scan the download root for completed archives (e.g. downloaded from browser)
 /// and auto-enqueue them for extraction into `lzapps/<slug>/`.
-pub fn ingest_completed_archives(
-    ctx: &Context,
-    queue: &Queue,
-) -> Result<usize, Error> {
+pub fn ingest_completed_archives(ctx: &Context, queue: &Queue) -> Result<usize, Error> {
     let download_root = match folder::download_root(ctx) {
         Ok(p) => p,
         Err(_) => return Ok(0),
@@ -215,13 +214,20 @@ pub fn start_service(
                 if let Some(ref app) = app_for_process {
                     use tauri::Emitter;
                     if let Some(job) = queue_for_emit.get(id) {
-                        let _ = app.emit("background-service-job-update", BackgroundJobEvent::from(&job));
+                        let _ = app.emit(
+                            "background-service-job-update",
+                            BackgroundJobEvent::from(&job),
+                        );
                     }
                 }
             }
 
             // Periodically check download folder for completed browser downloads (every 10s)
-            if last_scan.elapsed().map(|d| d >= Duration::from_secs(10)).unwrap_or(false) {
+            if last_scan
+                .elapsed()
+                .map(|d| d >= Duration::from_secs(10))
+                .unwrap_or(false)
+            {
                 last_scan = SystemTime::now();
                 let _ = ingest_completed_archives(&ctx, &queue);
             }

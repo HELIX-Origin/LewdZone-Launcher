@@ -450,7 +450,9 @@ pub fn clean_folder_title(raw: &str) -> String {
     }
 
     // Replace underscores with spaces so "Treasure_of_Nadia" -> "Treasure of Nadia"
-    cleaned = cleaned.replace('_', " ").replace(['\u{2013}', '\u{2014}'], "-");
+    cleaned = cleaned
+        .replace('_', " ")
+        .replace(['\u{2013}', '\u{2014}'], "-");
 
     let lower = cleaned.to_lowercase();
     for status_marker in &[
@@ -469,14 +471,25 @@ pub fn clean_folder_title(raw: &str) -> String {
 
     let lower = cleaned.to_lowercase();
     for marker in &[
-        " - version", " version ", " - v",
-        " - chapter", " chapter ",
-        " - ch.", " ch. ", " - ch ",
-        " - episode", " episode ",
-        " - ep.", " ep. ", " - ep ",
-        " - part", " part ",
-        " - season", " season ",
-        " - build", " build ",
+        " - version",
+        " version ",
+        " - v",
+        " - chapter",
+        " chapter ",
+        " - ch.",
+        " ch. ",
+        " - ch ",
+        " - episode",
+        " episode ",
+        " - ep.",
+        " ep. ",
+        " - ep ",
+        " - part",
+        " part ",
+        " - season",
+        " season ",
+        " - build",
+        " build ",
     ] {
         if let Some(idx) = lower.find(marker) {
             cleaned.truncate(idx);
@@ -497,7 +510,15 @@ pub fn clean_folder_title(raw: &str) -> String {
 
     // Strip trailing platform markers if present
     let lower_trim = cleaned.trim().to_lowercase();
-    for suffix in &[" - pc", " - mac", " - linux", " pc", " mac", " linux", " - windows"] {
+    for suffix in &[
+        " - pc",
+        " - mac",
+        " - linux",
+        " pc",
+        " mac",
+        " linux",
+        " - windows",
+    ] {
         if lower_trim.ends_with(suffix) {
             let new_len = cleaned.trim().len() - suffix.len();
             cleaned = cleaned.trim()[..new_len].to_string();
@@ -559,8 +580,6 @@ pub fn is_supported_archive(path: &Path) -> bool {
         || name.ends_with(".txz")
         || (name.ends_with(".exe") && is_sfx_archive(path))
 }
-
-
 
 /// Extract archive extension from a URL or path, respecting multi-part extensions like .tar.gz
 pub fn extract_archive_extension(path_or_url: &str) -> String {
@@ -643,10 +662,9 @@ pub fn format_archive_filename(
                     found_status = Some("Unknown".to_string());
                 } else if !inside.is_empty() {
                     let mut c = inside.chars();
-                    found_status = match c.next() {
-                        None => None,
-                        Some(f) => Some(f.to_uppercase().collect::<String>() + c.as_str()),
-                    };
+                    found_status = c
+                        .next()
+                        .map(|f| f.to_uppercase().collect::<String>() + c.as_str());
                 }
             }
         }
@@ -669,7 +687,11 @@ pub fn format_archive_filename(
 
     let release_desc = format_release_descriptor(raw_title, version);
     let clean_ext = ext.trim_start_matches('.');
-    let final_ext = if clean_ext.is_empty() { "zip" } else { clean_ext };
+    let final_ext = if clean_ext.is_empty() {
+        "zip"
+    } else {
+        clean_ext
+    };
 
     format!("{title} [{status}] - {release_desc}.{final_ext}")
 }
@@ -720,7 +742,10 @@ pub fn format_release_descriptor(raw_title: &str, version_input: &str) -> String
         if t_lower.starts_with('v') && t_lower.len() > 1 && !t_lower.starts_with("ver") {
             let candidate = t_clean[1..].trim_start_matches('.');
             if candidate.chars().next().is_some_and(|c| c.is_ascii_digit()) {
-                let v: String = candidate.chars().take_while(|c| c.is_ascii_digit() || *c == '.' || *c == '-').collect();
+                let v: String = candidate
+                    .chars()
+                    .take_while(|c| c.is_ascii_digit() || *c == '.' || *c == '-')
+                    .collect();
                 let v_clean = v.trim_matches(|c| c == '.' || c == '-').to_string();
                 if !v_clean.is_empty() {
                     version_number = Some(v_clean);
@@ -734,9 +759,15 @@ pub fn format_release_descriptor(raw_title: &str, version_input: &str) -> String
     if version_number.is_none() {
         if let Some(idx) = lower.find("version") {
             let after = &combined[idx + "version".len()..].trim_start();
-            let after = after.trim_start_matches(':').trim_start_matches('.').trim_start();
-            let after = after.trim_start_matches(|c| c == 'v' || c == 'V');
-            let v: String = after.chars().take_while(|c| c.is_ascii_digit() || *c == '.' || *c == '-').collect();
+            let after = after
+                .trim_start_matches(':')
+                .trim_start_matches('.')
+                .trim_start();
+            let after = after.trim_start_matches(['v', 'V']);
+            let v: String = after
+                .chars()
+                .take_while(|c| c.is_ascii_digit() || *c == '.' || *c == '-')
+                .collect();
             let v_clean = v.trim_matches(|c| c == '.' || c == '-').to_string();
             if !v_clean.is_empty() && v_clean != "latest" {
                 version_number = Some(v_clean);
@@ -746,9 +777,17 @@ pub fn format_release_descriptor(raw_title: &str, version_input: &str) -> String
 
     // If still not found and version_input is a plain version number like "0.19.1" or "1.0"
     if version_number.is_none() {
-        let v_input_clean = version_input.trim().trim_start_matches(|c| c == 'v' || c == 'V');
-        if v_input_clean.chars().next().is_some_and(|c| c.is_ascii_digit()) && (v_input_clean.contains('.') || chapter_info.is_none()) {
-            let v: String = v_input_clean.chars().take_while(|c| c.is_ascii_digit() || *c == '.' || *c == '-').collect();
+        let v_input_clean = version_input.trim().trim_start_matches(['v', 'V']);
+        if v_input_clean
+            .chars()
+            .next()
+            .is_some_and(|c| c.is_ascii_digit())
+            && (v_input_clean.contains('.') || chapter_info.is_none())
+        {
+            let v: String = v_input_clean
+                .chars()
+                .take_while(|c| c.is_ascii_digit() || *c == '.' || *c == '-')
+                .collect();
             let v_clean = v.trim_matches(|c| c == '.' || c == '-').to_string();
             if !v_clean.is_empty() && v_clean != "latest" {
                 version_number = Some(v_clean);
@@ -758,7 +797,10 @@ pub fn format_release_descriptor(raw_title: &str, version_input: &str) -> String
 
     // Filter out chapter number being erroneously captured as version if they overlap
     if let (Some(ref v), Some((_, ref c))) = (&version_number, &chapter_info) {
-        if v == c && !version_input.to_lowercase().contains('v') && !version_input.to_lowercase().contains("version") {
+        if v == c
+            && !version_input.to_lowercase().contains('v')
+            && !version_input.to_lowercase().contains("version")
+        {
             version_number = None;
         }
     }
@@ -1578,68 +1620,45 @@ mod tests {
             "1.0117",
             ".tar.gz",
         );
-        assert_eq!(name2, "Treasure of Nadia [Finished] - Version 1.0117.tar.gz");
-
-        let name3 = format_archive_filename(
-            "Lost City [Abandoned]",
-            None,
-            "v0.5.2",
-            "7z",
+        assert_eq!(
+            name2,
+            "Treasure of Nadia [Finished] - Version 1.0117.tar.gz"
         );
+
+        let name3 = format_archive_filename("Lost City [Abandoned]", None, "v0.5.2", "7z");
         assert_eq!(name3, "Lost City [Abandoned] - Version 0.5.2.7z");
 
-        let name4 = format_archive_filename(
-            "Mystery Game",
-            None,
-            "latest",
-            "rar",
-        );
+        let name4 = format_archive_filename("Mystery Game", None, "latest", "rar");
         assert_eq!(name4, "Mystery Game [Unknown] - Version 1.0.rar");
 
-        let name5 = format_archive_filename(
-            "Elysium [Ongoing] - Chapter 3",
-            None,
-            "Chapter 3",
-            "zip",
-        );
+        let name5 =
+            format_archive_filename("Elysium [Ongoing] - Chapter 3", None, "Chapter 3", "zip");
         assert_eq!(name5, "Elysium [Ongoing] - Chapter 3.zip");
 
-        let name6 = format_archive_filename(
-            "Anime Game [Finished] - Ch. 4",
-            None,
-            "4",
-            "7z",
-        );
+        let name6 = format_archive_filename("Anime Game [Finished] - Ch. 4", None, "4", "7z");
         assert_eq!(name6, "Anime Game [Finished] - Chapter 4.7z");
 
-        let name7 = format_archive_filename(
-            "Story Quest [Ongoing] - Episode 2",
-            None,
-            "2",
-            "rar",
-        );
+        let name7 = format_archive_filename("Story Quest [Ongoing] - Episode 2", None, "2", "rar");
         assert_eq!(name7, "Story Quest [Ongoing] - Episode 2.rar");
 
-        let name8 = format_archive_filename(
-            "Retro Legend [Abandoned] - Part 1",
-            None,
-            "Part 1",
-            "zip",
-        );
+        let name8 =
+            format_archive_filename("Retro Legend [Abandoned] - Part 1", None, "Part 1", "zip");
         assert_eq!(name8, "Retro Legend [Abandoned] - Part 1.zip");
 
-        let name9 = format_archive_filename(
-            "Star Journey",
-            Some("Unknown"),
-            "Ch. 1-4 v1.01",
-            "zip",
+        let name9 =
+            format_archive_filename("Star Journey", Some("Unknown"), "Ch. 1-4 v1.01", "zip");
+        assert_eq!(
+            name9,
+            "Star Journey [Unknown] - Version 1.01 Chapter 1-4.zip"
         );
-        assert_eq!(name9, "Star Journey [Unknown] - Version 1.01 Chapter 1-4.zip");
     }
 
     #[test]
     fn extract_archive_extension_respects_tar_gz_and_query_strings() {
-        assert_eq!(extract_archive_extension("https://site.com/dl/file.tar.gz?token=abc"), "tar.gz");
+        assert_eq!(
+            extract_archive_extension("https://site.com/dl/file.tar.gz?token=abc"),
+            "tar.gz"
+        );
         assert_eq!(extract_archive_extension("game.zip"), "zip");
         assert_eq!(extract_archive_extension("game.7z"), "7z");
         assert_eq!(extract_archive_extension("game.rar"), "rar");

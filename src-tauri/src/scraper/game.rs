@@ -557,7 +557,9 @@ fn parse_description(document: &Html) -> Option<String> {
 
     // 2. Fall back to meta description / og:description with boilerplate stripped
     let meta_desc = meta(document, "description").or_else(|| meta(document, "og:description"));
-    meta_desc.map(|d| clean_description_boilerplate(&d)).filter(|s| !s.is_empty())
+    meta_desc
+        .map(|d| clean_description_boilerplate(&d))
+        .filter(|s| !s.is_empty())
 }
 
 /// Strip SEO download boilerplate phrases from descriptions (e.g. "Download Latest Version ...", "Walkthrough for ...").
@@ -590,7 +592,6 @@ fn clean_description_boilerplate(raw: &str) -> String {
         }
     }
 }
-
 
 #[cfg(test)]
 mod tests {

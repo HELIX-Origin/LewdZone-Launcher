@@ -59,7 +59,9 @@ impl Provider for Steam {
             }
         }
 
-        let status = if genres.iter().any(|g| g.to_lowercase().contains("early access"))
+        let status = if genres
+            .iter()
+            .any(|g| g.to_lowercase().contains("early access"))
             || details.release_date.as_ref().is_some_and(|r| r.coming_soon)
         {
             Some("Ongoing".to_string())

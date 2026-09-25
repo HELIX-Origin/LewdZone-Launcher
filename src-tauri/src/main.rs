@@ -13,9 +13,9 @@ fn main() -> ExitCode {
     // Auto-launch unified installer wizard if named *installer* or *setup*, or passed flags
     if exe_name.contains("installer")
         || exe_name.contains("setup")
-        || args
-            .iter()
-            .any(|a| a == "--installer" || a == "--setup" || a == "--uninstall" || a == "--maintenance")
+        || args.iter().any(|a| {
+            a == "--installer" || a == "--setup" || a == "--uninstall" || a == "--maintenance"
+        })
     {
         lewdzone_lib::run_installer();
         return ExitCode::SUCCESS;

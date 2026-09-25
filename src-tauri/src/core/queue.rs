@@ -396,7 +396,6 @@ impl Queue {
         Ok(job)
     }
 
-
     /// All jobs, newest first (the Downloads page's view).
     pub fn snapshot(&self) -> Vec<QueueJob> {
         let g = self.inner.lock().unwrap_or_else(|p| p.into_inner());
@@ -500,7 +499,10 @@ impl Queue {
         {
             return Some(id);
         }
-        let (guard, _) = self.wake.wait_timeout(g, timeout).unwrap_or_else(|p| p.into_inner());
+        let (guard, _) = self
+            .wake
+            .wait_timeout(g, timeout)
+            .unwrap_or_else(|p| p.into_inner());
         guard
             .jobs
             .iter()
@@ -579,25 +581,33 @@ pub fn process(
 
             let raw_title = entry.message.clone().unwrap_or_else(|| entry.slug.clone());
             let clean_title = crate::core::library::clean_folder_title(&raw_title);
-            let display_title = if clean_title.is_empty() { &raw_title } else { &clean_title };
+            let display_title = if clean_title.is_empty() {
+                &raw_title
+            } else {
+                &clean_title
+            };
 
-            let direct_stream_url = crate::core::service::extract_direct_url(&entry.tab, &resolved.url);
+            let direct_stream_url =
+                crate::core::service::extract_direct_url(&entry.tab, &resolved.url);
 
             if let Some(direct_url) = direct_stream_url {
                 let status_hint = if !raw_title.contains('[') {
                     let db_status = ctx.open_db().ok().and_then(|conn| {
-                        crate::db::repo::game_by_slug(&conn, &entry.slug).ok().flatten().and_then(|g| {
-                            let cv = g.current_version.as_deref().unwrap_or("");
-                            if cv.to_lowercase().contains("finish") {
-                                Some("Finished".to_string())
-                            } else if cv.to_lowercase().contains("ongoing") {
-                                Some("Ongoing".to_string())
-                            } else if cv.to_lowercase().contains("abandon") {
-                                Some("Abandoned".to_string())
-                            } else {
-                                None
-                            }
-                        })
+                        crate::db::repo::game_by_slug(&conn, &entry.slug)
+                            .ok()
+                            .flatten()
+                            .and_then(|g| {
+                                let cv = g.current_version.as_deref().unwrap_or("");
+                                if cv.to_lowercase().contains("finish") {
+                                    Some("Finished".to_string())
+                                } else if cv.to_lowercase().contains("ongoing") {
+                                    Some("Ongoing".to_string())
+                                } else if cv.to_lowercase().contains("abandon") {
+                                    Some("Abandoned".to_string())
+                                } else {
+                                    None
+                                }
+                            })
                     });
                     db_status.or_else(|| {
                         let card = crate::core::models::GameCard {
@@ -605,7 +615,9 @@ pub fn process(
                             title: raw_title.clone(),
                             ..Default::default()
                         };
-                        crate::core::content::enrich(ctx, &card).ok().and_then(|e| e.status)
+                        crate::core::content::enrich(ctx, &card)
+                            .ok()
+                            .and_then(|e| e.status)
                     })
                 } else {
                     None
@@ -630,7 +642,8 @@ pub fn process(
                     }
                 };
 
-                let archive_path = crate::core::folder::archive_download_target(&download_root, &archive_name);
+                let archive_path =
+                    crate::core::folder::archive_download_target(&download_root, &archive_name);
                 if let Some(parent) = archive_path.parent() {
                     let _ = std::fs::create_dir_all(parent);
                 }
@@ -674,7 +687,11 @@ pub fn process(
                     install_dir,
                 };
 
-                match crate::core::download::stream_target(&job, &mut |url| crate::scraper::download_stream(url), &mut progress_cb) {
+                match crate::core::download::stream_target(
+                    &job,
+                    &mut |url| crate::scraper::download_stream(url),
+                    &mut progress_cb,
+                ) {
                     Ok(_) => {
                         queue.update(id, |j| {
                             j.status = Status::Completed;
@@ -693,7 +710,10 @@ pub fn process(
                 let _ = crate::core::native::open_url(&resolved.url);
                 queue.update(id, |j| {
                     j.status = Status::Dispatched;
-                    j.message = Some(format!("Opened in browser ({}) — awaiting download", entry.tab));
+                    j.message = Some(format!(
+                        "Opened in browser ({}) — awaiting download",
+                        entry.tab
+                    ));
                 });
                 return;
             }
@@ -718,23 +738,30 @@ pub fn process(
         // Title stored in message during enqueue_intercept
         let raw_title = entry.message.clone().unwrap_or_else(|| entry.slug.clone());
         let clean_title = crate::core::library::clean_folder_title(&raw_title);
-        let display_title = if clean_title.is_empty() { &raw_title } else { &clean_title };
+        let display_title = if clean_title.is_empty() {
+            &raw_title
+        } else {
+            &clean_title
+        };
 
         // Format archive filename per user specification: {Game Title} [{Status}] - Version {version.number}.{ext}
         let status_hint = if !raw_title.contains('[') {
             let db_status = ctx.open_db().ok().and_then(|conn| {
-                crate::db::repo::game_by_slug(&conn, &entry.slug).ok().flatten().and_then(|g| {
-                    let cv = g.current_version.as_deref().unwrap_or("");
-                    if cv.to_lowercase().contains("finish") {
-                        Some("Finished".to_string())
-                    } else if cv.to_lowercase().contains("ongoing") {
-                        Some("Ongoing".to_string())
-                    } else if cv.to_lowercase().contains("abandon") {
-                        Some("Abandoned".to_string())
-                    } else {
-                        None
-                    }
-                })
+                crate::db::repo::game_by_slug(&conn, &entry.slug)
+                    .ok()
+                    .flatten()
+                    .and_then(|g| {
+                        let cv = g.current_version.as_deref().unwrap_or("");
+                        if cv.to_lowercase().contains("finish") {
+                            Some("Finished".to_string())
+                        } else if cv.to_lowercase().contains("ongoing") {
+                            Some("Ongoing".to_string())
+                        } else if cv.to_lowercase().contains("abandon") {
+                            Some("Abandoned".to_string())
+                        } else {
+                            None
+                        }
+                    })
             });
             db_status.or_else(|| {
                 let card = crate::core::models::GameCard {
@@ -742,7 +769,9 @@ pub fn process(
                     title: raw_title.clone(),
                     ..Default::default()
                 };
-                crate::core::content::enrich(ctx, &card).ok().and_then(|e| e.status)
+                crate::core::content::enrich(ctx, &card)
+                    .ok()
+                    .and_then(|e| e.status)
             })
         } else {
             None
@@ -767,7 +796,8 @@ pub fn process(
             }
         };
 
-        let archive_path = crate::core::folder::archive_download_target(&download_root, &archive_name);
+        let archive_path =
+            crate::core::folder::archive_download_target(&download_root, &archive_name);
         if let Some(parent) = archive_path.parent() {
             let _ = std::fs::create_dir_all(parent);
         }
@@ -812,7 +842,11 @@ pub fn process(
             install_dir,
         };
 
-        match crate::core::download::stream_target(&job, &mut |url| crate::scraper::download_stream(url), &mut progress_cb) {
+        match crate::core::download::stream_target(
+            &job,
+            &mut |url| crate::scraper::download_stream(url),
+            &mut progress_cb,
+        ) {
             Ok(_) => {
                 if let Some(j) = queue.get(id) {
                     if j.status != Status::Failed {
@@ -838,7 +872,6 @@ pub fn process(
     }
 
     if entry.tab == "extract" {
-
         queue.update(id, |j| {
             j.status = Status::Extracting;
             j.bytes_done = 0;
@@ -1396,25 +1429,29 @@ mod tests {
     #[test]
     fn enqueue_intercept_deduplicates_in_progress_jobs() {
         let q = Queue::new();
-        let job1 = q.enqueue_intercept(
-            "sample-game".to_string(),
-            "https://host.com/archive.zip".to_string(),
-            "Sample Game".to_string(),
-            "1.0".to_string(),
-            "pc".to_string(),
-        ).unwrap();
+        let job1 = q
+            .enqueue_intercept(
+                "sample-game".to_string(),
+                "https://host.com/archive.zip".to_string(),
+                "Sample Game".to_string(),
+                "1.0".to_string(),
+                "pc".to_string(),
+            )
+            .unwrap();
 
         assert_eq!(job1.id, 1);
         assert_eq!(q.snapshot().len(), 1);
 
         // Second intercept for the same game or URL while queued returns the existing job
-        let job2 = q.enqueue_intercept(
-            "sample-game".to_string(),
-            "https://host.com/archive.zip".to_string(),
-            "Sample Game".to_string(),
-            "1.0".to_string(),
-            "pc".to_string(),
-        ).unwrap();
+        let job2 = q
+            .enqueue_intercept(
+                "sample-game".to_string(),
+                "https://host.com/archive.zip".to_string(),
+                "Sample Game".to_string(),
+                "1.0".to_string(),
+                "pc".to_string(),
+            )
+            .unwrap();
 
         assert_eq!(job2.id, job1.id);
         assert_eq!(q.snapshot().len(), 1, "must not spawn duplicate queues");

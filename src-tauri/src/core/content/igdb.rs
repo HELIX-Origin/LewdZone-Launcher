@@ -73,7 +73,7 @@ impl Provider for Igdb {
         let rating = game.rating.map(|r| (r / 20.0) as f32); // Convert 0-100 to 0-5 stars
         let status = game.status.and_then(|s| match s {
             0 | 5 => Some("Finished".to_string()),
-            2 | 3 | 4 => Some("Ongoing".to_string()),
+            2..=4 => Some("Ongoing".to_string()),
             6 => Some("Abandoned".to_string()),
             _ => None,
         });

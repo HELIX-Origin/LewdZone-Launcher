@@ -963,17 +963,13 @@ fn background_service_enqueue(
 
 /// Scan download root for completed archives and auto-extract them into library.
 #[tauri::command]
-fn background_service_scan_downloads(
-    state: tauri::State<'_, AppState>,
-) -> Result<usize, String> {
+fn background_service_scan_downloads(state: tauri::State<'_, AppState>) -> Result<usize, String> {
     let ctx = state
         .context
         .lock()
         .map_err(|_| "state lock poisoned".to_string())?;
-    crate::core::service::ingest_completed_archives(&ctx, &state.queue)
-        .map_err(|e| e.to_string())
+    crate::core::service::ingest_completed_archives(&ctx, &state.queue).map_err(|e| e.to_string())
 }
-
 
 /// `settings.get()` — one value or the whole snapshot as JSON for the page.
 #[tauri::command]
@@ -1197,6 +1193,14 @@ pub fn run() {
     let service_queue = queue.clone();
     let service_ctx = ctx.clone();
     tauri::Builder::default()
+        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+            use tauri::Manager;
+            if let Some(window) = app.get_webview_window("main") {
+                let _ = window.show();
+                let _ = window.unminimize();
+                let _ = window.set_focus();
+            }
+        }))
         .plugin(tauri_plugin_opener::init())
         .manage(AppState {
             context: Mutex::new(Context::new(db, config)),
@@ -1208,11 +1212,8 @@ pub fn run() {
         })
         .setup(move |app| {
             let app_handle = app.handle().clone();
-            let _service = crate::core::service::start_service(
-                service_queue,
-                service_ctx,
-                Some(app_handle),
-            );
+            let _service =
+                crate::core::service::start_service(service_queue, service_ctx, Some(app_handle));
             use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
             use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
             use tauri::Manager;

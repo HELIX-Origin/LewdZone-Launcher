@@ -72,7 +72,10 @@ impl Provider for Itch {
 
         let status = if tags.iter().any(|t| {
             let l = t.to_lowercase();
-            l.contains("development") || l.contains("prototype") || l.contains("wip") || l.contains("ongoing")
+            l.contains("development")
+                || l.contains("prototype")
+                || l.contains("wip")
+                || l.contains("ongoing")
         }) {
             Some("Ongoing".to_string())
         } else if tags.iter().any(|t| {
