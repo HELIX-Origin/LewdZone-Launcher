@@ -59,10 +59,21 @@ impl Provider for Steam {
             }
         }
 
+        let status = if genres.iter().any(|g| g.to_lowercase().contains("early access"))
+            || details.release_date.as_ref().is_some_and(|r| r.coming_soon)
+        {
+            Some("Ongoing".to_string())
+        } else if details.release_date.is_some() {
+            Some("Finished".to_string())
+        } else {
+            None
+        };
+
         Ok(Some(Enrichment {
             description,
             developer,
             rating: None,
+            status,
             tags: Vec::new(),
             genres,
             screenshots,
@@ -225,6 +236,17 @@ struct AppDetails {
     background: Option<String>,
     #[serde(default)]
     background_raw: Option<String>,
+    #[serde(default)]
+    release_date: Option<SteamReleaseDate>,
+}
+
+#[derive(Debug, Deserialize)]
+#[allow(dead_code)]
+struct SteamReleaseDate {
+    #[serde(default)]
+    coming_soon: bool,
+    #[serde(default)]
+    date: String,
 }
 
 #[derive(Debug, Deserialize)]

@@ -89,6 +89,7 @@ impl Provider for IndieDb {
             description,
             developer,
             rating: None,
+            status: None,
             tags: Vec::new(),
             genres: Vec::new(),
             screenshots,

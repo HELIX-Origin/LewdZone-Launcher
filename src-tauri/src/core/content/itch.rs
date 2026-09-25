@@ -70,10 +70,30 @@ impl Provider for Itch {
             .take(8)
             .collect();
 
+        let status = if tags.iter().any(|t| {
+            let l = t.to_lowercase();
+            l.contains("development") || l.contains("prototype") || l.contains("wip") || l.contains("ongoing")
+        }) {
+            Some("Ongoing".to_string())
+        } else if tags.iter().any(|t| {
+            let l = t.to_lowercase();
+            l.contains("finished") || l.contains("complete")
+        }) {
+            Some("Finished".to_string())
+        } else if tags.iter().any(|t| {
+            let l = t.to_lowercase();
+            l.contains("abandon") || l.contains("cancel")
+        }) {
+            Some("Abandoned".to_string())
+        } else {
+            None
+        };
+
         Ok(Some(Enrichment {
             description,
             developer,
             rating: None,
+            status,
             tags,
             genres: Vec::new(),
             screenshots,

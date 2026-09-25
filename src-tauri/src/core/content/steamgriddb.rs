@@ -93,6 +93,7 @@ impl Provider for SteamGridDb {
             description: None,
             developer: None,
             rating: None,
+            status: None,
             tags: Vec::new(),
             genres: Vec::new(),
             screenshots,

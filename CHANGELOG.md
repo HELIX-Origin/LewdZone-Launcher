@@ -12,6 +12,30 @@ the top; the current development state lives under `Unreleased`.
 
 ---
 
+## [v0.3.0](https://github.com/HELIX-Origin/LewdZone-Launcher/releases/tag/v0.3.0) — 2026-09-24
+
+Milestone release featuring the modern in-app Unified Installer / Uninstaller wizard, child-window archive download interception, 2-column store and library layouts with dedicated metadata sidebars, clean synopsis scraping, and clean game title handling across manifests and UI.
+
+### ✨ Highlights
+
+- **Persistent Background Service (`src-tauri/src/core/service.rs`):** A dedicated background worker running alongside the launcher application, coordinating task queue execution, external host URL resolution (Pixeldrain, Mediafire, Fileknot), streaming downloads, and automatic ingestion of completed archives from the downloads directory.
+- **Privacy & Secure Database Architecture:** Ensured the SQLite database (`lewdzone.db`) is strictly local and never bundled or committed to the repository. The installer checks and initializes a fresh database schema on install (preserved if it already exists), keeping user tokens, secrets, and library progress completely private in `%APPDATA%\lewdzone\`.
+- **Resolver Window & In-App Interception:** Fixed redirect loop in the go-token resolver window. Added an "Open in App" option alongside "Open in Browser" so users can navigate hosting landing pages directly in-app, where the Tauri webview's `on_download` hook captures the archive trigger automatically.
+- **Modern Unified Installer Wizard (`LewdZone-Setup.exe`):** Replaced legacy WiX/NSIS installers with an in-app setup and maintenance wizard (`src/routes/installer/+page.svelte`). Handles clean installs, component selection, start menu shortcuts, uninstallation, and maintenance mode directly in a single lightweight binary.
+- **Child-Window Archive Interception:** Intercepts archive download requests (`.zip`, `.7z`, `.rar`, `.exe` SFX, `.tar.gz`) clicked within the redirect resolver window via Tauri 2's `on_download` hook. Cancels the OS browser dialog, captures the direct URL, and streams the archive directly in-app to `<LibraryRoot>/downloads/` with live byte progress, automatically queuing extraction upon completion.
+- **2-Column Layout & Metadata Sidebars:** Restructured both Store (`/store/[slug]`) and Library (`/library/[slug]`) views into a modern 2-column layout (`1fr 320px`) with a sticky metadata card. Displays game status badges, developer, engine, size on disk, rating, censorship, platform badges, and direct external links to LewdZone, VNDB, Steam, and itch.io.
+- **Clean Story Synopsis:** Upgraded the scraper to parse clean game plot and synopsis paragraphs directly from `.content-block.main-content`, eliminating SEO promotional boilerplate (such as version numbers, file sizes, walkthrough adverts, and download links).
+- **Clean Library Titles:** Sanitized game titles across local folder scanning, manifest generation (`app.json`), and UI display, stripping archive extensions, version suffixes, and platform tags.
+
+### 🚀 Key Improvements & Features
+
+- **Queue & Download Engine:** Added `enqueue_intercept()` and `"intercept"` processing branch in `core/queue.rs`, enabling direct-URL streaming and extraction dispatch without going through go-link resolvers.
+- **Library & Title Parsing:** Added `clean_archive_stem()` and `clean_folder_title()` in `core/library.rs` and frontend title cleaners to ensure consistent display titles across all views.
+- **LewdClips Removal:** Completely removed all third-party video and external clip links and fixture references from the codebase.
+- **CI / Distribution Build:** Added `scripts/build-installer.mjs` and updated GitHub Actions packaging to build and publish the unified setup binary to `dist/installer/`.
+
+---
+
 ## [v0.2.1](https://github.com/HELIX-Origin/LewdZone-Launcher/releases/tag/v0.2.1) — 2026-09-24
 
 Patch release fixing cross-platform CI packaging builds for Linux and macOS, aligning workflow configuration with the official Tauri v2 GitHub Actions guide, and adding SteamGridDB API key settings persistence to the SQLite secret table.

@@ -71,11 +71,18 @@ impl Provider for Igdb {
             .filter_map(|s| expand_image_url(&s.url, "t_1080p"))
             .collect();
         let rating = game.rating.map(|r| (r / 20.0) as f32); // Convert 0-100 to 0-5 stars
+        let status = game.status.and_then(|s| match s {
+            0 | 5 => Some("Finished".to_string()),
+            2 | 3 | 4 => Some("Ongoing".to_string()),
+            6 => Some("Abandoned".to_string()),
+            _ => None,
+        });
 
         Ok(Some(Enrichment {
             description,
             developer: None,
             rating,
+            status,
             tags: Vec::new(),
             genres,
             screenshots,
@@ -188,7 +195,7 @@ fn query_games(
 ) -> Result<Vec<IgdbGame>, Error> {
     let client_id = secrets.get("igdb-client-id").cloned().unwrap_or_default();
     let body = format!(
-        "search \"{}\"; fields name,summary,genres.name,screenshots.url,cover.url,rating; limit 1;",
+        "search \"{}\"; fields name,summary,genres.name,screenshots.url,cover.url,rating,status; limit 1;",
         title.replace('"', "\\\"")
     );
 
@@ -264,6 +271,7 @@ struct IgdbGame {
     screenshots: Option<Vec<Image>>,
     cover: Option<Image>,
     rating: Option<f64>,
+    status: Option<u8>,
 }
 
 #[derive(Debug, Deserialize)]

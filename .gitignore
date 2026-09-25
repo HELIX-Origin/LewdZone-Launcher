@@ -27,7 +27,7 @@ htmlcov/
 .coverage.*
 
 # --------------------------------------------------
-# Environment / secrets
+# Environment / secrets & Local DB
 # --------------------------------------------------
 # these files contain sensitive information and
 # should not be committed to the repository.
@@ -35,6 +35,10 @@ htmlcov/
 .env
 .env.*
 *.pem
+*.db
+*.db-*
+*.sqlite
+*.sqlite3
 
 # --------------------------------------------------
 # Scratch / workspace temp

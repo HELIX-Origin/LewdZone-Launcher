@@ -59,10 +59,18 @@ impl Provider for Vndb {
             .take(10)
             .collect();
 
+        let status = vn.devstatus.and_then(|ds| match ds {
+            0 => Some("Finished".to_string()),
+            1 => Some("Ongoing".to_string()),
+            2 => Some("Abandoned".to_string()),
+            _ => None,
+        });
+
         Ok(Some(Enrichment {
             description,
             developer,
             rating,
+            status,
             tags,
             genres: Vec::new(),
             screenshots,
@@ -154,7 +162,7 @@ fn search_vn(title: &str) -> Result<Option<Vn>, Error> {
 
     let query = json!({
         "filters": ["search", "=", term],
-        "fields": "id,title,description,rating,image.url,screenshots.thumbnail,developers.name,producers.name,tags.name",
+        "fields": "id,title,description,rating,image.url,screenshots.thumbnail,developers.name,producers.name,tags.name,devstatus",
         "results": 1,
     });
     let body = query.to_string();
@@ -236,6 +244,8 @@ struct Vn {
     pub description: String,
     #[serde(default)]
     pub rating: Option<f32>,
+    #[serde(default)]
+    pub devstatus: Option<u8>,
     #[serde(default)]
     pub image: Option<VnImage>,
     #[serde(default)]

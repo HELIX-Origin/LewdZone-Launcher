@@ -36,6 +36,7 @@ pub struct Enrichment {
     pub description: Option<String>,
     pub developer: Option<String>,
     pub rating: Option<f32>,
+    pub status: Option<String>,
     pub tags: Vec<String>,
     pub genres: Vec<String>,
     pub screenshots: Vec<String>,
@@ -74,6 +75,7 @@ pub fn enrich(ctx: &Context, card: &GameCard) -> Result<Enrichment, Error> {
         description: card.description.clone(),
         developer: card.developer.clone(),
         rating: None,
+        status: card.state.clone(),
         tags: card.genres.clone(),
         genres: card.external_genres.clone(),
         screenshots: Vec::new(),
@@ -115,6 +117,9 @@ pub fn enrich(ctx: &Context, card: &GameCard) -> Result<Enrichment, Error> {
                     }
                     if merged.rating.is_none() {
                         merged.rating = extra.rating;
+                    }
+                    if merged.status.is_none() {
+                        merged.status = extra.status;
                     }
                     for g in extra.genres {
                         if !merged.genres.contains(&g) {

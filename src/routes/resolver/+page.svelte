@@ -86,9 +86,6 @@
       resolved = result;
       status = "resolved";
 
-      // Open the direct link in the default browser
-      await openExternal();
-
       // Auto-notify launcher of resolved URL
       try {
         await emit("download-url-resolved", {
@@ -116,6 +113,11 @@
     } catch (err) {
       console.error("Clipboard copy failed:", err);
     }
+  }
+
+  function openInApp() {
+    if (!resolved?.url) return;
+    window.location.href = resolved.url;
   }
 
   async function openExternal() {
@@ -181,15 +183,24 @@
             <polyline points="20 6 9 17 4 12"></polyline>
           </svg>
         </div>
-        <h2>Download Verified & Ready</h2>
-        <p class="subtitle">Direct file link extracted without third-party ads or scripts.</p>
+        <h2>Download Host Link Ready</h2>
+        <p class="subtitle">Ad challenge bypassed. Open in-app to trigger the download, and the background service will capture the archive automatically.</p>
 
         <div class="url-box">
           <code>{resolved.url}</code>
         </div>
 
         <div class="action-grid">
-          <button class="btn primary" onclick={openExternal}>
+          <button class="btn primary" onclick={openInApp}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="7 10 12 15 17 10"></polyline>
+              <line x1="12" y1="15" x2="12" y2="3"></line>
+            </svg>
+            Open in App
+          </button>
+
+          <button class="btn secondary" onclick={openExternal}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
               <polyline points="15 3 21 3 21 9"></polyline>

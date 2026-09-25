@@ -824,9 +824,6 @@ pub struct ResolvedDownloadPayload {
 
 /// Open a child webview window running our own custom in-app redirect page,
 /// ensuring no third-party malicious ads, popups, or tracking scripts run.
-/// The child window's `on_download` hook intercepts archive links (.zip, .7z,
-/// .rar, .exe, .tar.gz …) and routes them to the in-app download queue
-/// instead of the OS save dialog. Everything else passes through.
 #[tauri::command]
 async fn open_resolver_window(
     app: tauri::AppHandle,
@@ -851,13 +848,18 @@ async fn open_resolver_window(
 
     let path = format!("resolver?slug={enc_slug}&url={enc_url}&host={enc_host}&title={enc_title}");
 
-    // Clone what we need into the hook closure
     let queue = Arc::clone(&state.queue);
     let hook_slug = slug.clone();
     let hook_title = title.clone().unwrap_or_else(|| slug.clone());
     let hook_app = app.clone();
 
-    const ARCHIVE_EXTS: &[&str] = &[".zip", ".7z", ".rar", ".exe", ".tar.gz", ".tar.bz2", ".tar.xz"];
+    const ARCHIVE_EXTS: &[&str] = &[
+        ".zip", ".7z", ".rar", ".exe", ".tar.gz", ".tar.bz2", ".tar.xz", ".tgz", ".iso", ".apk",
+    ];
+
+    use std::sync::atomic::{AtomicBool, Ordering};
+    let captured = Arc::new(AtomicBool::new(false));
+    let captured_flag = Arc::clone(&captured);
 
     let builder =
         WebviewWindowBuilder::new(&app, "download-resolver", WebviewUrl::App(path.into()))
@@ -865,18 +867,34 @@ async fn open_resolver_window(
                 "Download Verification - {}",
                 title.as_deref().unwrap_or(&slug)
             ))
-            .inner_size(700.0, 560.0)
+            .inner_size(800.0, 600.0)
             .min_inner_size(520.0, 420.0)
             .center()
             .on_download(move |_webview, event| {
                 use tauri::webview::DownloadEvent;
-                if let DownloadEvent::Requested { url, .. } = event {
+                if captured_flag.load(Ordering::SeqCst) {
+                    return false;
+                }
+
+                if let DownloadEvent::Requested { url, destination } = event {
                     let url_str = url.to_string();
-                    let lower = url_str.to_lowercase();
-                    // Strip query string for extension matching
-                    let path_part = lower.split('?').next().unwrap_or(&lower);
-                    if ARCHIVE_EXTS.iter().any(|ext| path_part.ends_with(ext)) {
-                        // Intercept: enqueue in-app and close the child window
+                    let lower_url = url_str.to_lowercase();
+                    let path_part = lower_url.split('?').next().unwrap_or(&lower_url);
+                    let dest_str = destination.to_string_lossy().to_lowercase();
+
+                    let is_archive = ARCHIVE_EXTS.iter().any(|ext| {
+                        dest_str.ends_with(ext)
+                            || path_part.ends_with(ext)
+                            || lower_url.contains(&format!("{ext}?"))
+                            || lower_url.contains(&format!("{ext}&"))
+                    });
+
+                    if is_archive {
+                        // Ensure only a single queue job is spawned across threads/events
+                        if captured_flag.swap(true, Ordering::SeqCst) {
+                            return false;
+                        }
+
                         let _ = queue.enqueue_intercept(
                             hook_slug.clone(),
                             url_str,
@@ -884,18 +902,15 @@ async fn open_resolver_window(
                             "latest".to_string(),
                             "pc".to_string(),
                         );
-                        // Emit event to main window so store page shows feedback
                         use tauri::Emitter;
                         let _ = hook_app.emit("archive-intercepted", &hook_slug);
-                        // Close the resolver window
                         if let Some(win) = hook_app.get_webview_window("download-resolver") {
                             let _ = win.close();
                         }
-                        // Return false = cancel the OS browser download
                         return false;
                     }
                 }
-                true // allow all other navigations/downloads
+                true
             });
 
     builder.build().map_err(|e| e.to_string())?;
@@ -923,6 +938,39 @@ fn queue_intercepted_download(
             version.unwrap_or_else(|| "latest".to_string()),
             platform.unwrap_or_else(|| "pc".to_string()),
         )
+        .map_err(|e| e.to_string())
+}
+
+/// Enqueue a download into the app's background service.
+/// The background service handles token resolution, direct streaming
+/// (Pixeldrain, Mediafire, Fileknot, etc.), extraction, or browser dispatch,
+/// without needing a child window.
+#[tauri::command]
+fn background_service_enqueue(
+    state: tauri::State<'_, AppState>,
+    slug: String,
+    title: String,
+    version: String,
+    platform: String,
+    host: String,
+    go_link: String,
+) -> Result<crate::core::queue::QueueJob, String> {
+    state
+        .queue
+        .enqueue_download(slug, title, version, platform, host, go_link)
+        .map_err(|e| e.to_string())
+}
+
+/// Scan download root for completed archives and auto-extract them into library.
+#[tauri::command]
+fn background_service_scan_downloads(
+    state: tauri::State<'_, AppState>,
+) -> Result<usize, String> {
+    let ctx = state
+        .context
+        .lock()
+        .map_err(|_| "state lock poisoned".to_string())?;
+    crate::core::service::ingest_completed_archives(&ctx, &state.queue)
         .map_err(|e| e.to_string())
 }
 
@@ -1146,9 +1194,8 @@ pub fn run() {
     let queue = Arc::new(
         crate::core::queue::Queue::load(&ctx).expect("queue should load from the local database"),
     );
-    // Background download worker: owns its Context clone so it never touches the
-    // state lock; the webview enqueues via `game_download` and stays responsive.
-    let _worker = crate::core::queue::spawn_worker(queue.clone(), ctx);
+    let service_queue = queue.clone();
+    let service_ctx = ctx.clone();
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .manage(AppState {
@@ -1159,7 +1206,13 @@ pub fn run() {
             genres_cache: Mutex::new(None),
             artwork_cache: Mutex::new(HashMap::new()),
         })
-        .setup(|app| {
+        .setup(move |app| {
+            let app_handle = app.handle().clone();
+            let _service = crate::core::service::start_service(
+                service_queue,
+                service_ctx,
+                Some(app_handle),
+            );
             use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
             use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
             use tauri::Manager;
@@ -1257,6 +1310,8 @@ pub fn run() {
             artwork_url,
             open_resolver_window,
             queue_intercepted_download,
+            background_service_enqueue,
+            background_service_scan_downloads,
             download_cancel,
             download_delete,
             downloads_clear,
@@ -1344,6 +1399,8 @@ pub fn run_installer() {
             artwork_url,
             open_resolver_window,
             queue_intercepted_download,
+            background_service_enqueue,
+            background_service_scan_downloads,
             download_cancel,
             download_delete,
             downloads_clear,

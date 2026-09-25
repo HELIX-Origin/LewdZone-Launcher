@@ -243,7 +243,19 @@ pub fn perform_install(options: InstallOptions) -> OperationResult {
         }
     }
 
-    // 4. Launch if requested
+    // 4. Initialize database during install if it does not already exist (Rule 06, user privacy)
+    if let Some(db_path) = crate::core::paths::default_db_path() {
+        if !db_path.exists() {
+            match crate::db::open(&db_path).and_then(|conn| crate::db::migrate(&conn)) {
+                Ok(()) => details.push(format!("Created and initialized fresh database: {}", db_path.display())),
+                Err(e) => details.push(format!("Notice: Database initialization deferred to first launch: {e}")),
+            }
+        } else {
+            details.push("Existing database found and preserved (not overwritten)".to_string());
+        }
+    }
+
+    // 5. Launch if requested
     if options.launch_after {
         let _ = std::process::Command::new(&dest_exe).spawn();
         details.push("Launched LewdZone Launcher".to_string());

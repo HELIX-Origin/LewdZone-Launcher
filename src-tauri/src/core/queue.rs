@@ -298,6 +298,20 @@ impl Queue {
         platform: String,
     ) -> Result<QueueJob, Error> {
         let mut g = self.inner.lock().unwrap_or_else(|p| p.into_inner());
+
+        // Deduplicate: If an intercept or download job for this slug or URL is already in-progress,
+        // do not spawn another duplicate queue.
+        if let Some(existing) = g.jobs.iter().find(|j| {
+            (j.source.as_deref() == Some(&url) || j.slug == slug)
+                && (j.status == Status::Queued
+                    || j.status == Status::Resolving
+                    || j.status == Status::Downloading
+                    || j.status == Status::Extracting
+                    || j.status == Status::Dispatching)
+        }) {
+            return Ok(existing.clone());
+        }
+
         if g.jobs.len() >= MAX_QUEUED {
             return Err(Error::Usage(
                 "queue is full — wait for active jobs to finish".to_string(),
@@ -315,6 +329,60 @@ impl Queue {
             source: Some(url),
             status: Status::Queued,
             // message stores the display title for archive naming
+            message: Some(title),
+            bytes_done: 0,
+            bytes_total: 0,
+            created_at: now,
+            updated_at: now,
+        };
+        g.jobs.push(job.clone());
+        drop(g);
+        self.persist(&job)?;
+        self.wake.notify_one();
+        Ok(job)
+    }
+
+    /// Add a direct entry download request (with a go-link token) to the queue.
+    pub fn enqueue_download(
+        &self,
+        slug: String,
+        title: String,
+        version: String,
+        platform: String,
+        host: String,
+        go_link: String,
+    ) -> Result<QueueJob, Error> {
+        let mut g = self.inner.lock().unwrap_or_else(|p| p.into_inner());
+
+        // Deduplicate: If a download job for this slug or go_link is already in-progress,
+        // do not spawn another duplicate queue.
+        if let Some(existing) = g.jobs.iter().find(|j| {
+            (j.source.as_deref() == Some(&go_link) || (j.slug == slug && j.version == version))
+                && (j.status == Status::Queued
+                    || j.status == Status::Resolving
+                    || j.status == Status::Downloading
+                    || j.status == Status::Extracting
+                    || j.status == Status::Dispatching)
+        }) {
+            return Ok(existing.clone());
+        }
+
+        if g.jobs.len() >= MAX_QUEUED {
+            return Err(Error::Usage(
+                "download queue is full — wait for active downloads to finish".to_string(),
+            ));
+        }
+        let id = g.next_id;
+        g.next_id += 1;
+        let now = now_secs();
+        let job = QueueJob {
+            id,
+            slug,
+            version,
+            platform,
+            tab: host,
+            source: Some(go_link),
+            status: Status::Queued,
             message: Some(title),
             bytes_done: 0,
             bytes_total: 0,
@@ -420,6 +488,25 @@ impl Queue {
             g = self.wake.wait(g).unwrap_or_else(|p| p.into_inner());
         }
     }
+
+    /// Wait for a queued job or return None if timeout expires.
+    pub fn find_queued_or_timeout(&self, timeout: Duration) -> Option<u64> {
+        let g = self.inner.lock().unwrap_or_else(|p| p.into_inner());
+        if let Some(id) = g
+            .jobs
+            .iter()
+            .find(|j| j.status == Status::Queued)
+            .map(|j| j.id)
+        {
+            return Some(id);
+        }
+        let (guard, _) = self.wake.wait_timeout(g, timeout).unwrap_or_else(|p| p.into_inner());
+        guard
+            .jobs
+            .iter()
+            .find(|j| j.status == Status::Queued)
+            .map(|j| j.id)
+    }
 }
 
 /// Spawn the background worker that drains the queue. Runs for the life of the
@@ -468,6 +555,150 @@ pub fn process(
     if entry.status != Status::Queued {
         return;
     }
+    // ── Direct Go-Link Download / Link Fetch ────────────────────────────────
+    // When an entry is queued directly with its go-link token, the background
+    // service resolves the token, extracts direct stream links (Pixeldrain,
+    // Mediafire, etc.), streams the archive, and extracts it into the library.
+    if let Some(ref source) = entry.source {
+        if source.contains("#t=") || source.contains("/go/") {
+            queue.update(id, |j| {
+                j.status = Status::Resolving;
+                j.message = Some("Fetching download link…".to_string());
+            });
+
+            let resolved = match resolve(source) {
+                Ok(r) => r,
+                Err(err) => {
+                    queue.update(id, |j| {
+                        j.status = Status::Failed;
+                        j.message = Some(format!("Link resolution failed: {err}"));
+                    });
+                    return;
+                }
+            };
+
+            let raw_title = entry.message.clone().unwrap_or_else(|| entry.slug.clone());
+            let clean_title = crate::core::library::clean_folder_title(&raw_title);
+            let display_title = if clean_title.is_empty() { &raw_title } else { &clean_title };
+
+            let direct_stream_url = crate::core::service::extract_direct_url(&entry.tab, &resolved.url);
+
+            if let Some(direct_url) = direct_stream_url {
+                let status_hint = if !raw_title.contains('[') {
+                    let db_status = ctx.open_db().ok().and_then(|conn| {
+                        crate::db::repo::game_by_slug(&conn, &entry.slug).ok().flatten().and_then(|g| {
+                            let cv = g.current_version.as_deref().unwrap_or("");
+                            if cv.to_lowercase().contains("finish") {
+                                Some("Finished".to_string())
+                            } else if cv.to_lowercase().contains("ongoing") {
+                                Some("Ongoing".to_string())
+                            } else if cv.to_lowercase().contains("abandon") {
+                                Some("Abandoned".to_string())
+                            } else {
+                                None
+                            }
+                        })
+                    });
+                    db_status.or_else(|| {
+                        let card = crate::core::models::GameCard {
+                            slug: entry.slug.clone(),
+                            title: raw_title.clone(),
+                            ..Default::default()
+                        };
+                        crate::core::content::enrich(ctx, &card).ok().and_then(|e| e.status)
+                    })
+                } else {
+                    None
+                };
+
+                let ext = crate::core::library::extract_archive_extension(&direct_url);
+                let archive_name = crate::core::library::format_archive_filename(
+                    &raw_title,
+                    status_hint.as_deref(),
+                    &entry.version,
+                    &ext,
+                );
+
+                let download_root = match crate::core::folder::download_root(ctx) {
+                    Ok(p) => p,
+                    Err(e) => {
+                        queue.update(id, |j| {
+                            j.status = Status::Failed;
+                            j.message = Some(format!("cannot resolve download root: {e}"));
+                        });
+                        return;
+                    }
+                };
+
+                let archive_path = crate::core::folder::archive_download_target(&download_root, &archive_name);
+                if let Some(parent) = archive_path.parent() {
+                    let _ = std::fs::create_dir_all(parent);
+                }
+
+                queue.update(id, |j| {
+                    j.status = Status::Downloading;
+                    j.bytes_done = 0;
+                    j.bytes_total = 0;
+                    j.message = Some(format!("Streaming from {}", entry.tab));
+                });
+
+                let mut progress_cb = |done: u64, total: u64| -> Result<(), Error> {
+                    let mut cancelled = false;
+                    queue.update(id, |j| {
+                        if j.status == Status::Failed {
+                            cancelled = true;
+                        } else {
+                            j.status = Status::Downloading;
+                            j.bytes_done = done;
+                            j.bytes_total = total;
+                        }
+                    });
+                    if cancelled || queue.get(id).is_none() {
+                        return Err(Error::Usage("download cancelled by user".to_string()));
+                    }
+                    Ok(())
+                };
+
+                let lzapps = crate::core::folder::lzapps_root(ctx).ok();
+                let install_dir = lzapps.map(|r| crate::core::folder::install_dir(&r, &entry.slug));
+                let job = Job {
+                    game: entry.slug.clone(),
+                    title: display_title.to_string(),
+                    post_id: resolved.game_id,
+                    engine: None,
+                    version: entry.version.clone(),
+                    platform: entry.platform.clone(),
+                    tab: entry.tab.clone(),
+                    url: direct_url,
+                    target: Some(archive_path.clone()),
+                    install_dir,
+                };
+
+                match crate::core::download::stream_target(&job, &mut |url| crate::scraper::download_stream(url), &mut progress_cb) {
+                    Ok(_) => {
+                        queue.update(id, |j| {
+                            j.status = Status::Completed;
+                            j.message = Some(format!("Saved to {}", archive_path.display()));
+                        });
+                    }
+                    Err(err) => {
+                        queue.update(id, |j| {
+                            j.status = Status::Failed;
+                            j.message = Some(err.to_string());
+                        });
+                    }
+                }
+                return;
+            } else {
+                let _ = crate::core::native::open_url(&resolved.url);
+                queue.update(id, |j| {
+                    j.status = Status::Dispatched;
+                    j.message = Some(format!("Opened in browser ({}) — awaiting download", entry.tab));
+                });
+                return;
+            }
+        }
+    }
     // ── Intercepted direct-stream download ──────────────────────────────────
     // A URL captured from the child resolver window — already fully resolved,
     // no go-link hop needed. We stream it straight to <download_root>/<archive>
@@ -489,16 +720,41 @@ pub fn process(
         let clean_title = crate::core::library::clean_folder_title(&raw_title);
         let display_title = if clean_title.is_empty() { &raw_title } else { &clean_title };
 
-        // Derive archive filename from the URL tail
-        let url_tail = direct_url.rsplit('/').next().unwrap_or("archive");
-        // Strip query string
-        let url_basename = url_tail.split('?').next().unwrap_or(url_tail);
-        let ext = crate::core::folder::file_ext(url_basename);
-        let archive_name = if ext.is_empty() {
-            format!("{display_title} - Version {}.zip", entry.version)
+        // Format archive filename per user specification: {Game Title} [{Status}] - Version {version.number}.{ext}
+        let status_hint = if !raw_title.contains('[') {
+            let db_status = ctx.open_db().ok().and_then(|conn| {
+                crate::db::repo::game_by_slug(&conn, &entry.slug).ok().flatten().and_then(|g| {
+                    let cv = g.current_version.as_deref().unwrap_or("");
+                    if cv.to_lowercase().contains("finish") {
+                        Some("Finished".to_string())
+                    } else if cv.to_lowercase().contains("ongoing") {
+                        Some("Ongoing".to_string())
+                    } else if cv.to_lowercase().contains("abandon") {
+                        Some("Abandoned".to_string())
+                    } else {
+                        None
+                    }
+                })
+            });
+            db_status.or_else(|| {
+                let card = crate::core::models::GameCard {
+                    slug: entry.slug.clone(),
+                    title: raw_title.clone(),
+                    ..Default::default()
+                };
+                crate::core::content::enrich(ctx, &card).ok().and_then(|e| e.status)
+            })
         } else {
-            format!("{display_title} - Version {}.{ext}", entry.version)
+            None
         };
+
+        let ext = crate::core::library::extract_archive_extension(&direct_url);
+        let archive_name = crate::core::library::format_archive_filename(
+            &raw_title,
+            status_hint.as_deref(),
+            &entry.version,
+            &ext,
+        );
 
         let download_root = match crate::core::folder::download_root(ctx) {
             Ok(p) => p,
@@ -1135,5 +1391,32 @@ mod tests {
         q2.update(id, |j| j.status = Status::Resolving);
         let q3 = Queue::load(&ctx).unwrap();
         assert_eq!(q3.get(id).unwrap().status, Status::Resolving);
+    }
+
+    #[test]
+    fn enqueue_intercept_deduplicates_in_progress_jobs() {
+        let q = Queue::new();
+        let job1 = q.enqueue_intercept(
+            "sample-game".to_string(),
+            "https://host.com/archive.zip".to_string(),
+            "Sample Game".to_string(),
+            "1.0".to_string(),
+            "pc".to_string(),
+        ).unwrap();
+
+        assert_eq!(job1.id, 1);
+        assert_eq!(q.snapshot().len(), 1);
+
+        // Second intercept for the same game or URL while queued returns the existing job
+        let job2 = q.enqueue_intercept(
+            "sample-game".to_string(),
+            "https://host.com/archive.zip".to_string(),
+            "Sample Game".to_string(),
+            "1.0".to_string(),
+            "pc".to_string(),
+        ).unwrap();
+
+        assert_eq!(job2.id, job1.id);
+        assert_eq!(q.snapshot().len(), 1, "must not spawn duplicate queues");
     }
 }

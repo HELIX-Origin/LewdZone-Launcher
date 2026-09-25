@@ -105,6 +105,21 @@
       title = title.replace(/\([^)]*\)/g, " ");
     }
     title = title.replace(/_/g, " ");
+    // Detect release wording (Chapter, Ch., Episode, Ep., Part, Season, Build, Version)
+    let wording = "Version";
+    const rawLower = raw.toLowerCase();
+    const verLower = (g.current_version || "").toLowerCase();
+
+    if (verLower.startsWith("chapter ") || rawLower.includes("chapter ")) wording = "Chapter";
+    else if (verLower.startsWith("ch. ") || rawLower.includes("ch. ") || rawLower.includes("ch.")) wording = "Ch.";
+    else if (verLower.startsWith("episode ") || rawLower.includes("episode ")) wording = "Episode";
+    else if (verLower.startsWith("ep. ") || rawLower.includes("ep. ") || rawLower.includes("ep.")) wording = "Ep.";
+    else if (verLower.startsWith("part ") || rawLower.includes("part ")) wording = "Part";
+    else if (verLower.startsWith("season ") || rawLower.includes("season ")) wording = "Season";
+    else if (verLower.startsWith("build ") || rawLower.includes("build ")) wording = "Build";
+
+    title = title.replace(/\s*-\s*(Version|Chapter|Ch\.?|Episode|Ep\.?|Part|Season|Build):?.*$/i, "");
+    title = title.replace(/\s+(Version|Chapter|Ch\.?|Episode|Ep\.?|Part|Season|Build):?.*$/i, "");
     title = title.replace(/\s*-\s*Version:?.*$/i, "");
     title = title.replace(/\s+Version:?.*$/i, "");
     title = title.replace(/\s*-\s*v\d+.*$/i, "");
@@ -120,6 +135,7 @@
       title,
       state: state || (g.current_version?.toLowerCase().includes("finished") ? "Finished" : ""),
       version: ver,
+      wording,
     };
   }
 
@@ -276,11 +292,16 @@
     if (!game) return;
     feedback = `Opening secure resolver for ${entry.label} (${formatHostName(entry.host)})…`;
     try {
+      const gameTitle = metaInfo.title || game.title;
+      const gameStatus = metaInfo.state || (game.current_version?.toLowerCase().includes("finished") ? "Finished" : "Unknown");
+      const gameVer = metaInfo.version || version || "latest";
+      const fullTitle = `${gameTitle} [${gameStatus}] - ${metaInfo.wording} ${gameVer}`;
+
       await invoke("open_resolver_window", {
         slug: game.slug,
         url: entry.go_link,
         host: entry.host,
-        title: `${game.title} - ${entry.label}`,
+        title: fullTitle,
       });
     } catch (err) {
       feedback = `Resolver failed: ${String(err)}`;

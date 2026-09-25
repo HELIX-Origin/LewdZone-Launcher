@@ -23,6 +23,7 @@ pub mod paths;
 pub mod queue;
 pub mod scheduler;
 pub mod search;
+pub mod service;
 pub mod settings;
 pub mod shortcuts;
 pub mod skins;

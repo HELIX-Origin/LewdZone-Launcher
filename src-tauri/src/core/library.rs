@@ -450,16 +450,40 @@ pub fn clean_folder_title(raw: &str) -> String {
     }
 
     // Replace underscores with spaces so "Treasure_of_Nadia" -> "Treasure of Nadia"
-    cleaned = cleaned.replace('_', " ");
+    cleaned = cleaned.replace('_', " ").replace(['\u{2013}', '\u{2014}'], "-");
 
     let lower = cleaned.to_lowercase();
-    if let Some(idx) = lower.find(" - version") {
-        cleaned.truncate(idx);
-    } else if let Some(idx) = lower.find(" version ") {
-        cleaned.truncate(idx);
-    } else if let Some(idx) = lower.find(" - v") {
-        cleaned.truncate(idx);
-    } else if let Some(idx) = lower.find("-v") {
+    for status_marker in &[
+        " - finished",
+        " - ongoing",
+        " - abandoned",
+        " - completed",
+        " - on hold",
+        " - hiatus",
+    ] {
+        if let Some(idx) = lower.find(status_marker) {
+            cleaned.truncate(idx);
+            break;
+        }
+    }
+
+    let lower = cleaned.to_lowercase();
+    for marker in &[
+        " - version", " version ", " - v",
+        " - chapter", " chapter ",
+        " - ch.", " ch. ", " - ch ",
+        " - episode", " episode ",
+        " - ep.", " ep. ", " - ep ",
+        " - part", " part ",
+        " - season", " season ",
+        " - build", " build ",
+    ] {
+        if let Some(idx) = lower.find(marker) {
+            cleaned.truncate(idx);
+            break;
+        }
+    }
+    if let Some(idx) = lower.find("-v") {
         let rest = &lower[idx + 2..];
         if rest.starts_with(|c: char| c.is_ascii_digit() || c == '.') {
             cleaned.truncate(idx);
@@ -538,15 +562,256 @@ pub fn is_supported_archive(path: &Path) -> bool {
 
 
 
+/// Extract archive extension from a URL or path, respecting multi-part extensions like .tar.gz
+pub fn extract_archive_extension(path_or_url: &str) -> String {
+    let lower = path_or_url.to_lowercase();
+    let clean = lower.split('?').next().unwrap_or(&lower);
+    for ext in &[
+        "tar.gz", "tar.bz2", "tar.xz", "zip", "7z", "rar", "exe", "tgz", "tbz2", "txz", "tar",
+    ] {
+        if clean.ends_with(&format!(".{ext}")) {
+            return ext.to_string();
+        }
+    }
+    if let Some(idx) = clean.rfind('.') {
+        let sub = &clean[idx + 1..];
+        if !sub.is_empty() && sub.len() <= 6 && sub.chars().all(|c| c.is_ascii_alphanumeric()) {
+            return sub.to_string();
+        }
+    }
+    "zip".to_string()
+}
+
+/// Format the canonical saved archive filename per the specification:
+/// `{Game Title} [{Status Ongoing|Finished|Abandoned|ect}] - Version {version.number}.(zip|7z|rar|tar.gz|etc)`
+pub fn format_archive_filename(
+    raw_title: &str,
+    status_hint: Option<&str>,
+    version: &str,
+    ext: &str,
+) -> String {
+    let clean_title = clean_folder_title(raw_title);
+    let title = if clean_title.is_empty() {
+        raw_title.trim()
+    } else {
+        &clean_title
+    };
+
+    // Detect status: first from status_hint, then from raw_title, then fallback to "Ongoing"
+    let status = if let Some(hint) = status_hint.filter(|s| !s.trim().is_empty()) {
+        let h_lower = hint.to_lowercase();
+        if h_lower.contains("finish") {
+            "Finished".to_string()
+        } else if h_lower.contains("ongoing") {
+            "Ongoing".to_string()
+        } else if h_lower.contains("abandon") {
+            "Abandoned".to_string()
+        } else if h_lower.contains("complet") {
+            "Completed".to_string()
+        } else if h_lower.contains("on hold") || h_lower.contains("onhold") {
+            "On Hold".to_string()
+        } else if h_lower.contains("hiatus") {
+            "Hiatus".to_string()
+        } else if h_lower == "unknown" {
+            "Unknown".to_string()
+        } else {
+            let mut c = hint.trim().chars();
+            match c.next() {
+                None => "Unknown".to_string(),
+                Some(f) => f.to_uppercase().collect::<String>() + c.as_str(),
+            }
+        }
+    } else {
+        let mut found_status = None;
+        if let Some(start) = raw_title.find('[') {
+            if let Some(end) = raw_title[start..].find(']') {
+                let inside = raw_title[start + 1..start + end].trim();
+                let lower = inside.to_lowercase();
+                if lower.contains("ongoing") {
+                    found_status = Some("Ongoing".to_string());
+                } else if lower.contains("finish") {
+                    found_status = Some("Finished".to_string());
+                } else if lower.contains("abandon") {
+                    found_status = Some("Abandoned".to_string());
+                } else if lower.contains("complet") {
+                    found_status = Some("Completed".to_string());
+                } else if lower.contains("on hold") || lower.contains("onhold") {
+                    found_status = Some("On Hold".to_string());
+                } else if lower.contains("hiatus") {
+                    found_status = Some("Hiatus".to_string());
+                } else if lower == "unknown" {
+                    found_status = Some("Unknown".to_string());
+                } else if !inside.is_empty() {
+                    let mut c = inside.chars();
+                    found_status = match c.next() {
+                        None => None,
+                        Some(f) => Some(f.to_uppercase().collect::<String>() + c.as_str()),
+                    };
+                }
+            }
+        }
+
+        if found_status.is_none() {
+            let lower = raw_title.to_lowercase();
+            if lower.contains("- finished") || lower.contains(" finished") {
+                found_status = Some("Finished".to_string());
+            } else if lower.contains("- ongoing") || lower.contains(" ongoing") {
+                found_status = Some("Ongoing".to_string());
+            } else if lower.contains("- abandoned") || lower.contains(" abandoned") {
+                found_status = Some("Abandoned".to_string());
+            } else if lower.contains("- completed") || lower.contains(" completed") {
+                found_status = Some("Completed".to_string());
+            }
+        }
+
+        found_status.unwrap_or_else(|| "Unknown".to_string())
+    };
+
+    let release_desc = format_release_descriptor(raw_title, version);
+    let clean_ext = ext.trim_start_matches('.');
+    let final_ext = if clean_ext.is_empty() { "zip" } else { clean_ext };
+
+    format!("{title} [{status}] - {release_desc}.{final_ext}")
+}
+
+/// Parse and format the release descriptor into canonical order:
+/// - Both version and chapter/episode/part: `Version {v} {Chapter} {c}` (e.g. `Version 1.01 Chapter 1-4`)
+/// - Only version: `Version {v}` (e.g. `Version 0.19.1`)
+/// - Only chapter/episode/part: `{Chapter} {c}` (e.g. `Chapter 3` or `Chapter 1-4`)
+/// - Neither: `Version 1.0`
+pub fn format_release_descriptor(raw_title: &str, version_input: &str) -> String {
+    let combined = format!("{} {}", version_input.trim(), raw_title.trim());
+    let lower = combined.to_lowercase();
+
+    // 1. Detect chapter / episode / part / season / build
+    let mut chapter_info: Option<(String, String)> = None;
+    for (prefix, wording) in &[
+        ("chapter", "Chapter"),
+        ("ch.", "Chapter"),
+        ("ch ", "Chapter"),
+        ("episode", "Episode"),
+        ("ep.", "Episode"),
+        ("ep ", "Episode"),
+        ("part", "Part"),
+        ("season", "Season"),
+        ("build", "Build"),
+    ] {
+        if let Some(idx) = lower.find(prefix) {
+            let after = &combined[idx + prefix.len()..].trim_start();
+            let num: String = after
+                .chars()
+                .take_while(|c| c.is_ascii_digit() || *c == '-' || *c == '.')
+                .collect();
+            let clean_num = num.trim_matches(|c| c == '.' || c == '-').to_string();
+            if !clean_num.is_empty() {
+                chapter_info = Some((wording.to_string(), clean_num));
+                break;
+            }
+        }
+    }
+
+    // 2. Detect version number
+    let mut version_number: Option<String> = None;
+
+    // Scan individual tokens for "v1.01", "v.1.01", "v0.19.1", etc.
+    for token in combined.split_whitespace() {
+        let t_clean = token.trim_matches(|c: char| !c.is_alphanumeric() && c != '.');
+        let t_lower = t_clean.to_lowercase();
+        if t_lower.starts_with('v') && t_lower.len() > 1 && !t_lower.starts_with("ver") {
+            let candidate = t_clean[1..].trim_start_matches('.');
+            if candidate.chars().next().is_some_and(|c| c.is_ascii_digit()) {
+                let v: String = candidate.chars().take_while(|c| c.is_ascii_digit() || *c == '.' || *c == '-').collect();
+                let v_clean = v.trim_matches(|c| c == '.' || c == '-').to_string();
+                if !v_clean.is_empty() {
+                    version_number = Some(v_clean);
+                    break;
+                }
+            }
+        }
+    }
+
+    // If not found, look for "version" followed by digits
+    if version_number.is_none() {
+        if let Some(idx) = lower.find("version") {
+            let after = &combined[idx + "version".len()..].trim_start();
+            let after = after.trim_start_matches(':').trim_start_matches('.').trim_start();
+            let after = after.trim_start_matches(|c| c == 'v' || c == 'V');
+            let v: String = after.chars().take_while(|c| c.is_ascii_digit() || *c == '.' || *c == '-').collect();
+            let v_clean = v.trim_matches(|c| c == '.' || c == '-').to_string();
+            if !v_clean.is_empty() && v_clean != "latest" {
+                version_number = Some(v_clean);
+            }
+        }
+    }
+
+    // If still not found and version_input is a plain version number like "0.19.1" or "1.0"
+    if version_number.is_none() {
+        let v_input_clean = version_input.trim().trim_start_matches(|c| c == 'v' || c == 'V');
+        if v_input_clean.chars().next().is_some_and(|c| c.is_ascii_digit()) && (v_input_clean.contains('.') || chapter_info.is_none()) {
+            let v: String = v_input_clean.chars().take_while(|c| c.is_ascii_digit() || *c == '.' || *c == '-').collect();
+            let v_clean = v.trim_matches(|c| c == '.' || c == '-').to_string();
+            if !v_clean.is_empty() && v_clean != "latest" {
+                version_number = Some(v_clean);
+            }
+        }
+    }
+
+    // Filter out chapter number being erroneously captured as version if they overlap
+    if let (Some(ref v), Some((_, ref c))) = (&version_number, &chapter_info) {
+        if v == c && !version_input.to_lowercase().contains('v') && !version_input.to_lowercase().contains("version") {
+            version_number = None;
+        }
+    }
+
+    match (version_number, chapter_info) {
+        (Some(v), Some((wording, c))) => format!("Version {v} {wording} {c}"),
+        (Some(v), None) => format!("Version {v}"),
+        (None, Some((wording, c))) => format!("{wording} {c}"),
+        (None, None) => "Version 1.0".to_string(),
+    }
+}
+
 /// Extract clean title, version, and platform from an archive's filename.
-fn parse_archive_filename(file_name: &str) -> (String, String, String) {
+pub fn parse_archive_filename(file_name: &str) -> (String, String, String) {
     let stem = clean_archive_stem(file_name);
     let clean_title = clean_folder_title(&stem);
 
     let lower = stem.to_lowercase();
     let version = if let Some(idx) = lower.find("version ") {
         let rest = &stem[idx + "version ".len()..];
-        let ver = rest.split([' ', '-', '_']).next().unwrap_or("latest");
+        let ver = rest.split([' ', '-', '_', '[']).next().unwrap_or("latest");
+        ver.trim().to_string()
+    } else if let Some(idx) = lower.find("chapter ") {
+        let rest = &stem[idx + "chapter ".len()..];
+        let ver = rest.split([' ', '-', '_', '[']).next().unwrap_or("latest");
+        ver.trim().to_string()
+    } else if let Some(idx) = lower.find("ch. ") {
+        let rest = &stem[idx + "ch. ".len()..];
+        let ver = rest.split([' ', '-', '_', '[']).next().unwrap_or("latest");
+        ver.trim().to_string()
+    } else if let Some(idx) = lower.find("ch.") {
+        let rest = &stem[idx + "ch.".len()..];
+        let ver = rest.split([' ', '-', '_', '[']).next().unwrap_or("latest");
+        ver.trim().to_string()
+    } else if let Some(idx) = lower.find("episode ") {
+        let rest = &stem[idx + "episode ".len()..];
+        let ver = rest.split([' ', '-', '_', '[']).next().unwrap_or("latest");
+        ver.trim().to_string()
+    } else if let Some(idx) = lower.find("ep. ") {
+        let rest = &stem[idx + "ep. ".len()..];
+        let ver = rest.split([' ', '-', '_', '[']).next().unwrap_or("latest");
+        ver.trim().to_string()
+    } else if let Some(idx) = lower.find("part ") {
+        let rest = &stem[idx + "part ".len()..];
+        let ver = rest.split([' ', '-', '_', '[']).next().unwrap_or("latest");
+        ver.trim().to_string()
+    } else if let Some(idx) = lower.find("season ") {
+        let rest = &stem[idx + "season ".len()..];
+        let ver = rest.split([' ', '-', '_', '[']).next().unwrap_or("latest");
+        ver.trim().to_string()
+    } else if let Some(idx) = lower.find("build ") {
+        let rest = &stem[idx + "build ".len()..];
+        let ver = rest.split([' ', '-', '_', '[']).next().unwrap_or("latest");
         ver.trim().to_string()
     } else if let Some(idx) = lower.find("- v") {
         let rest = &stem[idx + 3..];
@@ -1294,5 +1559,89 @@ mod tests {
         assert!(is_supported_archive(Path::new("game.tgz")));
         assert!(is_supported_archive(Path::new("game.tar.xz")));
         assert!(!is_supported_archive(Path::new("game.txt")));
+    }
+
+    #[test]
+    fn format_archive_filename_matches_user_specification() {
+        // {Game Title} [{Status Ongoing|Finished|Abandoned|ect}] - Version {version.number}.(zip|7z|rar|tar.gz|etc)
+        let name1 = format_archive_filename(
+            "Harem Hotel [Ongoing] - Version 0.19.1",
+            None,
+            "0.19.1",
+            "zip",
+        );
+        assert_eq!(name1, "Harem Hotel [Ongoing] - Version 0.19.1.zip");
+
+        let name2 = format_archive_filename(
+            "Treasure of Nadia – Finished – Version 1.0117",
+            Some("Finished"),
+            "1.0117",
+            ".tar.gz",
+        );
+        assert_eq!(name2, "Treasure of Nadia [Finished] - Version 1.0117.tar.gz");
+
+        let name3 = format_archive_filename(
+            "Lost City [Abandoned]",
+            None,
+            "v0.5.2",
+            "7z",
+        );
+        assert_eq!(name3, "Lost City [Abandoned] - Version 0.5.2.7z");
+
+        let name4 = format_archive_filename(
+            "Mystery Game",
+            None,
+            "latest",
+            "rar",
+        );
+        assert_eq!(name4, "Mystery Game [Unknown] - Version 1.0.rar");
+
+        let name5 = format_archive_filename(
+            "Elysium [Ongoing] - Chapter 3",
+            None,
+            "Chapter 3",
+            "zip",
+        );
+        assert_eq!(name5, "Elysium [Ongoing] - Chapter 3.zip");
+
+        let name6 = format_archive_filename(
+            "Anime Game [Finished] - Ch. 4",
+            None,
+            "4",
+            "7z",
+        );
+        assert_eq!(name6, "Anime Game [Finished] - Chapter 4.7z");
+
+        let name7 = format_archive_filename(
+            "Story Quest [Ongoing] - Episode 2",
+            None,
+            "2",
+            "rar",
+        );
+        assert_eq!(name7, "Story Quest [Ongoing] - Episode 2.rar");
+
+        let name8 = format_archive_filename(
+            "Retro Legend [Abandoned] - Part 1",
+            None,
+            "Part 1",
+            "zip",
+        );
+        assert_eq!(name8, "Retro Legend [Abandoned] - Part 1.zip");
+
+        let name9 = format_archive_filename(
+            "Star Journey",
+            Some("Unknown"),
+            "Ch. 1-4 v1.01",
+            "zip",
+        );
+        assert_eq!(name9, "Star Journey [Unknown] - Version 1.01 Chapter 1-4.zip");
+    }
+
+    #[test]
+    fn extract_archive_extension_respects_tar_gz_and_query_strings() {
+        assert_eq!(extract_archive_extension("https://site.com/dl/file.tar.gz?token=abc"), "tar.gz");
+        assert_eq!(extract_archive_extension("game.zip"), "zip");
+        assert_eq!(extract_archive_extension("game.7z"), "7z");
+        assert_eq!(extract_archive_extension("game.rar"), "rar");
     }
 }

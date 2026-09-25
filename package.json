@@ -1,10 +1,11 @@
 {
   "name": "lewdzone",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "description": "LewdZone Launcher - cross-platform desktop game launcher",
   "type": "module",
   "scripts": {
-    "dev": "vite dev",
+    "dev": "node scripts/dev-server.mjs",
+    "tauri:dev": "tauri dev",
     "build": "vite build",
     "build:log": "node scripts/build-with-log.mjs npm run build",
     "check:log": "node scripts/build-with-log.mjs npm run check",
@@ -13,7 +14,7 @@
     "prepare": "svelte-kit sync || echo ''",
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
     "check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
-    "test": "vitest run",
+    "test": "vitest run --pool=threads",
     "test:watch": "vitest",
     "tauri": "tauri",
     "tauri:build": "tauri build",
