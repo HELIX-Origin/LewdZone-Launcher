@@ -42,4 +42,3 @@ Upgrade in place: run the new installer over your existing installation. The uni
 - `{{ commit title / description }}`
 
 Full commit history: `git log --oneline {{ prev_tag }}..v{{ version }}`
-

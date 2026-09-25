@@ -117,32 +117,18 @@
     }
   }
 
+  let isNavigating = $state(false);
+
   async function openInApp() {
     if (!resolved?.url) return;
     const url = resolved.url;
-    const lower = url.toLowerCase();
-    const isDirectArchive = [
-      ".zip", ".7z", ".rar", ".exe", ".tar.gz", ".tar.bz2", ".tar.xz", ".tgz", ".iso", ".apk", ".001", ".part1.rar", ".dmg", ".pkg"
-    ].some((ext) => lower.includes(ext));
-
-    if (isDirectArchive) {
-      try {
-        await invoke("queue_intercepted_download", {
-          slug,
-          url,
-          title,
-          version: resolved.version ?? "latest",
-          platform: resolved.platform ?? "pc",
-        });
-        await emit("archive-intercepted", slug);
-        await closeWindow();
-        return;
-      } catch (err) {
-        console.warn("Direct enqueue failed, navigating in window:", err);
-      }
+    isNavigating = true;
+    try {
+      await invoke("resolver_navigate_in_app", { url });
+    } catch (err) {
+      console.warn("Backend navigation failed, navigating in window:", err);
+      window.location.href = url;
     }
-
-    window.location.href = url;
   }
 
   async function openExternal() {
@@ -184,7 +170,13 @@
   </header>
 
   <main class="content">
-    {#if status === "countdown"}
+    {#if isNavigating}
+      <div class="card pulse">
+        <div class="spinner"></div>
+        <h2>Opening Host Page In-App</h2>
+        <p class="subtitle">Loading download page… Click the Download button on the page once loaded to capture the archive.</p>
+      </div>
+    {:else if status === "countdown"}
       <div class="card pulse">
         <div class="spinner-ring">
           <span class="count">{countdownSecs}</span>

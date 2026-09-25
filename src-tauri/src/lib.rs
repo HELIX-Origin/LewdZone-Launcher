@@ -882,12 +882,35 @@ async fn open_resolver_window(
     let captured = Arc::new(AtomicBool::new(false));
     let captured_flag = Arc::clone(&captured);
 
+    const DESKTOP_USER_AGENT: &str =
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
+
+    let init_script = r#"
+        window.addEventListener('DOMContentLoaded', () => {
+            document.addEventListener('click', (e) => {
+                const a = e.target.closest('a');
+                if (a && a.target === '_blank') {
+                    a.target = '_self';
+                }
+            }, true);
+        });
+        window.open = function(url) {
+            if (url) {
+                window.location.href = url;
+            }
+            return window;
+        };
+    "#;
+
     let builder =
         WebviewWindowBuilder::new(&app, "download-resolver", WebviewUrl::App(path.into()))
             .title(format!("Download Verification - {}", canonical_title))
             .inner_size(800.0, 600.0)
             .min_inner_size(520.0, 420.0)
             .center()
+            .user_agent(DESKTOP_USER_AGENT)
+            .initialization_script(init_script)
+            .on_navigation(|_url| true)
             .on_download(move |_webview, event| {
                 use tauri::webview::DownloadEvent;
                 if captured_flag.load(Ordering::SeqCst) {
@@ -923,7 +946,7 @@ async fn open_resolver_window(
                         use tauri::Emitter;
                         let _ = hook_app.emit("archive-intercepted", &hook_slug);
                         if let Some(win) = hook_app.get_webview_window("download-resolver") {
-                            let _ = win.close();
+                            let _ = win.destroy();
                         }
                         return false;
                     }
@@ -932,6 +955,17 @@ async fn open_resolver_window(
             });
 
     builder.build().map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+/// Navigate the resolver webview window to an external download hosting page in-app.
+#[tauri::command]
+fn resolver_navigate_in_app(app: tauri::AppHandle, url: String) -> Result<(), String> {
+    use tauri::Manager;
+    if let Some(win) = app.get_webview_window("download-resolver") {
+        let parsed: url::Url = url.parse().map_err(|e| format!("Invalid URL: {e}"))?;
+        win.navigate(parsed).map_err(|e| e.to_string())?;
+    }
     Ok(())
 }
 
@@ -1394,7 +1428,8 @@ pub fn run() {
             open_installer_window,
             open_game_folder,
             uninstall_game,
-            installer_launch_app
+            installer_launch_app,
+            resolver_navigate_in_app
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
@@ -1492,7 +1527,8 @@ pub fn run_installer() {
             open_installer_window,
             open_game_folder,
             uninstall_game,
-            installer_launch_app
+            installer_launch_app,
+            resolver_navigate_in_app
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri installer application");
