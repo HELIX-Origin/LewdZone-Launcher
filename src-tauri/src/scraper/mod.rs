@@ -7,4 +7,4 @@ pub mod archive;
 pub mod fetch;
 pub mod game;
 pub mod genres;
-pub use fetch::{download_stream, fetch};
+pub use fetch::{download_file, download_stream, fetch};

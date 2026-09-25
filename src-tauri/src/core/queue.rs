@@ -535,7 +535,11 @@ pub fn spawn_worker(queue: Arc<Queue>, ctx: Context) -> std::thread::JoinHandle<
             &mut |url| crate::scraper::fetch(url),
             &mut |go| resolver::resolve(go),
             &mut |job, progress| {
-                download::dispatch_with(job, &mut crate::scraper::download_stream, progress)
+                if download::is_direct_stream_host(&job.tab) || job.tab == "intercept" {
+                    download::stream_target_accelerated(job, progress)
+                } else {
+                    download::dispatch_with(job, &mut crate::scraper::download_stream, progress)
+                }
             },
             grace,
             &mut |d| std::thread::sleep(d),
@@ -701,11 +705,7 @@ pub fn process(
                     install_dir,
                 };
 
-                match crate::core::download::stream_target(
-                    &job,
-                    &mut |url| crate::scraper::download_stream(url),
-                    &mut progress_cb,
-                ) {
+                match crate::core::download::stream_target_accelerated(&job, &mut progress_cb) {
                     Ok(_) => {
                         queue.update(id, |j| {
                             j.status = Status::Completed;
@@ -860,11 +860,7 @@ pub fn process(
             install_dir,
         };
 
-        match crate::core::download::stream_target(
-            &job,
-            &mut |url| crate::scraper::download_stream(url),
-            &mut progress_cb,
-        ) {
+        match crate::core::download::stream_target_accelerated(&job, &mut progress_cb) {
             Ok(_) => {
                 if let Some(j) = queue.get(id) {
                     if j.status != Status::Failed {

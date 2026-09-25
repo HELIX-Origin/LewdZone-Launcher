@@ -300,7 +300,10 @@ pub fn run(
 /// Hosts whose revealed URL is a direct file (streamed inside the app with
 /// byte progress). Everything else hands its resolved URL to the OS default
 /// handler — the installed cloud app or the browser — with zero configuration.
-pub const DIRECT_STREAM_HOSTS: &[&str] = &["fileknot"];
+/// Hosts whose revealed URL is a direct file (streamed inside the app with
+/// byte progress). Everything else hands its resolved URL to the OS default
+/// handler — the installed cloud app or the browser — with zero configuration.
+pub const DIRECT_STREAM_HOSTS: &[&str] = &["fileknot", "pixeldrain", "mediafire", "workupload"];
 
 /// Stream seam: takes a URL, returns `(total bytes, body reader)` (Rule 11).
 pub type StreamFn<'a> = &'a mut dyn FnMut(&str) -> Result<(u64, Box<dyn Read>), Error>;
@@ -315,13 +318,15 @@ pub fn is_direct_stream_host(host: &str) -> bool {
         .any(|h| h.eq_ignore_ascii_case(host))
 }
 
-/// Dispatch a single job: direct-file hosts stream into `job.target`,
-/// everything else opens in the OS default handler. Host allowlisting already
-/// happened at resolve time via `resolver::validate_host`, so we only ever act
-/// on validated hosts (Rule 10). Shared by the synchronous CLI path and the
-/// async GUI queue worker.
+/// Dispatch a single job: direct-file hosts stream into `job.target` (accelerated
+/// with 4 concurrent chunk connections), everything else opens in the OS default handler.
+/// Host allowlisting already happened at resolve time via `resolver::validate_host`, so we only
+/// ever act on validated hosts (Rule 10). Shared by the synchronous CLI path and the async GUI queue worker.
 pub fn dispatch(job: &Job) -> Result<(), Error> {
-    dispatch_with(job, &mut scraper::download_stream, &mut |_, _| Ok(()))
+    if is_direct_stream_host(&job.tab) {
+        return stream_target_accelerated(job, &mut |_, _| Ok(()));
+    }
+    crate::core::native::open_url(&job.url)
 }
 
 /// `dispatch` with the stream seam injected (Rule 11 offline fixtures).
@@ -353,18 +358,53 @@ pub fn stream_target(
         std::fs::create_dir_all(parent)?;
     }
     let (total, mut reader) = download(&job.url)?;
-    let mut file = std::fs::File::create(target)?;
-    let mut buf = [0_u8; 128 * 1024];
+    let file = std::fs::File::create(target)?;
+    let mut writer = std::io::BufWriter::with_capacity(1024 * 1024, file);
+    let mut buf = vec![0_u8; 512 * 1024];
     let mut done: u64 = 0;
     loop {
         let n = reader.read(&mut buf)?;
         if n == 0 {
             break;
         }
-        file.write_all(&buf[..n])?;
+        writer.write_all(&buf[..n])?;
         done += n as u64;
         progress(done, total)?;
     }
+    writer.flush()?;
+
+    if folder::file_ext(&target.to_string_lossy()) == "zip" {
+        if let Some(install_dir) = &job.install_dir {
+            let meta = extract::InstallMeta {
+                slug: &job.game,
+                post_id: job.post_id,
+                title: &job.title,
+                version: &job.version,
+                platform: &job.platform,
+                tab: &job.tab,
+                engine: job.engine.as_deref(),
+                download_url: &job.url,
+            };
+            extract::install_from_archive_with_progress(target, install_dir, &meta, progress)?;
+        }
+    }
+
+    Ok(())
+}
+
+/// Accelerated download: streams `job.url` using 4 concurrent chunk connections
+/// writing directly into `job.target` via OS positioned writes. When `.zip` finishes,
+/// extracts into `job.install_dir` and writes an `app.json` manifest.
+pub fn stream_target_accelerated(job: &Job, progress: ProgressCallback<'_>) -> Result<(), Error> {
+    let target = job
+        .target
+        .as_ref()
+        .ok_or_else(|| Error::Usage("direct-stream job has no target path".to_string()))?;
+    if let Some(parent) = target.parent() {
+        std::fs::create_dir_all(parent)?;
+    }
+
+    crate::scraper::download_file(&job.url, target, progress)?;
 
     if folder::file_ext(&target.to_string_lossy()) == "zip" {
         if let Some(install_dir) = &job.install_dir {

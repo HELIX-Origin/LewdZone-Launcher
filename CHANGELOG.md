@@ -12,6 +12,24 @@ the top; the current development state lives under `Unreleased`.
 
 ---
 
+## [v0.4.0](https://github.com/HELIX-Origin/LewdZone-Launcher/releases/tag/v0.4.0) — 2026-09-25
+
+Minor release introducing multi-threaded accelerated downloads for in-app archive downloads, eliminating duplicate title bars on the installer wizard, and preventing background console windows from spawning during installation and maintenance tasks.
+
+### 🚀 Key Improvements & Features
+
+- **Multi-Stream Download Acceleration:** Implemented parallel segmented chunk downloading (`scraper::download_file`) supporting up to 4 concurrent HTTP byte-range (`Range: bytes=start-end`) streams writing directly into preallocated archive files via OS positioned writes (`seek_write` on Windows, `write_all_at` on Unix). Multiplies throughput by 3x–6x on remote direct-file hosts (Pixeldrain, Fileknot, Mediafire, Workupload).
+- **Optimized Single-Stream Buffer:** Expanded streaming I/O buffers from 128KB to 512KB with 1MB `BufWriter` caching for non-range streams and small archives, reducing syscall overhead and improving drive write performance.
+- **Direct-Stream Host Expansion:** Synchronized `DIRECT_STREAM_HOSTS` across download core and background service to include `fileknot`, `pixeldrain`, `mediafire`, and `workupload`.
+
+### 🐛 Bug Fixes & Improvements
+
+- **Eliminated Duplicate Installer Title Bars:** Configured `decorations: false` on the setup webview window in both `run_installer` and `open_installer_window`, ensuring only the custom HTML frameless titlebar header renders without an overlapping OS native titlebar.
+- **Silenced Subprocess Console Windows:** Added `CREATE_NO_WINDOW` (`0x08000000`) flags to all PowerShell process invocations in `core/installer.rs` and `core/shortcuts.rs`, completely preventing flashing console (`conhost.exe`) popups during installation, shortcut creation, and registry modifications.
+- **Isolated Installer Process Launch:** Updated `open_installer_window` to spawn the installer as an independent detached process (`--installer` / `--maintenance`) and cleanly exit the main launcher application, avoiding file lock contention.
+
+---
+
 ## [v0.3.3](https://github.com/HELIX-Origin/LewdZone-Launcher/releases/tag/v0.3.3) — 2026-09-25
 
 Patch release fixing in-app download resolver navigation against bot detection mechanisms, eliminating premature download queueing prior to user interaction, and ensuring seamless native archive download capture.

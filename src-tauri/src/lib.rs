@@ -1190,17 +1190,35 @@ fn installer_uninstall(
 }
 
 /// Open the installer/uninstaller window.
+/// Open the installer/uninstaller window as an isolated process.
 #[tauri::command]
 async fn open_installer_window(app: tauri::AppHandle, mode: Option<String>) -> Result<(), String> {
-    use tauri::{Manager, WebviewUrl, WebviewWindowBuilder};
+    let mode_str = mode.unwrap_or_else(|| "auto".to_string());
+    if let Ok(exe) = std::env::current_exe() {
+        let flag = match mode_str.as_str() {
+            "maintenance" | "uninstall" => "--maintenance",
+            _ => "--installer",
+        };
+        let mut cmd = std::process::Command::new(&exe);
+        cmd.arg(flag);
+        #[cfg(target_os = "windows")]
+        {
+            use std::os::windows::process::CommandExt;
+            cmd.creation_flags(0x0800_0000);
+        }
+        cmd.spawn()
+            .map_err(|e| format!("Failed to spawn installer process: {e}"))?;
+        app.exit(0);
+        return Ok(());
+    }
 
+    use tauri::{Manager, WebviewUrl, WebviewWindowBuilder};
     if let Some(win) = app.get_webview_window("installer") {
         let _ = win.show();
         let _ = win.set_focus();
         return Ok(());
     }
 
-    let mode_str = mode.unwrap_or_else(|| "auto".to_string());
     let path = format!("installer?mode={mode_str}");
 
     let builder = WebviewWindowBuilder::new(&app, "installer", WebviewUrl::App(path.into()))
@@ -1208,6 +1226,7 @@ async fn open_installer_window(app: tauri::AppHandle, mode: Option<String>) -> R
         .inner_size(780.0, 560.0)
         .min_inner_size(720.0, 520.0)
         .resizable(false)
+        .decorations(false)
         .center();
 
     builder.build().map_err(|e| e.to_string())?;
@@ -1246,8 +1265,13 @@ fn installer_launch_app(target_dir: Option<String>) -> Result<(), String> {
         return Err(format!("Executable not found at {}", exe.display()));
     }
 
-    std::process::Command::new(&exe)
-        .spawn()
+    let mut cmd = std::process::Command::new(&exe);
+    #[cfg(target_os = "windows")]
+    {
+        use std::os::windows::process::CommandExt;
+        cmd.creation_flags(0x0800_0000);
+    }
+    cmd.spawn()
         .map_err(|e| format!("Failed to spawn executable: {e}"))?;
 
     Ok(())
@@ -1478,6 +1502,7 @@ pub fn run_installer() {
                 .inner_size(780.0, 560.0)
                 .min_inner_size(720.0, 520.0)
                 .resizable(false)
+                .decorations(false)
                 .center()
                 .build()?;
 

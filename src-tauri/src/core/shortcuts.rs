@@ -167,8 +167,13 @@ fn create_windows_shortcut(lnk: &Path, exe: &Path, cwd: &Path, desc: &str) -> Re
          $s.Save()"
     );
 
-    let output = Command::new("powershell")
-        .args(["-NoProfile", "-NonInteractive", "-Command", &script])
+    let mut cmd = Command::new("powershell");
+    cmd.args(["-NoProfile", "-NonInteractive", "-Command", &script]);
+    {
+        use std::os::windows::process::CommandExt;
+        cmd.creation_flags(0x0800_0000);
+    }
+    let output = cmd
         .output()
         .map_err(|e| Error::Runtime(format!("failed to run powershell for shortcut: {e}")))?;
 

@@ -250,6 +250,308 @@ pub fn download_stream(url: &str) -> Result<(u64, Box<dyn std::io::Read>), Error
     }
 }
 
+/// Parse total size from an HTTP Content-Range header (e.g. `bytes 0-0/104857600`).
+pub fn parse_content_range_total(header_val: &str) -> Option<u64> {
+    let slash = header_val.rfind('/')?;
+    let total_part = header_val[slash + 1..].trim();
+    total_part.parse::<u64>().ok()
+}
+
+#[cfg(target_os = "windows")]
+fn write_at(file: &std::fs::File, buf: &[u8], offset: u64) -> std::io::Result<()> {
+    use std::os::windows::fs::FileExt;
+    let mut written = 0;
+    while written < buf.len() {
+        let n = file.seek_write(&buf[written..], offset + written as u64)?;
+        if n == 0 {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::WriteZero,
+                "zero bytes written",
+            ));
+        }
+        written += n;
+    }
+    Ok(())
+}
+
+#[cfg(not(target_os = "windows"))]
+fn write_at(file: &std::fs::File, buf: &[u8], offset: u64) -> std::io::Result<()> {
+    use std::os::unix::fs::FileExt;
+    file.write_all_at(buf, offset)
+}
+
+/// Accelerated file download: detects byte-range support (HTTP 206) and splits large files
+/// (>= 4MB) into 4 concurrent chunk streams writing directly into the preallocated target file
+/// via OS positioned writes. Falls back to an optimized single stream with 512KB I/O buffers
+/// when ranges are not supported or files are small.
+pub fn download_file(
+    url: &str,
+    target: &std::path::Path,
+    progress: &mut dyn FnMut(u64, u64) -> Result<(), Error>,
+) -> Result<u64, Error> {
+    let Some(base) = origin_of(url) else {
+        return Err(Error::Network(format!(
+            "{url}: not an absolute http(s) URL"
+        )));
+    };
+    let mut current = url.to_string();
+    let mut hops = 0;
+    loop {
+        let host = host_of(&current).to_string();
+        enforce_rate(&host);
+        let resp = {
+            let mut attempt = 0u32;
+            loop {
+                match download_agent()
+                    .get(&current)
+                    .header("Range", "bytes=0-0")
+                    .call()
+                {
+                    Ok(r) => break r,
+                    Err(err) => {
+                        attempt += 1;
+                        if attempt >= MAX_RETRIES {
+                            return Err(Error::Network(format!("{current}: {err}")));
+                        }
+                        std::thread::sleep(Duration::from_millis(500 * u64::from(attempt)));
+                    }
+                }
+            }
+        };
+
+        let code = resp.status().as_u16();
+        if (300..400).contains(&code) {
+            hops += 1;
+            if hops > MAX_REDIRECT_HOPS {
+                return Err(Error::Network(format!("{current}: too many redirects")));
+            }
+            let location = resp
+                .headers()
+                .get("location")
+                .and_then(|v| v.to_str().ok())
+                .filter(|s| !s.is_empty())
+                .ok_or_else(|| {
+                    Error::Network(format!("{current}: redirect without a location header"))
+                })?
+                .to_string();
+            current = redirect_target(&current, &location, base)?;
+            continue;
+        }
+
+        if !(200..300).contains(&code) {
+            return Err(Error::Network(format!("{current}: HTTP {}", resp.status())));
+        }
+
+        if let Some(ct) = resp
+            .headers()
+            .get("content-type")
+            .and_then(|v| v.to_str().ok())
+        {
+            if ct.starts_with("text/html") {
+                return Err(Error::Network(format!(
+                    "{current}: server returned an HTML webpage instead of a binary file"
+                )));
+            }
+        }
+
+        // If server supported 206 Partial Content:
+        if code == 206 {
+            let content_range = resp
+                .headers()
+                .get("content-range")
+                .and_then(|v| v.to_str().ok());
+            let total_opt = content_range.and_then(parse_content_range_total);
+
+            if let Some(total) = total_opt {
+                if total >= 4 * 1024 * 1024 {
+                    // Drop probe response so we free the connection before spawning workers
+                    drop(resp);
+                    return download_file_parallel(&current, target, total, progress);
+                }
+            }
+        }
+
+        // Single-stream fallback (e.g. 200 OK or file < 4MB)
+        return download_file_single(resp, target, progress);
+    }
+}
+
+fn download_file_single(
+    resp: ureq::http::Response<ureq::Body>,
+    target: &std::path::Path,
+    progress: &mut dyn FnMut(u64, u64) -> Result<(), Error>,
+) -> Result<u64, Error> {
+    use std::io::{Read, Write};
+    let total = resp.body().content_length().unwrap_or(0);
+    let mut reader = resp.into_body().into_reader();
+    let file = std::fs::File::create(target)?;
+    let mut writer = std::io::BufWriter::with_capacity(1024 * 1024, file);
+    let mut buf = vec![0_u8; 512 * 1024];
+    let mut done = 0u64;
+    loop {
+        let n = reader.read(&mut buf)?;
+        if n == 0 {
+            break;
+        }
+        writer.write_all(&buf[..n])?;
+        done += n as u64;
+        progress(done, total)?;
+    }
+    writer.flush()?;
+    Ok(done)
+}
+
+fn download_file_parallel(
+    final_url: &str,
+    target: &std::path::Path,
+    total: u64,
+    progress: &mut dyn FnMut(u64, u64) -> Result<(), Error>,
+) -> Result<u64, Error> {
+    use std::io::Read;
+    use std::sync::atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering};
+    use std::sync::Mutex;
+
+    let file = std::fs::File::create(target)?;
+    file.set_len(total)?;
+    let file = std::sync::Arc::new(file);
+
+    let num_chunks = 4;
+    let chunk_size = total / num_chunks as u64;
+    let mut ranges = Vec::new();
+    for i in 0..num_chunks {
+        let start = i as u64 * chunk_size;
+        let end = if i == num_chunks - 1 {
+            total - 1
+        } else {
+            (i as u64 + 1) * chunk_size - 1
+        };
+        ranges.push((start, end));
+    }
+
+    let total_done = AtomicU64::new(0);
+    let cancel = AtomicBool::new(false);
+    let first_error = Mutex::new(None::<String>);
+    let active_workers = AtomicUsize::new(num_chunks);
+
+    let cancel_ref = &cancel;
+    let total_done_ref = &total_done;
+    let first_error_ref = &first_error;
+    let active_workers_ref = &active_workers;
+
+    std::thread::scope(|s| {
+        // Spawn parallel chunk workers
+        for (start, end) in ranges {
+            let file_ref = std::sync::Arc::clone(&file);
+            s.spawn(move || {
+                let mut offset = start;
+                let mut buf = vec![0_u8; 512 * 1024];
+                let mut attempt = 0u32;
+
+                while offset <= end {
+                    if cancel_ref.load(Ordering::Relaxed) {
+                        active_workers_ref.fetch_sub(1, Ordering::SeqCst);
+                        return;
+                    }
+
+                    let resp = download_agent()
+                        .get(final_url)
+                        .header("Range", &format!("bytes={offset}-{end}"))
+                        .call();
+
+                    if let Ok(r) = resp {
+                        let mut reader = r.into_body().into_reader();
+                        let mut read_failed = false;
+                        while offset <= end {
+                            if cancel_ref.load(Ordering::Relaxed) {
+                                active_workers_ref.fetch_sub(1, Ordering::SeqCst);
+                                return;
+                            }
+                            let to_read =
+                                std::cmp::min(buf.len() as u64, end + 1 - offset) as usize;
+                            if to_read == 0 {
+                                break;
+                            }
+                            match reader.read(&mut buf[..to_read]) {
+                                Ok(0) => {
+                                    if offset <= end {
+                                        read_failed = true;
+                                    }
+                                    break;
+                                }
+                                Ok(n) => {
+                                    if let Err(e) = write_at(&file_ref, &buf[..n], offset) {
+                                        let mut err_guard = first_error_ref.lock().unwrap();
+                                        if err_guard.is_none() {
+                                            *err_guard = Some(format!("write error: {e}"));
+                                        }
+                                        cancel_ref.store(true, Ordering::SeqCst);
+                                        active_workers_ref.fetch_sub(1, Ordering::SeqCst);
+                                        return;
+                                    }
+                                    offset += n as u64;
+                                    total_done_ref.fetch_add(n as u64, Ordering::Relaxed);
+                                }
+                                Err(_) => {
+                                    read_failed = true;
+                                    break;
+                                }
+                            }
+                        }
+
+                        if !read_failed && offset > end {
+                            // Chunk finished successfully
+                            active_workers_ref.fetch_sub(1, Ordering::SeqCst);
+                            return;
+                        }
+                    }
+
+                    attempt += 1;
+                    if attempt >= MAX_RETRIES {
+                        let mut err_guard = first_error_ref.lock().unwrap();
+                        if err_guard.is_none() {
+                            *err_guard =
+                                Some(format!("chunk at {offset} failed after {attempt} attempts"));
+                        }
+                        cancel_ref.store(true, Ordering::SeqCst);
+                        active_workers_ref.fetch_sub(1, Ordering::SeqCst);
+                        return;
+                    }
+                    std::thread::sleep(Duration::from_millis(500 * u64::from(attempt)));
+                }
+                active_workers_ref.fetch_sub(1, Ordering::SeqCst);
+            });
+        }
+
+        // Main thread periodically calls progress callback
+        while active_workers.load(Ordering::Relaxed) > 0 && !cancel.load(Ordering::Relaxed) {
+            std::thread::sleep(Duration::from_millis(150));
+            let done = total_done.load(Ordering::Relaxed);
+            if done >= total {
+                break;
+            }
+            if let Err(e) = progress(done, total) {
+                cancel.store(true, Ordering::SeqCst);
+                let mut err_guard = first_error.lock().unwrap();
+                if err_guard.is_none() {
+                    *err_guard = Some(e.to_string());
+                }
+                break;
+            }
+        }
+    });
+
+    if let Some(err) = first_error.into_inner().unwrap() {
+        let _ = std::fs::remove_file(target);
+        if err.contains("cancelled") {
+            return Err(Error::Usage(err));
+        }
+        return Err(Error::Network(err));
+    }
+
+    progress(total, total)?;
+    Ok(total)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -333,5 +635,19 @@ mod tests {
         // Unresolvable relative junk and scheme-relative escape attempts.
         assert!(redirect_target("https://fileknot.io/dl/a", "payload.zip", base).is_err());
         assert!(redirect_target("https://fileknot.io/dl/a", "//evil.example/x", base).is_err());
+    }
+
+    #[test]
+    fn test_parse_content_range_total() {
+        assert_eq!(
+            parse_content_range_total("bytes 0-0/104857600"),
+            Some(104857600)
+        );
+        assert_eq!(
+            parse_content_range_total("bytes 100-200/5242880"),
+            Some(5242880)
+        );
+        assert_eq!(parse_content_range_total("bytes 0-0/*"), None);
+        assert_eq!(parse_content_range_total("invalid"), None);
     }
 }

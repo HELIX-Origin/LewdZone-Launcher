@@ -84,9 +84,13 @@ pub fn terminate_running_instances() -> usize {
              if ($count -gt 0) {{ $p | Stop-Process -Force }}; \
              Write-Output $count"
         );
-        let output = std::process::Command::new("powershell")
-            .args(["-NoProfile", "-NonInteractive", "-Command", &script])
-            .output();
+        let mut cmd = std::process::Command::new("powershell");
+        cmd.args(["-NoProfile", "-NonInteractive", "-Command", &script]);
+        {
+            use std::os::windows::process::CommandExt;
+            cmd.creation_flags(0x0800_0000);
+        }
+        let output = cmd.output();
         if let Ok(out) = output {
             let s = String::from_utf8_lossy(&out.stdout).trim().to_string();
             return s.parse::<usize>().unwrap_or(0);
@@ -447,9 +451,13 @@ fn create_windows_shortcut(
         description,
         target_exe.parent().unwrap_or(Path::new("")).display()
     );
-    let status = std::process::Command::new("powershell")
-        .args(["-NoProfile", "-NonInteractive", "-Command", &script])
-        .status();
+    let mut cmd = std::process::Command::new("powershell");
+    cmd.args(["-NoProfile", "-NonInteractive", "-Command", &script]);
+    {
+        use std::os::windows::process::CommandExt;
+        cmd.creation_flags(0x0800_0000);
+    }
+    let status = cmd.status();
     if let Ok(s) = status {
         if s.success() {
             return Ok(());
@@ -477,17 +485,25 @@ fn register_windows_uninstall(exe_path: &Path, install_dir: &Path) {
         install_dir.display(),
         exe_path.display()
     );
-    let _ = std::process::Command::new("powershell")
-        .args(["-NoProfile", "-NonInteractive", "-Command", &script])
-        .status();
+    let mut cmd = std::process::Command::new("powershell");
+    cmd.args(["-NoProfile", "-NonInteractive", "-Command", &script]);
+    {
+        use std::os::windows::process::CommandExt;
+        cmd.creation_flags(0x0800_0000);
+    }
+    let _ = cmd.status();
 }
 
 #[cfg(target_os = "windows")]
 fn unregister_windows_uninstall() {
     let script = "Remove-Item -Path 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\LewdZone' -Recurse -ErrorAction SilentlyContinue";
-    let _ = std::process::Command::new("powershell")
-        .args(["-NoProfile", "-NonInteractive", "-Command", script])
-        .status();
+    let mut cmd = std::process::Command::new("powershell");
+    cmd.args(["-NoProfile", "-NonInteractive", "-Command", script]);
+    {
+        use std::os::windows::process::CommandExt;
+        cmd.creation_flags(0x0800_0000);
+    }
+    let _ = cmd.status();
 }
 
 #[cfg(test)]
