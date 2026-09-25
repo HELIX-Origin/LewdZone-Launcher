@@ -1,0 +1,35 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+
+  // 1. Corrected singular property name: "permission"
+  "permission": {
+    "bash": {
+      // Allows routine development commands autonomously.
+      "*": "allow",
+      // Protects dangerous environment destructive mutations by forcing a prompt.
+      "rm *": "ask",
+      "sudo *": "ask",
+      "git push *": "ask",
+      "git reset --hard*": "ask"
+    },
+    "external_directory": "allow",
+    "webfetch": "allow",
+    "websearch": "allow"
+  },
+
+  // 2. Verified plugin mapping configuration
+  "plugin": [
+    "@plannotator/opencode@latest",
+    "@franlol/opencode-md-table-formatter@latest",
+    "opencode-agent-skills@latest",
+    "opencode-websearch-cited@latest"
+  ],
+
+  // Scoped project instructions mapped out for shell strategy
+  "instructions": [
+    "https://raw.githubusercontent.com/JRedeker/opencode-shell-strategy/trunk/shell_strategy.md"
+  ],
+
+  // Built-in feature flag hooks for plugins
+  "formatter": true
+}

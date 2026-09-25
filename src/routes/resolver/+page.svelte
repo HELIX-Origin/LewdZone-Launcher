@@ -4,7 +4,6 @@
   import { onMount } from "svelte";
   import { invoke } from "@tauri-apps/api/core";
   import { emit } from "@tauri-apps/api/event";
-  import { openUrl } from "@tauri-apps/plugin-opener";
   import { page } from "$app/state";
   import { formatCanonicalTitle } from "$lib/format";
 
@@ -131,15 +130,6 @@
     }
   }
 
-  async function openExternal() {
-    if (!resolved?.url) return;
-    try {
-      await openUrl(resolved.url);
-    } catch (err) {
-      window.open(resolved.url, "_blank");
-    }
-  }
-
   async function closeWindow() {
     try {
       const { getCurrentWebviewWindow } = await import("@tauri-apps/api/webviewWindow");
@@ -215,15 +205,6 @@
               <line x1="12" y1="15" x2="12" y2="3"></line>
             </svg>
             Open in App
-          </button>
-
-          <button class="btn secondary" onclick={openExternal}>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
-              <polyline points="15 3 21 3 21 9"></polyline>
-              <line x1="10" y1="14" x2="21" y2="3"></line>
-            </svg>
-            Open in Browser
           </button>
 
           <button class="btn secondary" onclick={copyUrl}>

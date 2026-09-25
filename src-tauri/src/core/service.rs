@@ -108,6 +108,8 @@ impl From<&QueueJob> for BackgroundJobEvent {
 
 /// Scan the download root for completed archives (e.g. downloaded from browser)
 /// and auto-enqueue them for extraction into `lzapps/<slug>/`.
+/// Skips archives that are already being handled by active queue jobs and
+/// archives that were modified very recently (still downloading).
 pub fn ingest_completed_archives(ctx: &Context, queue: &Queue) -> Result<usize, Error> {
     let download_root = match folder::download_root(ctx) {
         Ok(p) => p,
@@ -122,6 +124,7 @@ pub fn ingest_completed_archives(ctx: &Context, queue: &Queue) -> Result<usize, 
         Err(_) => return Ok(0),
     };
 
+    let active_jobs = queue.snapshot();
     let mut queued = 0;
     let mut stack = vec![download_root];
     while let Some(dir) = stack.pop() {
@@ -145,6 +148,21 @@ pub fn ingest_completed_archives(ctx: &Context, queue: &Queue) -> Result<usize, 
                 continue;
             }
 
+            // Skip archives that are still being written to (browser or app partials).
+            let recently_modified = entry
+                .metadata()
+                .ok()
+                .and_then(|m| m.modified().ok())
+                .map(|t| {
+                    t.elapsed()
+                        .map(|d| d < Duration::from_secs(60))
+                        .unwrap_or(false)
+                })
+                .unwrap_or(false);
+            if recently_modified {
+                continue;
+            }
+
             // Parse clean title, version, and platform
             let (title, version, platform) = library::parse_archive_filename(name);
             let slug = crate::core::game_arg_slug(&title);
@@ -158,12 +176,26 @@ pub fn ingest_completed_archives(ctx: &Context, queue: &Queue) -> Result<usize, 
             let path_str = path.to_string_lossy().to_string();
             let target_str = target_dir.to_string_lossy().to_string();
 
-            // Check if this file is already in the queue
-            if queue.snapshot().iter().any(|j| {
-                j.source.as_deref() == Some(&path_str)
-                    && (j.status == Status::Queued
-                        || j.status == Status::Extracting
-                        || j.status == Status::Completed)
+            // Check if this file or slug is already being handled by an active queue job.
+            // Intercept/download jobs store the URL/go-link in `source`, so we also match
+            // by target slug to avoid races where the app is streaming an archive that the
+            // scanner would otherwise re-queue for extraction.
+            if active_jobs.iter().any(|j| {
+                let is_active = matches!(
+                    j.status,
+                    Status::Queued
+                        | Status::Resolving
+                        | Status::Dispatching
+                        | Status::Downloading
+                        | Status::Extracting
+                );
+                if !is_active {
+                    return false;
+                }
+                let same_path = j.source.as_deref() == Some(&path_str);
+                let same_target = j.slug == slug
+                    && (j.tab == "extract" || j.tab == "intercept" || is_direct_host(&j.tab));
+                same_path || same_target
             }) {
                 continue;
             }

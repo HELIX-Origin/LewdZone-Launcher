@@ -5,6 +5,8 @@
   import { invoke } from "@tauri-apps/api/core";
   import { getCurrentWindow } from "@tauri-apps/api/window";
   import { page } from "$app/state";
+  import { loadAndApplyTheme } from "$lib/theme/apply";
+  import "$lib/theme/default.css";
 
   interface InstallerStatus {
     is_installed: boolean;
@@ -66,15 +68,30 @@
     }
   };
   const minimizeWindow = () => getCurrentWindow().minimize();
+  const maximizeWindow = () => getCurrentWindow().toggleMaximize();
 
-  function onHeaderPointerDown(e: PointerEvent) {
+  // macOS convention puts the traffic lights on the left; Windows/Linux put
+  // them on the right.
+  const isMac = $derived(
+    typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.userAgent),
+  );
+
+  function onBarPointerDown(e: PointerEvent) {
     if (e.button !== 0) return;
     const t = e.target as HTMLElement | null;
     if (t?.closest("button, input, select, a")) return;
+    e.preventDefault();
     getCurrentWindow().startDragging();
   }
 
+  function onBarDoubleClick(e: MouseEvent) {
+    const t = e.target as HTMLElement | null;
+    if (t?.closest("button, input, select, a")) return;
+    getCurrentWindow().toggleMaximize();
+  }
+
   onMount(async () => {
+    loadAndApplyTheme();
     try {
       const detected = await invoke<InstallerStatus>("installer_status");
       info = detected;
@@ -189,8 +206,19 @@
 </script>
 
 <div class="installer-shell">
-  <!-- Frameless modern titlebar -->
-  <header class="wizard-header" role="presentation" onpointerdown={onHeaderPointerDown}>
+  <!-- Custom frameless titlebar matching the main app -->
+  <header
+    class="titlebar"
+    class:mac={isMac}
+    role="presentation"
+    onpointerdown={onBarPointerDown}
+    ondblclick={onBarDoubleClick}
+  >
+    <div class="traffic" aria-label="Window controls">
+      <button class="dot close" aria-label="Close window" onclick={closeWindow}></button>
+      <button class="dot min" aria-label="Minimize window" onclick={minimizeWindow}></button>
+      <button class="dot max" aria-label="Maximize window" onclick={maximizeWindow}></button>
+    </div>
     <div class="app-badge">
       <svg class="app-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <rect x="3" y="6.5" width="18" height="11" rx="5.5"/>
@@ -202,10 +230,7 @@
         <span class="version-tag">v{info.current_version}</span>
       {/if}
     </div>
-    <div class="window-controls">
-      <button class="win-btn" onclick={minimizeWindow} aria-label="Minimize">─</button>
-      <button class="win-btn close" onclick={closeWindow} aria-label="Close">✕</button>
-    </div>
+    <div class="spacer"></div>
   </header>
 
   {#if statusLoading}
@@ -538,15 +563,39 @@
     overflow: hidden;
   }
 
-  .wizard-header {
-    height: 38px;
-    background: #161b22;
-    border-bottom: 1px solid #30363d;
+  .titlebar {
+    position: relative;
+    z-index: 10;
+    flex: 0 0 auto;
+    height: 36px;
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    gap: 12px;
     padding: 0 12px;
+    background: var(--lz-glass, rgba(22, 27, 34, 0.85));
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--lz-surface-2, #30363d);
+    user-select: none;
     cursor: grab;
+  }
+
+  /* Default (Windows/Linux): traffic lights on the right. */
+  .titlebar .app-badge {
+    order: 1;
+  }
+
+  .titlebar .spacer {
+    order: 2;
+  }
+
+  .titlebar .traffic {
+    order: 3;
+  }
+
+  /* macOS: traffic lights on the left, before the badge. */
+  .titlebar.mac .traffic {
+    order: 0;
+    margin-right: 2px;
   }
 
   .app-badge {
@@ -558,50 +607,87 @@
   .app-icon {
     width: 18px;
     height: 18px;
-    color: #58a6ff;
+    color: var(--lz-cyan, #58a6ff);
   }
 
   .app-title {
     font-size: 13px;
     font-weight: 600;
+    color: var(--lz-text, #e6edf3);
   }
 
   .version-tag {
     font-size: 11px;
-    color: #8b949e;
-    background: #21262d;
+    color: var(--lz-text-dim, #8b949e);
+    background: var(--lz-surface-2, #21262d);
     padding: 2px 6px;
     border-radius: 4px;
   }
 
-  .window-controls {
+  .traffic {
     display: flex;
+    gap: 8px;
     align-items: center;
-    gap: 4px;
   }
 
-  .win-btn {
-    background: transparent;
+  .dot {
+    width: 13px;
+    height: 13px;
+    border-radius: 50%;
     border: none;
-    color: #8b949e;
-    font-size: 12px;
-    width: 28px;
-    height: 24px;
+    padding: 0;
     cursor: pointer;
-    border-radius: 4px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    position: relative;
   }
 
-  .win-btn:hover {
-    background: #30363d;
-    color: #f0f6fc;
+  /* Windows/Linux order: minimize, maximize, close (left → right). */
+  .traffic .dot.min {
+    order: 1;
   }
 
-  .win-btn.close:hover {
-    background: #da3633;
-    color: #fff;
+  .traffic .dot.max {
+    order: 2;
+  }
+
+  .traffic .dot.close {
+    order: 3;
+  }
+
+  /* macOS order: close, minimize, maximize (left → right). */
+  .titlebar.mac .traffic .dot.close {
+    order: 1;
+  }
+
+  .titlebar.mac .traffic .dot.min {
+    order: 2;
+  }
+
+  .titlebar.mac .traffic .dot.max {
+    order: 3;
+  }
+
+  .dot.close {
+    background: #ff5f57;
+  }
+
+  .dot.min {
+    background: #febc2e;
+  }
+
+  .dot.max {
+    background: #28c840;
+  }
+
+  .dot:hover::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.25);
+  }
+
+  .spacer {
+    flex: 1 1 auto;
   }
 
   .wizard-body {

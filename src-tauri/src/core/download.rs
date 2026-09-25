@@ -373,7 +373,7 @@ pub fn stream_target(
     }
     writer.flush()?;
 
-    if folder::file_ext(&target.to_string_lossy()) == "zip" {
+    if crate::core::library::is_supported_archive(target) {
         if let Some(install_dir) = &job.install_dir {
             let meta = extract::InstallMeta {
                 slug: &job.game,
@@ -393,8 +393,8 @@ pub fn stream_target(
 }
 
 /// Accelerated download: streams `job.url` using 4 concurrent chunk connections
-/// writing directly into `job.target` via OS positioned writes. When `.zip` finishes,
-/// extracts into `job.install_dir` and writes an `app.json` manifest.
+/// writing directly into `job.target` via OS positioned writes. When a supported
+/// archive finishes, extracts into `job.install_dir` and writes an `app.json` manifest.
 pub fn stream_target_accelerated(job: &Job, progress: ProgressCallback<'_>) -> Result<(), Error> {
     let target = job
         .target
@@ -406,7 +406,7 @@ pub fn stream_target_accelerated(job: &Job, progress: ProgressCallback<'_>) -> R
 
     crate::scraper::download_file(&job.url, target, progress)?;
 
-    if folder::file_ext(&target.to_string_lossy()) == "zip" {
+    if crate::core::library::is_supported_archive(target) {
         if let Some(install_dir) = &job.install_dir {
             let meta = extract::InstallMeta {
                 slug: &job.game,

@@ -12,6 +12,19 @@ the top; the current development state lives under `Unreleased`.
 
 ---
 
+## [v0.4.1](https://github.com/HELIX-Origin/LewdZone-Launcher/releases/tag/v0.4.1) — 2026-09-25
+
+Patch release cleaning up the resolver UI, unifying archive extraction behavior across all direct-stream downloads, and making the unified installer titlebar consistent with the main application.
+
+### 🐛 Bug Fixes & Improvements
+
+- **Resolver UI Cleanup:** Removed the now-redundant "Open in Browser" button from the Secure Ad-Free Resolver; "Open in App" remains the primary action for capturing downloads in-app.
+- **Consistent Archive Auto-Extraction:** `stream_target` and `stream_target_accelerated` now auto-extract every supported archive format (`.zip`, `.7z`, `.rar`, `.tar.gz`, `.tar.bz2`, `.tar.xz`, `.tgz`, `.tbz2`, `.txz`, and SFX `.exe`) instead of only `.zip`. Archives are deleted after successful extraction, eliminating leftover archives alongside downloads.
+- **Duplicate Folder Prevention:** `ingest_completed_archives` skips archives modified in the last 60 seconds and any archive whose path or target slug is already being processed by an active intercept/download/extract queue job, preventing the background scanner from re-extracting an archive the app is already handling.
+- **Unified Installer Titlebar:** Replaced the installer’s custom dark header with the same frameless traffic-light titlebar used by the main app, including theme-aware glass styling, drag-to-move, and correct macOS/Windows control ordering.
+
+---
+
 ## [v0.4.0](https://github.com/HELIX-Origin/LewdZone-Launcher/releases/tag/v0.4.0) — 2026-09-25
 
 Minor release introducing multi-threaded accelerated downloads for in-app archive downloads, eliminating duplicate title bars on the installer wizard, and preventing background console windows from spawning during installation and maintenance tasks.
