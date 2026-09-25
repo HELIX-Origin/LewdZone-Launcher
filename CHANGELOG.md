@@ -12,6 +12,19 @@ the top; the current development state lives under `Unreleased`.
 
 ---
 
+## [v0.3.1](https://github.com/HELIX-Origin/LewdZone-Launcher/releases/tag/v0.3.1) — 2026-09-24
+
+Patch release fixing installer file naming collisions across platforms, adding automatic stale instance termination during installation/uninstallation, migrating legacy install directories, and improving direct archive link interception.
+
+### 🐛 Bug Fixes & Improvements
+
+- **Platform-Specific Installer Naming:** Updated the installer packager (`scripts/build-installer.mjs`) to generate clearly distinguished binaries for each operating system and architecture (`LewdZone-Setup-v0.3.1-windows-x64.exe`, `LewdZone-Setup-v0.3.1-linux-x64`, `LewdZone-Setup-v0.3.1-macos-x64`/`arm64`). Prevents CI asset collisions between Linux and macOS and makes platform targets immediately clear to users.
+- **Running Instance Termination During Install/Uninstall:** Enhanced the installer engine (`core/installer.rs`) to automatically detect and terminate any running `lewdzone` processes before deploying files or uninstalling. Resolves file locks (`Access is denied`) and prevents old background/tray instances from intercepting single-instance focus on update.
+- **Legacy Installation Migration:** Added detection and automatic cleanup for legacy Tauri NSIS directories (`%LOCALAPPDATA%\LewdZone Launcher\`) to prevent stale executable versions from persisting alongside new unified installs.
+- **Instant In-App Capture for Direct Archives:** Enhanced "Open in App" in the Secure Resolver child window to detect direct archive URLs (`.zip`, `.7z`, `.rar`, `.001`, `.part1.rar`, etc.) and immediately enqueue them to the download worker, seamlessly closing the resolver window. Expanded archive format detection in Tauri's webview download interceptor.
+
+---
+
 ## [v0.3.0](https://github.com/HELIX-Origin/LewdZone-Launcher/releases/tag/v0.3.0) — 2026-09-24
 
 Milestone release featuring the modern in-app Unified Installer / Uninstaller wizard, child-window archive download interception, 2-column store and library layouts with dedicated metadata sidebars, clean synopsis scraping, and clean game title handling across manifests and UI.

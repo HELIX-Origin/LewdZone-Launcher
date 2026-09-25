@@ -73,6 +73,38 @@ pub fn default_install_dir() -> PathBuf {
     }
 }
 
+/// Terminate any running instances of LewdZone launcher (except our own process).
+pub fn terminate_running_instances() -> usize {
+    let my_pid = std::process::id();
+    #[cfg(target_os = "windows")]
+    {
+        let script = format!(
+            "$p = Get-Process lewdzone -ErrorAction SilentlyContinue | Where-Object {{ $_.Id -ne {my_pid} }}; \
+             $count = ($p | Measure-Object).Count; \
+             if ($count -gt 0) {{ $p | Stop-Process -Force }}; \
+             Write-Output $count"
+        );
+        let output = std::process::Command::new("powershell")
+            .args(["-NoProfile", "-NonInteractive", "-Command", &script])
+            .output();
+        if let Ok(out) = output {
+            let s = String::from_utf8_lossy(&out.stdout).trim().to_string();
+            return s.parse::<usize>().unwrap_or(0);
+        }
+    }
+    #[cfg(not(target_os = "windows"))]
+    {
+        let script = format!(
+            "pgrep -f '[l]ewdzone' | grep -v '^{my_pid}$' | xargs -r kill -9 2>/dev/null || true"
+        );
+        let _ = std::process::Command::new("sh")
+            .arg("-c")
+            .arg(&script)
+            .status();
+    }
+    0
+}
+
 /// Detect current installation status on the host.
 pub fn detect_status() -> InstallerStatus {
     let default_dir = default_install_dir();
@@ -89,11 +121,18 @@ pub fn detect_status() -> InstallerStatus {
 
     #[cfg(target_os = "windows")]
     let installed_exe = default_dir.join("lewdzone.exe");
+    #[cfg(target_os = "windows")]
+    let legacy_exe = std::env::var_os("LOCALAPPDATA")
+        .map(PathBuf::from)
+        .map(|p| p.join("LewdZone Launcher").join("lewdzone.exe"));
     #[cfg(target_os = "macos")]
     let installed_exe = default_dir.clone();
     #[cfg(all(unix, not(target_os = "macos")))]
     let installed_exe = default_dir.join("lewdzone");
 
+    #[cfg(target_os = "windows")]
+    let is_installed = installed_exe.exists() || legacy_exe.map(|p| p.exists()).unwrap_or(false);
+    #[cfg(not(target_os = "windows"))]
     let is_installed = installed_exe.exists();
     let installed_version = if is_installed {
         Some(version.clone())
@@ -141,6 +180,31 @@ fn fs2_available_space(_path: &Path) -> Option<u64> {
 pub fn perform_install(options: InstallOptions) -> OperationResult {
     let mut details = Vec::new();
     let target = PathBuf::from(&options.target_dir);
+
+    // 0. Terminate any running instances so we don't hit file locks or process routing
+    let killed = terminate_running_instances();
+    if killed > 0 {
+        details.push(format!(
+            "Terminated {killed} running application instance(s)"
+        ));
+        std::thread::sleep(std::time::Duration::from_millis(400));
+    }
+
+    // Clean up any legacy installation files on Windows (e.g. %LOCALAPPDATA%\LewdZone Launcher)
+    #[cfg(target_os = "windows")]
+    {
+        if let Some(local) = std::env::var_os("LOCALAPPDATA") {
+            let legacy_dir = PathBuf::from(local).join("LewdZone Launcher");
+            if legacy_dir.exists() && legacy_dir != target {
+                let legacy_exe = legacy_dir.join("lewdzone.exe");
+                let legacy_uninst = legacy_dir.join("uninstall.exe");
+                let _ = fs::remove_file(&legacy_exe);
+                let _ = fs::remove_file(&legacy_uninst);
+                let _ = fs::remove_dir_all(&legacy_dir);
+                details.push("Cleaned up legacy installation files".to_string());
+            }
+        }
+    }
 
     // 1. Create target directory
     if let Err(e) = fs::create_dir_all(&target) {
@@ -277,6 +341,27 @@ pub fn perform_install(options: InstallOptions) -> OperationResult {
 pub fn perform_uninstall(options: UninstallOptions) -> OperationResult {
     let mut details = Vec::new();
     let target = default_install_dir();
+
+    // 0. Terminate any running instances
+    let killed = terminate_running_instances();
+    if killed > 0 {
+        details.push(format!(
+            "Terminated {killed} running application instance(s)"
+        ));
+        std::thread::sleep(std::time::Duration::from_millis(400));
+    }
+
+    // Clean up legacy directory if present on Windows
+    #[cfg(target_os = "windows")]
+    {
+        if let Some(local) = std::env::var_os("LOCALAPPDATA") {
+            let legacy_dir = PathBuf::from(local).join("LewdZone Launcher");
+            if legacy_dir.exists() {
+                let _ = fs::remove_dir_all(&legacy_dir);
+                details.push("Cleaned up legacy installation files".to_string());
+            }
+        }
+    }
 
     // 1. Remove Shortcuts & Registry entries
     #[cfg(target_os = "windows")]

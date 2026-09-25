@@ -856,7 +856,22 @@ async fn open_resolver_window(
     let hook_app = app.clone();
 
     const ARCHIVE_EXTS: &[&str] = &[
-        ".zip", ".7z", ".rar", ".exe", ".tar.gz", ".tar.bz2", ".tar.xz", ".tgz", ".iso", ".apk",
+        ".zip",
+        ".7z",
+        ".rar",
+        ".exe",
+        ".tar.gz",
+        ".tar.bz2",
+        ".tar.xz",
+        ".tgz",
+        ".iso",
+        ".apk",
+        ".001",
+        ".part1.rar",
+        ".part01.rar",
+        ".z01",
+        ".dmg",
+        ".pkg",
     ];
 
     use std::sync::atomic::{AtomicBool, Ordering};

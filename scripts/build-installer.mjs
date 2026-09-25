@@ -20,6 +20,7 @@ try {
 
   const isWindows = process.platform === "win32";
   const isMac = process.platform === "darwin";
+  const arch = process.arch === "x64" ? "x64" : (process.arch === "arm64" ? "arm64" : process.arch);
 
   console.log("\nStep 2/2: Packaging standalone unified installer...");
 
@@ -29,24 +30,44 @@ try {
       throw new Error(`Compiled executable not found at: ${srcExe}`);
     }
 
-    const versionedInstaller = join(outDir, `LewdZone-Setup-${version}.exe`);
-    const genericInstaller = join(outDir, "LewdZone-Setup.exe");
+    const versionedInstaller = join(outDir, `LewdZone-Setup-v${version}-windows-${arch}.exe`);
+    const genericInstaller = join(outDir, `LewdZone-Setup-windows-${arch}.exe`);
+    const plainInstaller = join(outDir, `LewdZone-Setup.exe`);
 
     copyFileSync(srcExe, versionedInstaller);
     copyFileSync(srcExe, genericInstaller);
+    copyFileSync(srcExe, plainInstaller);
 
     console.log(`\n✅ Custom Unified Installer successfully generated!`);
     console.log(`   📂 ${versionedInstaller}`);
     console.log(`   📂 ${genericInstaller}`);
+    console.log(`   📂 ${plainInstaller}`);
     console.log(`\n👉 When launched, it automatically presents the custom tabbed Installer Wizard.\n`);
+  } else if (isMac) {
+    const srcBin = resolve("src-tauri/target/release/lewdzone");
+    if (!existsSync(srcBin)) {
+      throw new Error(`Compiled executable not found at: ${srcBin}`);
+    }
+
+    const versionedInstaller = join(outDir, `LewdZone-Setup-v${version}-macos-${arch}`);
+    const genericInstaller = join(outDir, `LewdZone-Setup-macos-${arch}`);
+
+    copyFileSync(srcBin, versionedInstaller);
+    copyFileSync(srcBin, genericInstaller);
+    chmodSync(versionedInstaller, 0o755);
+    chmodSync(genericInstaller, 0o755);
+
+    console.log(`\n✅ Custom Unified Installer successfully generated!`);
+    console.log(`   📂 ${versionedInstaller}`);
+    console.log(`   📂 ${genericInstaller}\n`);
   } else {
     const srcBin = resolve("src-tauri/target/release/lewdzone");
     if (!existsSync(srcBin)) {
       throw new Error(`Compiled executable not found at: ${srcBin}`);
     }
 
-    const versionedInstaller = join(outDir, `LewdZone-Setup-${version}`);
-    const genericInstaller = join(outDir, "LewdZone-Setup");
+    const versionedInstaller = join(outDir, `LewdZone-Setup-v${version}-linux-${arch}`);
+    const genericInstaller = join(outDir, `LewdZone-Setup-linux-${arch}`);
 
     copyFileSync(srcBin, versionedInstaller);
     copyFileSync(srcBin, genericInstaller);

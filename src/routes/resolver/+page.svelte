@@ -117,9 +117,32 @@
     }
   }
 
-  function openInApp() {
+  async function openInApp() {
     if (!resolved?.url) return;
-    window.location.href = resolved.url;
+    const url = resolved.url;
+    const lower = url.toLowerCase();
+    const isDirectArchive = [
+      ".zip", ".7z", ".rar", ".exe", ".tar.gz", ".tar.bz2", ".tar.xz", ".tgz", ".iso", ".apk", ".001", ".part1.rar", ".dmg", ".pkg"
+    ].some((ext) => lower.includes(ext));
+
+    if (isDirectArchive) {
+      try {
+        await invoke("queue_intercepted_download", {
+          slug,
+          url,
+          title,
+          version: resolved.version ?? "latest",
+          platform: resolved.platform ?? "pc",
+        });
+        await emit("archive-intercepted", slug);
+        await closeWindow();
+        return;
+      } catch (err) {
+        console.warn("Direct enqueue failed, navigating in window:", err);
+      }
+    }
+
+    window.location.href = url;
   }
 
   async function openExternal() {
