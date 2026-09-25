@@ -6,6 +6,7 @@
   import { emit } from "@tauri-apps/api/event";
   import { openUrl } from "@tauri-apps/plugin-opener";
   import { page } from "$app/state";
+  import { formatCanonicalTitle } from "$lib/format";
 
   interface ResolvedUrl {
     url: string;
@@ -26,7 +27,8 @@
   const slug = $derived(page.url.searchParams.get("slug") ?? "game");
   const goLink = $derived(page.url.searchParams.get("url") ?? "");
   const host = $derived(page.url.searchParams.get("host") ?? "");
-  const title = $derived(page.url.searchParams.get("title") ?? slug);
+  const rawTitle = $derived(page.url.searchParams.get("title") ?? slug);
+  const title = $derived(formatCanonicalTitle(rawTitle));
 
   const HOST_ICONS: Record<string, string> = {
     mega: `<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="11" fill="#D9272E"/><path d="M7 16V8l5 4.5L17 8v8h-2v-5l-3 2.7-3-2.7V16H7z" fill="#FFF"/></svg>`,

@@ -170,4 +170,10 @@ CREATE INDEX IF NOT EXISTS idx_game_stats_last_played ON game_stats(last_played_
 ALTER TABLE game ADD COLUMN screenshots TEXT;
 "#,
     ),
+    (
+        "008_queue_job_title",
+        r#"
+ALTER TABLE queue_job ADD COLUMN title TEXT;
+"#,
+    ),
 ];

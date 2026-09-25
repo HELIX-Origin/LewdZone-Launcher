@@ -8,6 +8,7 @@
   import { openUrl } from "@tauri-apps/plugin-opener";
   import MediaCarousel from "$lib/components/MediaCarousel.svelte";
   import { gameDetailsCache, libraryStore } from "$lib/stores/clientCache";
+  import { cleanDisplayTitle } from "$lib/format";
 
   type LoadState = "loading" | "ready" | "error";
 
@@ -88,24 +89,6 @@
     } catch {
       return raw;
     }
-  }
-
-  function cleanDisplayTitle(raw: string | null | undefined): string {
-    if (!raw) return "";
-    let clean = raw;
-    while (clean.includes("[") && clean.includes("]")) {
-      clean = clean.replace(/\[[^\]]*\]/g, " ");
-    }
-    while (clean.includes("(") && clean.includes(")")) {
-      clean = clean.replace(/\([^)]*\)/g, " ");
-    }
-    clean = clean.replace(/_/g, " ");
-    clean = clean.replace(/\s*-\s*Version:?.*$/i, "");
-    clean = clean.replace(/\s+Version:?.*$/i, "");
-    clean = clean.replace(/\s*-\s*v\d+.*$/i, "");
-    clean = clean.replace(/\s*-\s*(PC|Mac|Linux|Android|Windows).*$/i, "");
-    const res = clean.replace(/\s+/g, " ").trim();
-    return res || raw;
   }
 
   function parseGameMetadata(g: GameData | null, inst: LibraryGame | null) {

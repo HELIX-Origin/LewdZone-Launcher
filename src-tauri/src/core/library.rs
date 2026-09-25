@@ -526,7 +526,7 @@ pub fn clean_folder_title(raw: &str) -> String {
         }
     }
 
-    let result = cleaned
+    let mut result = cleaned
         .split_whitespace()
         .collect::<Vec<_>>()
         .join(" ")
@@ -534,10 +534,36 @@ pub fn clean_folder_title(raw: &str) -> String {
         .to_string();
 
     if result.is_empty() {
-        raw.trim().to_string()
-    } else {
-        result
+        result = raw.trim().to_string();
     }
+
+    // If result looks like a raw kebab-case slug (e.g. "dating-my-daughter"),
+    // convert it to title case (e.g. "Dating My Daughter")
+    if result
+        .chars()
+        .all(|c| c.is_ascii_lowercase() || c == '-' || c.is_ascii_digit())
+        && result.contains('-')
+        && !result.contains(' ')
+    {
+        result = to_title_case(&result);
+    }
+
+    result
+}
+
+/// Convert a kebab-case or snake_case string into Title Case words.
+pub fn to_title_case(s: &str) -> String {
+    s.split(|c: char| c == '-' || c == '_' || c.is_whitespace())
+        .filter(|part| !part.is_empty())
+        .map(|word| {
+            let mut c = word.chars();
+            match c.next() {
+                None => String::new(),
+                Some(f) => f.to_uppercase().collect::<String>() + c.as_str(),
+            }
+        })
+        .collect::<Vec<_>>()
+        .join(" ")
 }
 
 /// Check if an .exe file contains an embedded SFX archive (7z, RAR, or Zip).
@@ -601,13 +627,13 @@ pub fn extract_archive_extension(path_or_url: &str) -> String {
     "zip".to_string()
 }
 
-/// Format the canonical saved archive filename per the specification:
-/// `{Game Title} [{Status Ongoing|Finished|Abandoned|ect}] - Version {version.number}.(zip|7z|rar|tar.gz|etc)`
-pub fn format_archive_filename(
+/// Format the canonical display / archive title without extension:
+/// `{Game Title} [{Status}] - {release_desc}`
+/// e.g. `Dating My Daughter [Unknown] - Version 1.01 Chapter 1-4`
+pub fn format_display_title(
     raw_title: &str,
     status_hint: Option<&str>,
-    version: &str,
-    ext: &str,
+    version: Option<&str>,
 ) -> String {
     let clean_title = clean_folder_title(raw_title);
     let title = if clean_title.is_empty() {
@@ -685,7 +711,19 @@ pub fn format_archive_filename(
         found_status.unwrap_or_else(|| "Unknown".to_string())
     };
 
-    let release_desc = format_release_descriptor(raw_title, version);
+    let release_desc = format_release_descriptor(raw_title, version.unwrap_or(""));
+    format!("{title} [{status}] - {release_desc}")
+}
+
+/// Format the canonical saved archive filename per the specification:
+/// `{Game Title} [{Status Ongoing|Finished|Abandoned|ect}] - Version {version.number}.(zip|7z|rar|tar.gz|etc)`
+pub fn format_archive_filename(
+    raw_title: &str,
+    status_hint: Option<&str>,
+    version: &str,
+    ext: &str,
+) -> String {
+    let base = format_display_title(raw_title, status_hint, Some(version));
     let clean_ext = ext.trim_start_matches('.');
     let final_ext = if clean_ext.is_empty() {
         "zip"
@@ -693,7 +731,7 @@ pub fn format_archive_filename(
         clean_ext
     };
 
-    format!("{title} [{status}] - {release_desc}.{final_ext}")
+    format!("{base}.{final_ext}")
 }
 
 /// Parse and format the release descriptor into canonical order:
@@ -1205,6 +1243,7 @@ pub fn scan_games_dir(
             if let Some(q) = queue {
                 let _ = q.enqueue_extract(
                     slug.clone(),
+                    matched_title.clone(),
                     version,
                     platform,
                     archive_path.to_string_lossy().into_owned(),
@@ -1650,6 +1689,35 @@ mod tests {
         assert_eq!(
             name9,
             "Star Journey [Unknown] - Version 1.01 Chapter 1-4.zip"
+        );
+    }
+
+    #[test]
+    fn format_display_title_matches_canonical_specification() {
+        let title1 = format_display_title(
+            "Dating My Daughter [Unknown] - Version Ch. 1-4 v1.01",
+            None,
+            None,
+        );
+        assert_eq!(
+            title1,
+            "Dating My Daughter [Unknown] - Version 1.01 Chapter 1-4"
+        );
+
+        let title2 =
+            format_display_title("dating-my-daughter", Some("Unknown"), Some("Ch. 1-4 v1.01"));
+        assert_eq!(
+            title2,
+            "Dating My Daughter [Unknown] - Version 1.01 Chapter 1-4"
+        );
+
+        assert_eq!(
+            clean_folder_title("dating-my-daughter"),
+            "Dating My Daughter"
+        );
+        assert_eq!(
+            clean_folder_title("Dating My Daughter [Unknown] - Version Ch. 1-4 v1.01"),
+            "Dating My Daughter"
         );
     }
 

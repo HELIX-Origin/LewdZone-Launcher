@@ -18,6 +18,9 @@ Milestone release featuring the modern in-app Unified Installer / Uninstaller wi
 
 ### ✨ Highlights
 
+- **Single-Instance Enforcement (`tauri-plugin-single-instance`):** Integrated single-instance plugin ensuring launching duplicate instances automatically focuses the existing running application window.
+- **Client Cache & Smart Polling (`src/lib/stores/clientCache.ts`):** Centralized Svelte stores for catalog, details, library, favorites, and settings with smart conditional polling that eliminates redundant page reloads and network queries while keeping download progress responsive.
+- **Canonical Release Descriptors & Title Case Formatting:** Added dedicated `title` column to `queue_job` (DB migration `008_queue_job_title`), ensuring Title Case game names across the Downloads page and resolving chapter/version separation (`Version 1.01 Chapter 1-4`) across the Secure Ad-Free Resolver child window, download queue, and filesystem archives.
 - **Persistent Background Service (`src-tauri/src/core/service.rs`):** A dedicated background worker running alongside the launcher application, coordinating task queue execution, external host URL resolution (Pixeldrain, Mediafire, Fileknot), streaming downloads, and automatic ingestion of completed archives from the downloads directory.
 - **Privacy & Secure Database Architecture:** Ensured the SQLite database (`lewdzone.db`) is strictly local and never bundled or committed to the repository. The installer checks and initializes a fresh database schema on install (preserved if it already exists), keeping user tokens, secrets, and library progress completely private in `%APPDATA%\lewdzone\`.
 - **Resolver Window & In-App Interception:** Fixed redirect loop in the go-token resolver window. Added an "Open in App" option alongside "Open in Browser" so users can navigate hosting landing pages directly in-app, where the Tauri webview's `on_download` hook captures the archive trigger automatically.
@@ -30,7 +33,7 @@ Milestone release featuring the modern in-app Unified Installer / Uninstaller wi
 ### 🚀 Key Improvements & Features
 
 - **Queue & Download Engine:** Added `enqueue_intercept()` and `"intercept"` processing branch in `core/queue.rs`, enabling direct-URL streaming and extraction dispatch without going through go-link resolvers.
-- **Library & Title Parsing:** Added `clean_archive_stem()` and `clean_folder_title()` in `core/library.rs` and frontend title cleaners to ensure consistent display titles across all views.
+- **Library & Title Parsing:** Added `clean_archive_stem()`, `clean_folder_title()`, `format_display_title()`, and frontend format module (`src/lib/format.ts`) to ensure consistent display titles across all views.
 - **LewdClips Removal:** Completely removed all third-party video and external clip links and fixture references from the codebase.
 - **CI / Distribution Build:** Added `scripts/build-installer.mjs` and updated GitHub Actions packaging to build and publish the unified setup binary to `dist/installer/`.
 

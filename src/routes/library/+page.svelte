@@ -5,6 +5,7 @@
   import { goto } from "$app/navigation";
   import { invoke, convertFileSrc } from "@tauri-apps/api/core";
   import { libraryStore } from "$lib/stores/clientCache";
+  import { cleanDisplayTitle } from "$lib/format";
 
   type LoadState = "loading" | "ready" | "error";
 
@@ -117,24 +118,6 @@
       linux: "Linux",
     };
     return map[p.toLowerCase()] ?? p;
-  }
-
-  function cleanDisplayTitle(raw: string): string {
-    if (!raw) return "";
-    let clean = raw;
-    while (clean.includes("[") && clean.includes("]")) {
-      clean = clean.replace(/\[[^\]]*\]/g, " ");
-    }
-    while (clean.includes("(") && clean.includes(")")) {
-      clean = clean.replace(/\([^)]*\)/g, " ");
-    }
-    clean = clean.replace(/_/g, " ");
-    clean = clean.replace(/\s*-\s*Version:?.*$/i, "");
-    clean = clean.replace(/\s+Version:?.*$/i, "");
-    clean = clean.replace(/\s*-\s*v\d+.*$/i, "");
-    clean = clean.replace(/\s*-\s*(PC|Mac|Linux|Android|Windows).*$/i, "");
-    const res = clean.replace(/\s+/g, " ").trim();
-    return res || raw;
   }
 
   async function load(force = false) {

@@ -464,6 +464,7 @@ pub fn game_count(tx: &Connection) -> Result<i64, Error> {
 pub struct QueueJobRow {
     pub id: u64,
     pub slug: String,
+    pub title: Option<String>,
     pub version: String,
     pub platform: String,
     pub tab: String,
@@ -481,11 +482,12 @@ pub struct QueueJobRow {
 pub fn queue_upsert(tx: &Connection, job: &QueueJobRow) -> Result<(), Error> {
     tx.execute(
         r#"
-        INSERT INTO queue_job (id, slug, version, platform, tab, source, status,
+        INSERT INTO queue_job (id, slug, title, version, platform, tab, source, status,
                                message, bytes_done, bytes_total, created_at, updated_at)
-        VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)
+        VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13)
         ON CONFLICT(id) DO UPDATE SET
             slug = excluded.slug,
+            title = excluded.title,
             version = excluded.version,
             platform = excluded.platform,
             tab = excluded.tab,
@@ -500,6 +502,7 @@ pub fn queue_upsert(tx: &Connection, job: &QueueJobRow) -> Result<(), Error> {
         params![
             job.id,
             job.slug,
+            job.title,
             job.version,
             job.platform,
             job.tab,
@@ -520,7 +523,7 @@ pub fn queue_upsert(tx: &Connection, job: &QueueJobRow) -> Result<(), Error> {
 /// was closed. Completed/failed rows are pruned separately.
 pub fn queue_load_all(conn: &Connection) -> Result<Vec<QueueJobRow>, Error> {
     let mut stmt = conn.prepare(
-        "SELECT id, slug, version, platform, tab, source, status, message,
+        "SELECT id, slug, title, version, platform, tab, source, status, message,
                 bytes_done, bytes_total, created_at, updated_at
          FROM queue_job
          ORDER BY id",
@@ -529,16 +532,17 @@ pub fn queue_load_all(conn: &Connection) -> Result<Vec<QueueJobRow>, Error> {
         Ok(QueueJobRow {
             id: row.get(0)?,
             slug: row.get(1)?,
-            version: row.get(2)?,
-            platform: row.get(3)?,
-            tab: row.get(4)?,
-            source: row.get(5)?,
-            status: row.get(6)?,
-            message: row.get(7)?,
-            bytes_done: row.get(8)?,
-            bytes_total: row.get(9)?,
-            created_at: row.get(10)?,
-            updated_at: row.get(11)?,
+            title: row.get(2)?,
+            version: row.get(3)?,
+            platform: row.get(4)?,
+            tab: row.get(5)?,
+            source: row.get(6)?,
+            status: row.get(7)?,
+            message: row.get(8)?,
+            bytes_done: row.get(9)?,
+            bytes_total: row.get(10)?,
+            created_at: row.get(11)?,
+            updated_at: row.get(12)?,
         })
     })?;
     rows.collect::<Result<Vec<_>, _>>().map_err(Into::into)

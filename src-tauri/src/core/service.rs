@@ -79,6 +79,7 @@ pub fn extract_direct_url(host: &str, url: &str) -> Option<String> {
 pub struct BackgroundJobEvent {
     pub id: u64,
     pub slug: String,
+    pub title: String,
     pub version: String,
     pub platform: String,
     pub tab: String,
@@ -93,6 +94,7 @@ impl From<&QueueJob> for BackgroundJobEvent {
         Self {
             id: j.id,
             slug: j.slug.clone(),
+            title: j.title.clone(),
             version: j.version.clone(),
             platform: j.platform.clone(),
             tab: j.tab.clone(),
@@ -166,7 +168,7 @@ pub fn ingest_completed_archives(ctx: &Context, queue: &Queue) -> Result<usize, 
                 continue;
             }
 
-            let _ = queue.enqueue_extract(slug, version, platform, path_str, target_str);
+            let _ = queue.enqueue_extract(slug, title, version, platform, path_str, target_str);
             queued += 1;
         }
     }

@@ -634,9 +634,9 @@ describe("downloads page", () => {
     expect(screen.getByText("Downloading")).toBeInTheDocument();
     expect(screen.getByText("Dispatched")).toBeInTheDocument();
     expect(screen.getByText("Failed")).toBeInTheDocument();
-    expect(screen.getAllByText("wild-life").length).toBe(4);
+    expect(screen.getAllByText("Wild Life").length).toBe(4);
     expect(screen.getByText("downloaded 2.1 GB of 5 GB")).toBeInTheDocument();
-    expect(screen.getByRole("progressbar", { name: /Download progress for wild-life/ })).toBeInTheDocument();
+    expect(screen.getByRole("progressbar", { name: /Download progress for Wild Life/ })).toBeInTheDocument();
     expect(screen.getByText("no matching download entries found")).toBeInTheDocument();
   });
 
@@ -654,11 +654,11 @@ describe("downloads page", () => {
       return [];
     });
     render(DownloadsPage);
-    const cancelBtn = await screen.findByRole("button", { name: "Cancel download for wild-life" });
+    const cancelBtn = await screen.findByRole("button", { name: "Cancel download for Wild Life" });
     await user.click(cancelBtn);
     expect(invocations.some((i) => i.cmd === "download_cancel" && i.args?.id === 1)).toBe(true);
 
-    const deleteBtns = screen.getAllByRole("button", { name: "Remove wild-life from downloads" });
+    const deleteBtns = screen.getAllByRole("button", { name: "Remove Wild Life from downloads" });
     expect(deleteBtns.length).toBe(2);
     // Delete the dispatched job (id: 3)
     await user.click(deleteBtns[1]);
@@ -685,7 +685,7 @@ describe("downloads page", () => {
     });
     render(DownloadsPage);
     expect(await screen.findByText("Extracting")).toBeInTheDocument();
-    expect(screen.getByRole("progressbar", { name: /Extraction progress for wild-life/ })).toBeInTheDocument();
+    expect(screen.getByRole("progressbar", { name: /Extraction progress for Wild Life/ })).toBeInTheDocument();
     expect(screen.getByText(/50% extracted/)).toBeInTheDocument();
   });
 });

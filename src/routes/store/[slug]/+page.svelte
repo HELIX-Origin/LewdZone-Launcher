@@ -74,6 +74,7 @@
   }
 
   import { gameDetailsCache } from "$lib/stores/clientCache";
+  import { formatCanonicalTitle, cleanDisplayTitle, formatReleaseDescriptor } from "$lib/format";
 
   const slug = $derived(
     (page.params?.slug ?? (page.url.pathname.match(/\/store\/([^/?#]+)/) ?? [])[1] ?? "")
@@ -91,7 +92,7 @@
   let copiedLink = $state(false);
 
   function parseGameMetadata(g: GameData | null) {
-    if (!g) return { title: "", state: "", version: "" };
+    if (!g) return { title: "", state: "", version: "", releaseDesc: "" };
     let raw = g.title || "";
     let state = "";
     const bracketMatch = raw.match(/\[([^\]]+)\]/);
@@ -99,36 +100,8 @@
       state = bracketMatch[1].trim();
     }
 
-    // Clean title
-    let title = raw;
-    while (title.includes("[") && title.includes("]")) {
-      title = title.replace(/\[[^\]]*\]/g, " ");
-    }
-    while (title.includes("(") && title.includes(")")) {
-      title = title.replace(/\([^)]*\)/g, " ");
-    }
-    title = title.replace(/_/g, " ");
-    // Detect release wording (Chapter, Ch., Episode, Ep., Part, Season, Build, Version)
-    let wording = "Version";
-    const rawLower = raw.toLowerCase();
-    const verLower = (g.current_version || "").toLowerCase();
-
-    if (verLower.startsWith("chapter ") || rawLower.includes("chapter ")) wording = "Chapter";
-    else if (verLower.startsWith("ch. ") || rawLower.includes("ch. ") || rawLower.includes("ch.")) wording = "Ch.";
-    else if (verLower.startsWith("episode ") || rawLower.includes("episode ")) wording = "Episode";
-    else if (verLower.startsWith("ep. ") || rawLower.includes("ep. ") || rawLower.includes("ep.")) wording = "Ep.";
-    else if (verLower.startsWith("part ") || rawLower.includes("part ")) wording = "Part";
-    else if (verLower.startsWith("season ") || rawLower.includes("season ")) wording = "Season";
-    else if (verLower.startsWith("build ") || rawLower.includes("build ")) wording = "Build";
-
-    title = title.replace(/\s*-\s*(Version|Chapter|Ch\.?|Episode|Ep\.?|Part|Season|Build):?.*$/i, "");
-    title = title.replace(/\s+(Version|Chapter|Ch\.?|Episode|Ep\.?|Part|Season|Build):?.*$/i, "");
-    title = title.replace(/\s*-\s*Version:?.*$/i, "");
-    title = title.replace(/\s+Version:?.*$/i, "");
-    title = title.replace(/\s*-\s*v\d+.*$/i, "");
-    title = title.replace(/\s*-\s*(PC|Mac|Linux|Android|Windows).*$/i, "");
-    title = title.replace(/\s+/g, " ").trim();
-    if (!title) title = g.slug;
+    let title = cleanDisplayTitle(raw) || g.slug;
+    let releaseDesc = formatReleaseDescriptor(raw, g.current_version || "");
 
     // Clean version
     let ver = g.current_version || "";
@@ -138,7 +111,7 @@
       title,
       state: state || (g.current_version?.toLowerCase().includes("finished") ? "Finished" : ""),
       version: ver,
-      wording,
+      releaseDesc,
     };
   }
 
@@ -309,10 +282,8 @@
     if (!game) return;
     feedback = `Opening secure resolver for ${entry.label} (${formatHostName(entry.host)})…`;
     try {
-      const gameTitle = metaInfo.title || game.title;
       const gameStatus = metaInfo.state || (game.current_version?.toLowerCase().includes("finished") ? "Finished" : "Unknown");
-      const gameVer = metaInfo.version || version || "latest";
-      const fullTitle = `${gameTitle} [${gameStatus}] - ${metaInfo.wording} ${gameVer}`;
+      const fullTitle = formatCanonicalTitle(game.title, gameStatus, version || metaInfo.version);
 
       await invoke("open_resolver_window", {
         slug: game.slug,

@@ -3,6 +3,7 @@
 <script lang="ts">
   import { onMount, onDestroy } from "svelte";
   import { invoke } from "@tauri-apps/api/core";
+  import { cleanDisplayTitle, formatCanonicalTitle, formatDisplayMessage } from "$lib/format";
 
   type LoadState = "loading" | "ready" | "error";
 
@@ -19,6 +20,7 @@
   interface QueueJob {
     id: number;
     slug: string;
+    title: string;
     version: string;
     platform: string;
     tab: string;
@@ -219,7 +221,7 @@
       {#each jobs as job (job.id)}
         <div class="item" role="listitem">
           <div class="item-top">
-            <span class="item-name">{job.slug}</span>
+            <span class="item-name">{cleanDisplayTitle(job.title || job.slug)}</span>
             <div class="item-actions">
               <span class="badge {job.status}">{statusLabel[job.status]}</span>
               {#if job.status === "queued" || job.status === "resolving" || job.status === "downloading" || job.status === "dispatching" || job.status === "extracting"}
@@ -227,7 +229,7 @@
                   class="action-btn cancel"
                   onclick={() => cancelJob(job.id)}
                   title="Cancel download"
-                  aria-label={`Cancel download for ${job.slug}`}
+                  aria-label={`Cancel download for ${cleanDisplayTitle(job.title || job.slug)}`}
                 >
                   Cancel
                 </button>
@@ -235,7 +237,7 @@
                   class="action-btn delete"
                   onclick={() => deleteJob(job.id)}
                   title="Remove from queue"
-                  aria-label={`Remove ${job.slug} from downloads`}
+                  aria-label={`Remove ${cleanDisplayTitle(job.title || job.slug)} from downloads`}
                 >
                   ✕
                 </button>
@@ -244,7 +246,7 @@
                   class="action-btn delete"
                   onclick={() => deleteJob(job.id)}
                   title="Remove from queue"
-                  aria-label={`Remove ${job.slug} from downloads`}
+                  aria-label={`Remove ${cleanDisplayTitle(job.title || job.slug)} from downloads`}
                 >
                   ✕
                 </button>
@@ -266,6 +268,9 @@
               <span>{job.source}</span>
             {/if}
           </div>
+          {#if job.title && formatCanonicalTitle(job.title) !== cleanDisplayTitle(job.title)}
+            <p class="item-canonical">{formatCanonicalTitle(job.title)}</p>
+          {/if}
           {#if job.status === "downloading" || job.status === "extracting"}
             <div
               class="bar"
@@ -273,7 +278,7 @@
               aria-valuemin="0"
               aria-valuemax="100"
               aria-valuenow={progressPct(job)}
-              aria-label={`${job.status === "extracting" ? "Extraction" : "Download"} progress for ${job.slug}`}
+              aria-label={`${job.status === "extracting" ? "Extraction" : "Download"} progress for ${cleanDisplayTitle(job.title || job.slug)}`}
             >
               <div
                 class="bar-fill"
@@ -290,8 +295,8 @@
               {/if}
             </p>
           {/if}
-          {#if job.message}
-            <p class="item-msg" class:error={job.status === "failed"}>{job.message}</p>
+          {#if job.message && job.message !== job.title}
+            <p class="item-msg" class:error={job.status === "failed"}>{formatDisplayMessage(job.message)}</p>
           {/if}
           <p class="item-time">
             queued {fmtTime(job.created_at)}
@@ -486,6 +491,7 @@
     font-size: 12px;
   }
 
+  .item-canonical,
   .item-msg {
     margin: 8px 0 0;
     font-size: 13px;

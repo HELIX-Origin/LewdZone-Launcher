@@ -843,14 +843,16 @@ async fn open_resolver_window(
     let enc_slug: String = url::form_urlencoded::byte_serialize(slug.as_bytes()).collect();
     let host_val = host.as_deref().unwrap_or("");
     let enc_host: String = url::form_urlencoded::byte_serialize(host_val.as_bytes()).collect();
-    let title_val = title.as_deref().unwrap_or(&slug);
-    let enc_title: String = url::form_urlencoded::byte_serialize(title_val.as_bytes()).collect();
+    let raw_title = title.as_deref().unwrap_or(&slug);
+    let canonical_title = crate::core::library::format_display_title(raw_title, None, None);
+    let enc_title: String =
+        url::form_urlencoded::byte_serialize(canonical_title.as_bytes()).collect();
 
     let path = format!("resolver?slug={enc_slug}&url={enc_url}&host={enc_host}&title={enc_title}");
 
     let queue = Arc::clone(&state.queue);
     let hook_slug = slug.clone();
-    let hook_title = title.clone().unwrap_or_else(|| slug.clone());
+    let hook_title = canonical_title.clone();
     let hook_app = app.clone();
 
     const ARCHIVE_EXTS: &[&str] = &[
@@ -863,10 +865,7 @@ async fn open_resolver_window(
 
     let builder =
         WebviewWindowBuilder::new(&app, "download-resolver", WebviewUrl::App(path.into()))
-            .title(format!(
-                "Download Verification - {}",
-                title.as_deref().unwrap_or(&slug)
-            ))
+            .title(format!("Download Verification - {}", canonical_title))
             .inner_size(800.0, 600.0)
             .min_inner_size(520.0, 420.0)
             .center()

@@ -92,6 +92,10 @@ impl std::fmt::Display for Status {
 pub struct QueueJob {
     pub id: u64,
     pub slug: String,
+    /// Human-readable display title (e.g. "Dating My Daughter [Unknown]").
+    /// Populated from the `title` parameter on enqueue; separate from `message`
+    /// which is reserved for status-update strings only.
+    pub title: String,
     pub version: String,
     pub platform: String,
     pub tab: String,
@@ -155,7 +159,8 @@ impl Queue {
             .into_iter()
             .map(|r| QueueJob {
                 id: r.id,
-                slug: r.slug,
+                slug: r.slug.clone(),
+                title: r.title.unwrap_or_else(|| r.slug.clone()),
                 version: r.version,
                 platform: r.platform,
                 tab: r.tab,
@@ -184,6 +189,7 @@ impl Queue {
         let row = crate::db::repo::QueueJobRow {
             id: job.id,
             slug: job.slug.clone(),
+            title: Some(job.title.clone()),
             version: job.version.clone(),
             platform: job.platform.clone(),
             tab: job.tab.clone(),
@@ -221,6 +227,7 @@ impl Queue {
         let now = now_secs();
         let job = QueueJob {
             id,
+            title: slug.clone(),
             slug,
             version,
             platform,
@@ -244,6 +251,7 @@ impl Queue {
     pub fn enqueue_extract(
         &self,
         slug: String,
+        title: String,
         version: String,
         platform: String,
         zip_path: String,
@@ -261,6 +269,7 @@ impl Queue {
         let job = QueueJob {
             id,
             slug,
+            title,
             version,
             platform,
             tab: "extract".to_string(),
@@ -323,13 +332,13 @@ impl Queue {
         let job = QueueJob {
             id,
             slug,
+            title,
             version,
             platform,
             tab: "intercept".to_string(),
             source: Some(url),
             status: Status::Queued,
-            // message stores the display title for archive naming
-            message: Some(title),
+            message: None,
             bytes_done: 0,
             bytes_total: 0,
             created_at: now,
@@ -378,12 +387,13 @@ impl Queue {
         let job = QueueJob {
             id,
             slug,
+            title,
             version,
             platform,
             tab: host,
             source: Some(go_link),
             status: Status::Queued,
-            message: Some(title),
+            message: None,
             bytes_done: 0,
             bytes_total: 0,
             created_at: now,
@@ -579,7 +589,11 @@ pub fn process(
                 }
             };
 
-            let raw_title = entry.message.clone().unwrap_or_else(|| entry.slug.clone());
+            let raw_title = if entry.title.is_empty() {
+                entry.slug.clone()
+            } else {
+                entry.title.clone()
+            };
             let clean_title = crate::core::library::clean_folder_title(&raw_title);
             let display_title = if clean_title.is_empty() {
                 &raw_title
@@ -735,8 +749,12 @@ pub fn process(
             }
         };
 
-        // Title stored in message during enqueue_intercept
-        let raw_title = entry.message.clone().unwrap_or_else(|| entry.slug.clone());
+        // Use the stored display title for archive naming
+        let raw_title = if entry.title.is_empty() {
+            entry.slug.clone()
+        } else {
+            entry.title.clone()
+        };
         let clean_title = crate::core::library::clean_folder_title(&raw_title);
         let display_title = if clean_title.is_empty() {
             &raw_title
