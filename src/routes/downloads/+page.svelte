@@ -45,14 +45,56 @@
   let status: LoadState = $state("loading");
   let error = $state("");
   let jobs: QueueJob[] = $state([]);
+  let isRefreshing = $state(false);
 
-  async function refresh() {
+  function hasActiveJobs(list: QueueJob[]): boolean {
+    return list.some(
+      (j) =>
+        j.status === "queued" ||
+        j.status === "resolving" ||
+        j.status === "dispatching" ||
+        j.status === "downloading" ||
+        j.status === "extracting"
+    );
+  }
+
+  let timer: ReturnType<typeof setInterval> | undefined;
+
+  function ensurePolling(list: QueueJob[]) {
+    if (hasActiveJobs(list)) {
+      if (!timer) {
+        timer = setInterval(async () => {
+          await poll();
+        }, 1500);
+      }
+    } else {
+      if (timer) {
+        clearInterval(timer);
+        timer = undefined;
+      }
+    }
+  }
+
+  async function poll() {
+    try {
+      jobs = await invoke<QueueJob[]>("downloads_list");
+      ensurePolling(jobs);
+    } catch {
+      // Background poll silently fails without disrupting UI
+    }
+  }
+
+  async function refresh(isManual = false) {
+    if (isManual) isRefreshing = true;
     try {
       jobs = await invoke<QueueJob[]>("downloads_list");
       status = "ready";
+      ensurePolling(jobs);
     } catch (err) {
-      status = "error";
+      if (jobs.length === 0) status = "error";
       error = String(err);
+    } finally {
+      if (isManual) isRefreshing = false;
     }
   }
 
@@ -92,13 +134,14 @@
     )
   );
 
-  let timer: ReturnType<typeof setInterval> | undefined;
   onMount(() => {
     refresh();
-    timer = setInterval(refresh, 1000);
   });
   onDestroy(() => {
-    if (timer) clearInterval(timer);
+    if (timer) {
+      clearInterval(timer);
+      timer = undefined;
+    }
   });
 
   function fmtTime(secs: number): string {
@@ -140,11 +183,27 @@
         ><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m6 11 6 6 6-6"/><path d="M4 21h16"/></svg></span
       >Downloads
     </h1>
-    {#if hasFinishedJobs}
-      <button class="clear-btn" onclick={clearFinished}>
-        Clear Finished
+    <div class="head-actions">
+      <button
+        type="button"
+        class="refresh-btn"
+        class:spinning={isRefreshing}
+        disabled={isRefreshing}
+        onclick={() => refresh(true)}
+        title="Refresh downloads queue"
+        aria-label="Refresh downloads queue"
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
+        </svg>
+        <span>{isRefreshing ? "Refreshing…" : "Refresh"}</span>
       </button>
-    {/if}
+      {#if hasFinishedJobs}
+        <button class="clear-btn" onclick={clearFinished}>
+          Clear Finished
+        </button>
+      {/if}
+    </div>
   </div>
 
   {#if status === "loading"}
@@ -267,6 +326,54 @@
     display: flex;
     align-items: center;
     gap: 8px;
+  }
+
+  .head-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .refresh-btn {
+    appearance: none;
+    border: 1px solid var(--lz-surface-2);
+    background: var(--lz-surface);
+    color: var(--lz-text);
+    font: inherit;
+    font-size: 12px;
+    font-weight: 500;
+    padding: 5px 12px;
+    border-radius: var(--lz-radius);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.2s ease;
+  }
+
+  .refresh-btn:hover:not(:disabled) {
+    background: var(--lz-surface-2);
+    color: var(--lz-accent);
+  }
+
+  .refresh-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  .refresh-btn svg {
+    width: 14px;
+    height: 14px;
+    transition: transform 0.2s ease;
+  }
+
+  .refresh-btn.spinning svg {
+    animation: spin 1s linear infinite;
+  }
+
+  @keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
   }
 
   .clear-btn {

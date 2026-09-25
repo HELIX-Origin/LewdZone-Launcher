@@ -4,6 +4,7 @@
   import { onMount } from "svelte";
   import { invoke, convertFileSrc } from "@tauri-apps/api/core";
   import { goto } from "$app/navigation";
+  import { favoritesStore } from "$lib/stores/clientCache";
 
   type LoadState = "loading" | "ready" | "error";
 
@@ -23,11 +24,12 @@
     views: number | null;
   }
 
-  let status: LoadState = $state("loading");
+  let status: LoadState = $state(favoritesStore.isLoaded ? "ready" : "loading");
   let error = $state("");
-  let games: GameCard[] = $state([]);
-  let coverUrls: Record<string, string | null> = $state({});
+  let games: GameCard[] = $state(favoritesStore.games);
+  let coverUrls: Record<string, string | null> = $state({ ...favoritesStore.coverUrls });
   let togglingFavorite = $state<Record<string, boolean>>({});
+  let isRefreshing = $state(false);
 
   const platformLabel: Record<string, string> = {
     pc: "PC",
@@ -64,17 +66,28 @@
     }
   }
 
-  async function load() {
-    status = "loading";
+  async function load(force = false) {
+    if (force) {
+      isRefreshing = true;
+    } else if (!favoritesStore.isLoaded) {
+      status = "loading";
+    }
     error = "";
     try {
       const rows = await invoke<GameCard[]>("favorites_list");
       games = rows;
       await loadArtwork(rows);
+      favoritesStore.games = games;
+      favoritesStore.coverUrls = { ...coverUrls };
+      favoritesStore.isLoaded = true;
       status = "ready";
     } catch (err) {
-      status = "error";
+      if (!favoritesStore.isLoaded) {
+        status = "error";
+      }
       error = String(err);
+    } finally {
+      isRefreshing = false;
     }
   }
 
@@ -116,6 +129,7 @@
     try {
       await invoke("favorite_remove", { slug: game.slug });
       games = games.filter((g) => g.slug !== game.slug);
+      favoritesStore.games = games;
       window.dispatchEvent(new CustomEvent("favorites-changed"));
     } catch (err) {
       error = String(err);
@@ -125,24 +139,42 @@
   }
 
   onMount(() => {
-    load();
-    const handler = () => load();
+    if (!favoritesStore.isLoaded) {
+      load();
+    }
+    const handler = () => load(false);
     window.addEventListener("favorites-changed", handler);
     return () => window.removeEventListener("favorites-changed", handler);
   });
 </script>
 
-{#if status === "loading"}
+{#if status === "loading" && games.length === 0}
   <p class="note">Loading favorites…</p>
-{:else if status === "error"}
+{:else if status === "error" && games.length === 0}
   <p class="note error">{error}</p>
 {:else}
   <section class="favorites">
-    <h1>
-      <span class="head-icon" aria-hidden="true"
-        ><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20.5 4.6 13a4.8 4.8 0 0 1 0-6.9 5.1 5.1 0 0 1 7.4 0l.6.6.6-.6a5.1 5.1 0 0 1 7.4 0 4.8 4.8 0 0 1 0 6.9L12 20.5Z"/></svg></span
-      >Favorites
-    </h1>
+    <div class="head">
+      <h1>
+        <span class="head-icon" aria-hidden="true"
+          ><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20.5 4.6 13a4.8 4.8 0 0 1 0-6.9 5.1 5.1 0 0 1 7.4 0l.6.6.6-.6a5.1 5.1 0 0 1 7.4 0 4.8 4.8 0 0 1 0 6.9L12 20.5Z"/></svg></span
+        >Favorites
+      </h1>
+      <button
+        type="button"
+        class="refresh-btn"
+        class:spinning={isRefreshing}
+        disabled={isRefreshing}
+        onclick={() => load(true)}
+        title="Refresh favorites"
+        aria-label="Refresh favorites"
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
+        </svg>
+        <span>{isRefreshing ? "Refreshing…" : "Refresh"}</span>
+      </button>
+    </div>
 
     {#if games.length === 0}
       <p class="note">
@@ -211,12 +243,61 @@
     padding: var(--lz-gap);
   }
 
+  .head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: var(--lz-gap);
+  }
+
   .favorites h1 {
     font-size: 18px;
-    margin: 0 0 var(--lz-gap);
+    margin: 0;
     display: flex;
     align-items: center;
     gap: 8px;
+  }
+
+  .refresh-btn {
+    appearance: none;
+    border: 1px solid var(--lz-surface-2);
+    background: var(--lz-surface);
+    color: var(--lz-text);
+    font: inherit;
+    font-size: 13px;
+    font-weight: 500;
+    padding: 6px 12px;
+    border-radius: var(--lz-radius);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.2s ease;
+  }
+
+  .refresh-btn:hover:not(:disabled) {
+    background: var(--lz-surface-2);
+    color: var(--lz-accent);
+  }
+
+  .refresh-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  .refresh-btn svg {
+    width: 14px;
+    height: 14px;
+    transition: transform 0.2s ease;
+  }
+
+  .refresh-btn.spinning svg {
+    animation: spin 1s linear infinite;
+  }
+
+  @keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
   }
 
   .head-icon :global(svg) {

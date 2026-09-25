@@ -4,6 +4,7 @@
   import { onMount } from "svelte";
   import { invoke } from "@tauri-apps/api/core";
   import { goto } from "$app/navigation";
+  import { catalogStore } from "$lib/stores/clientCache";
 
   type LoadState = "loading" | "ready" | "error";
 
@@ -77,21 +78,22 @@ interface GameCard {
     linux: "Linux",
   };
 
-  let status: LoadState = $state("loading");
+  let status: LoadState = $state(catalogStore.isLoaded ? "ready" : "loading");
+  let isRefreshing = $state(false);
   let error = $state("");
-  let page = $state(1);
-  let totalPages: number | null = $state(null);
-  let games: GameCard[] = $state([]);
-  let genres: Genre[] = $state([]);
-  let coverUrls: Record<string, string | null> = $state({});
+  let page = $state(catalogStore.page);
+  let totalPages: number | null = $state(catalogStore.totalPages);
+  let games: GameCard[] = $state(catalogStore.games);
+  let genres: Genre[] = $state(catalogStore.genres);
+  let coverUrls: Record<string, string | null> = $state(catalogStore.coverUrls);
 
-  let q = $state("");
-  let platform = $state("");
-  let engine = $state("");
-  let devState = $state("");
-  let sort = $state("Popularity");
-  let includeTags = $state<string[]>([]);
-  let excludeTags = $state<string[]>([]);
+  let q = $state(catalogStore.filters.q);
+  let platform = $state(catalogStore.filters.platform);
+  let engine = $state(catalogStore.filters.engine);
+  let devState = $state(catalogStore.filters.devState);
+  let sort = $state(catalogStore.filters.sort);
+  let includeTags = $state<string[]>(catalogStore.filters.includeTags);
+  let excludeTags = $state<string[]>(catalogStore.filters.excludeTags);
 
   const appliedCount = $derived(
     (q ? 1 : 0) +
@@ -116,9 +118,10 @@ interface GameCard {
   }
 
   async function loadArtwork(list: GameCard[]) {
-    const next: Record<string, string | null> = {};
+    const next: Record<string, string | null> = { ...coverUrls };
     await Promise.all(
       list.map(async (game) => {
+        if (next[game.slug]) return;
         try {
           const url = await invoke<string | null>("artwork_url", {
             card: game,
@@ -131,32 +134,70 @@ interface GameCard {
       }),
     );
     coverUrls = next;
+    catalogStore.coverUrls = next;
   }
 
-  async function load(p: number) {
-    status = "loading";
+  async function load(p: number, force = false) {
+    if (catalogStore.isLoaded && !force && games.length > 0 && page === p) {
+      return;
+    }
+
+    if (games.length === 0) {
+      status = "loading";
+    } else {
+      isRefreshing = true;
+    }
+    error = "";
+
     try {
       const archive = await invoke<ArchivePage>("catalog_page", {
         page: p,
         filter: buildFilter(),
       });
       games = archive.games;
-      await loadArtwork(archive.games);
       totalPages = archive.meta.total_pages;
       page = archive.meta.page;
       status = "ready";
+
+      // Sync into store
+      catalogStore.games = games;
+      catalogStore.totalPages = totalPages;
+      catalogStore.page = page;
+      catalogStore.filters = {
+        q,
+        platform,
+        engine,
+        devState,
+        sort,
+        includeTags,
+        excludeTags,
+      };
+      catalogStore.isLoaded = true;
+
+      await loadArtwork(archive.games);
     } catch (err) {
       status = "error";
       error = String(err);
+    } finally {
+      isRefreshing = false;
     }
   }
 
+  function refreshCommand() {
+    load(page, true);
+  }
+
   onMount(async () => {
-    load(page);
-    try {
-      genres = await invoke<Genre[]>("catalog_genres");
-    } catch {
-      genres = [];
+    if (!catalogStore.isLoaded || games.length === 0) {
+      load(page);
+    }
+    if (genres.length === 0) {
+      try {
+        genres = await invoke<Genre[]>("catalog_genres");
+        catalogStore.genres = genres;
+      } catch {
+        genres = [];
+      }
     }
   });
 
@@ -165,7 +206,7 @@ interface GameCard {
     includeTags = had ? includeTags.filter((s) => s !== slug) : [...includeTags, slug];
     excludeTags = excludeTags.filter((s) => s !== slug);
     page = 1;
-    load(page);
+    load(page, true);
   }
 
   function toggleExclude(slug: string) {
@@ -173,12 +214,12 @@ interface GameCard {
     excludeTags = had ? excludeTags.filter((s) => s !== slug) : [...excludeTags, slug];
     includeTags = includeTags.filter((s) => s !== slug);
     page = 1;
-    load(page);
+    load(page, true);
   }
 
   function applySelect() {
     page = 1;
-    load(page);
+    load(page, true);
   }
 
   function submitSearch() {
@@ -194,15 +235,15 @@ interface GameCard {
     includeTags = [];
     excludeTags = [];
     page = 1;
-    load(page);
+    load(page, true);
   }
 
   function next() {
-    if (totalPages === null || page < totalPages) load(page + 1);
+    if (totalPages === null || page < totalPages) load(page + 1, true);
   }
 
   function prev() {
-    if (page > 1) load(page - 1);
+    if (page > 1) load(page - 1, true);
   }
 
   function openGame(slug: string) {
@@ -211,9 +252,9 @@ interface GameCard {
 </script>
 
 <div class="store">
-  {#if status === "loading"}
+  {#if status === "loading" && games.length === 0}
     <p class="note">Loading catalog…</p>
-  {:else if status === "error"}
+  {:else if status === "error" && games.length === 0}
     <p class="note error">{error}</p>
   {:else}
     <aside class="rail" aria-label="Store categories">
@@ -314,6 +355,18 @@ interface GameCard {
         <div class="bar-stats" aria-label="Game catalog">
           {games.length} games · page {page}{totalPages ? ` of ${totalPages}` : ""}
         </div>
+        <button
+          class="refresh-btn"
+          class:spinning={isRefreshing}
+          onclick={refreshCommand}
+          title="Refresh catalog"
+          aria-label="Refresh catalog"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
+          </svg>
+          <span>{isRefreshing ? "Refreshing…" : "Refresh"}</span>
+        </button>
         {#if appliedCount > 0}
           <button class="clear" onclick={clearFilters} aria-label="Clear all filters">
             Clear ({appliedCount})
@@ -635,5 +688,41 @@ interface GameCard {
 
   .note.error {
     color: var(--lz-danger);
+  }
+
+  .refresh-btn {
+    appearance: none;
+    border: 1px solid var(--lz-surface-2);
+    background: var(--lz-surface);
+    color: var(--lz-text);
+    font: inherit;
+    font-size: 13px;
+    padding: 6px 12px;
+    border-radius: var(--lz-radius);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.2s ease;
+  }
+
+  .refresh-btn:hover {
+    background: var(--lz-surface-2);
+    color: var(--lz-accent);
+  }
+
+  .refresh-btn svg {
+    width: 14px;
+    height: 14px;
+    transition: transform 0.2s ease;
+  }
+
+  .refresh-btn.spinning svg {
+    animation: spin 1s linear infinite;
+  }
+
+  @keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
   }
 </style>

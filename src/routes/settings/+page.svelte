@@ -4,23 +4,29 @@
   import { onMount } from "svelte";
   import { invoke } from "@tauri-apps/api/core";
   import { applyTokens } from "$lib/theme/apply";
+  import { settingsStore } from "$lib/stores/clientCache";
 
   type LoadState = "loading" | "ready" | "error";
 
-  let status: LoadState = $state("loading");
+  let status: LoadState = $state(settingsStore.isLoaded ? "ready" : "loading");
   let error = $state("");
 
-  let snapshot = $state<Record<string, unknown>>({});
-  let themes: string[] = $state([]);
-  let activeTheme = $state("(default)");
+  let snapshot = $state<Record<string, unknown>>(settingsStore.snapshot);
+  let themes: string[] = $state(settingsStore.themes);
+  let activeTheme = $state(settingsStore.activeTheme);
   let busy = $state(false);
   let toast = $state("");
-  let logPath = $state<string | null>(null);
+  let logPath = $state<string | null>(settingsStore.logPath);
   let showLogPreview = $state(false);
   let logPreview = $state("");
+  let isRefreshing = $state(false);
 
-  async function load() {
-    status = "loading";
+  async function load(force = false) {
+    if (force) {
+      isRefreshing = true;
+    } else if (!settingsStore.isLoaded) {
+      status = "loading";
+    }
     try {
       const [cfg, list, path] = await Promise.all([
         invoke<Record<string, unknown>>("settings_get"),
@@ -32,14 +38,25 @@
       logPath = path;
       const t = cfg["theme"];
       activeTheme = typeof t === "string" && t.trim() ? t : "(default)";
+      settingsStore.snapshot = snapshot;
+      settingsStore.themes = themes;
+      settingsStore.logPath = logPath;
+      settingsStore.activeTheme = activeTheme;
+      settingsStore.isLoaded = true;
       status = "ready";
     } catch (err) {
-      status = "error";
+      if (!settingsStore.isLoaded) {
+        status = "error";
+      }
       error = String(err);
+    } finally {
+      isRefreshing = false;
     }
   }
 
-  onMount(load);
+  onMount(() => {
+    load(false);
+  });
 
   async function save(key: string, value: unknown, secret = false) {
     busy = true;
@@ -50,6 +67,7 @@
         secret,
       });
       snapshot = { ...snapshot, [view.key]: view.value };
+      settingsStore.snapshot = snapshot;
       toast = `${view.key} saved`;
     } catch (err) {
       toast = `failed: ${err}`;
@@ -149,13 +167,29 @@
   }
 </script>
 
-{#if status === "loading"}
+{#if status === "loading" && Object.keys(snapshot).length === 0}
   <p class="note">Loading settings…</p>
-{:else if status === "error"}
+{:else if status === "error" && Object.keys(snapshot).length === 0}
   <p class="note error">{error}</p>
 {:else}
   <div class="settings">
-    <h1>Settings</h1>
+    <div class="settings-head">
+      <h1>Settings</h1>
+      <button
+        type="button"
+        class="refresh-btn"
+        class:spinning={isRefreshing}
+        disabled={isRefreshing}
+        onclick={() => load(true)}
+        title="Refresh settings"
+        aria-label="Refresh settings"
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
+        </svg>
+        <span>{isRefreshing ? "Refreshing…" : "Refresh"}</span>
+      </button>
+    </div>
 
     <label class="field">
       <span class="field-label">Library root</span>
@@ -464,9 +498,58 @@
     gap: var(--lz-gap);
   }
 
+  .settings-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
   h1 {
     font-size: 20px;
     margin: 0;
+  }
+
+  .refresh-btn {
+    appearance: none;
+    border: 1px solid var(--lz-surface-2);
+    background: var(--lz-surface);
+    color: var(--lz-text);
+    font: inherit;
+    font-size: 13px;
+    font-weight: 500;
+    padding: 6px 12px;
+    border-radius: var(--lz-radius);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.2s ease;
+  }
+
+  .refresh-btn:hover:not(:disabled) {
+    background: var(--lz-surface-2);
+    color: var(--lz-accent);
+  }
+
+  .refresh-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  .refresh-btn svg {
+    width: 14px;
+    height: 14px;
+    transition: transform 0.2s ease;
+  }
+
+  .refresh-btn.spinning svg {
+    animation: spin 1s linear infinite;
+  }
+
+  @keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
   }
 
   .field {

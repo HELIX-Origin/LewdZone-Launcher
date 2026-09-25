@@ -73,14 +73,17 @@
     return clean.length > 0 && !UNSUPPORTED_HOSTS.has(clean);
   }
 
+  import { gameDetailsCache } from "$lib/stores/clientCache";
+
   const slug = $derived(
     (page.params?.slug ?? (page.url.pathname.match(/\/store\/([^/?#]+)/) ?? [])[1] ?? "")
       .replace(/\/+$/, "")
   );
 
   let status: LoadState = $state("loading");
+  let isRefreshing = $state(false);
   let error = $state("");
-  let game: GameData | null = $state(null);
+  let game = $state<GameData | null>(null);
 
   let version = $state("latest");
   let tab = $state("official");
@@ -226,9 +229,16 @@
   });
 
 
-  async function load(targetSlug?: string) {
+  async function load(targetSlug?: string, force = false) {
     const s = targetSlug !== undefined ? targetSlug : slug;
-    if (activeSlug === s && status === "ready" && game) {
+    if (activeSlug === s && status === "ready" && game && !force) {
+      return;
+    }
+    if (!force && gameDetailsCache.has(s)) {
+      const cached = gameDetailsCache.get(s)!;
+      game = cached;
+      activeSlug = s;
+      status = "ready";
       return;
     }
     if (inFlightSlug === s) {
@@ -236,7 +246,11 @@
     }
     inFlightSlug = s;
     activeSlug = s;
-    status = "loading";
+    if (!game) {
+      status = "loading";
+    } else {
+      isRefreshing = true;
+    }
     error = "";
     try {
       const data = await invoke<GameData>("game_page", { slug: s });
@@ -248,6 +262,8 @@
         versions: data.versions ?? [],
         download_entries: data.download_entries ?? [],
       };
+      gameDetailsCache.set(s, game);
+
       if (data.versions && data.versions.length > 0) {
         const found =
           data.versions.find(
@@ -275,6 +291,7 @@
       status = "error";
       error = String(err);
     } finally {
+      isRefreshing = false;
       if (inFlightSlug === s) {
         inFlightSlug = null;
       }
@@ -488,9 +505,9 @@
 </script>
 
 <div class="detail">
-  {#if status === "loading"}
+  {#if status === "loading" && !game}
     <p class="note">Loading game…</p>
-  {:else if status === "error"}
+  {:else if status === "error" && !game}
     <p class="note error">{error}</p>
   {:else if game}
     <div class="hero">
@@ -498,10 +515,24 @@
         <img class="hero-img" src={game.screenshots[0]} alt="" aria-hidden="true" />
       {/if}
       <div class="hero-overlay"></div>
-      <button class="back" onclick={back}>
-        <svg class="back-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>
-        Back to Store
-      </button>
+      <div class="hero-top-bar">
+        <button class="back" onclick={back}>
+          <svg class="back-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>
+          Back to Store
+        </button>
+        <button
+          class="hero-refresh-btn"
+          class:spinning={isRefreshing}
+          onclick={() => load(slug, true)}
+          title="Refresh game details"
+          aria-label="Refresh game details"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
+          </svg>
+          <span>{isRefreshing ? "Refreshing…" : "Refresh"}</span>
+        </button>
+      </div>
       <div class="hero-meta">
         <div class="title-status-line">
           <h1>{metaInfo.title}</h1>
@@ -994,8 +1025,16 @@
     background: linear-gradient(to top, rgba(15, 17, 23, 0.95), transparent 70%);
   }
 
-  .back {
+  .hero-top-bar {
     position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin: 10px;
+    z-index: 2;
+  }
+
+  .back {
     appearance: none;
     border: none;
     background: var(--lz-glass);
@@ -1005,12 +1044,50 @@
     padding: 6px 12px;
     border-radius: var(--lz-radius);
     cursor: pointer;
-    align-self: flex-start;
-    margin: 10px;
-    z-index: 1;
     display: flex;
     align-items: center;
     gap: 4px;
+    transition: background 0.15s ease;
+  }
+
+  .back:hover {
+    background: rgba(255, 255, 255, 0.15);
+  }
+
+  .hero-refresh-btn {
+    appearance: none;
+    border: none;
+    background: var(--lz-glass);
+    color: var(--lz-text);
+    font: inherit;
+    font-size: 13px;
+    padding: 6px 12px;
+    border-radius: var(--lz-radius);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: background 0.15s ease, color 0.15s ease;
+  }
+
+  .hero-refresh-btn:hover {
+    background: rgba(255, 255, 255, 0.15);
+    color: var(--lz-cyan);
+  }
+
+  .hero-refresh-btn svg {
+    width: 14px;
+    height: 14px;
+    transition: transform 0.2s ease;
+  }
+
+  .hero-refresh-btn.spinning svg {
+    animation: spin 1s linear infinite;
+  }
+
+  @keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
   }
 
   .back-icon {

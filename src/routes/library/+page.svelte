@@ -4,6 +4,7 @@
   import { onMount } from "svelte";
   import { goto } from "$app/navigation";
   import { invoke, convertFileSrc } from "@tauri-apps/api/core";
+  import { libraryStore } from "$lib/stores/clientCache";
 
   type LoadState = "loading" | "ready" | "error";
 
@@ -35,14 +36,15 @@
     slug: string;
   }
 
-  let status: LoadState = $state("loading");
+  let status: LoadState = $state(libraryStore.isLoaded ? "ready" : "loading");
   let error = $state("");
-  let games: LibraryGame[] = $state([]);
-  let root: string | null = $state(null);
-  let coverUrls: Record<string, string | null> = $state({});
-  let favorites: Record<string, boolean> = $state({});
+  let games: LibraryGame[] = $state(libraryStore.games);
+  let root: string | null = $state(libraryStore.root);
+  let coverUrls: Record<string, string | null> = $state({ ...libraryStore.coverUrls });
+  let favorites: Record<string, boolean> = $state({ ...libraryStore.favorites });
   let togglingFavorite = $state<Record<string, boolean>>({});
   let sortBy = $state<"alpha" | "recent" | "playtime" | "installed">("alpha");
+  let isRefreshing = $state(false);
 
   let sortedGames = $derived.by(() => {
     const list = [...games];
@@ -135,18 +137,31 @@
     return res || raw;
   }
 
-  async function load() {
-    status = "loading";
+  async function load(force = false) {
+    if (force) {
+      isRefreshing = true;
+    } else if (!libraryStore.isLoaded) {
+      status = "loading";
+    }
     error = "";
     try {
       const listing = await invoke<LibraryListing>("library_list");
       games = listing.games;
       root = listing.root;
       await Promise.all([loadArtwork(listing.games), loadFavorites()]);
+      libraryStore.games = games;
+      libraryStore.root = root;
+      libraryStore.coverUrls = { ...coverUrls };
+      libraryStore.favorites = { ...favorites };
+      libraryStore.isLoaded = true;
       status = "ready";
     } catch (err) {
-      status = "error";
+      if (!libraryStore.isLoaded) {
+        status = "error";
+      }
       error = String(err);
+    } finally {
+      isRefreshing = false;
     }
   }
 
@@ -158,6 +173,7 @@
         next[row.slug] = true;
       }
       favorites = next;
+      libraryStore.favorites = { ...next };
     } catch {
       favorites = {};
     }
@@ -265,7 +281,7 @@
       } else {
         scanReport = `Scan complete: no new games found in ${res.scanned_dir}`;
       }
-      await load();
+      await load(true);
     } catch (err) {
       scanReport = `Scan failed: ${err}`;
     } finally {
@@ -278,16 +294,18 @@
   }
 
   onMount(() => {
-    load();
+    if (!libraryStore.isLoaded) {
+      load();
+    }
     const handler = () => loadFavorites();
     window.addEventListener("favorites-changed", handler);
     return () => window.removeEventListener("favorites-changed", handler);
   });
 </script>
 
-{#if status === "loading"}
+{#if status === "loading" && games.length === 0}
   <p class="note">Reading your library…</p>
-{:else if status === "error"}
+{:else if status === "error" && games.length === 0}
   <p class="note error">{error}</p>
 {:else}
   <section class="library">
@@ -321,6 +339,20 @@
         >
           <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
           {scanning ? "Scanning…" : "Scan Games"}
+        </button>
+        <button
+          type="button"
+          class="refresh-btn"
+          class:spinning={isRefreshing}
+          disabled={isRefreshing}
+          onclick={() => load(true)}
+          title="Refresh library games and status"
+          aria-label="Refresh library games and status"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
+          </svg>
+          <span>{isRefreshing ? "Refreshing…" : "Refresh"}</span>
         </button>
       </div>
     </div>
@@ -695,5 +727,47 @@
 
   .note.error {
     color: var(--lz-danger);
+  }
+
+  .refresh-btn {
+    appearance: none;
+    border: 1px solid var(--lz-surface-2);
+    background: var(--lz-surface);
+    color: var(--lz-text);
+    font: inherit;
+    font-size: 13px;
+    font-weight: 500;
+    padding: 6px 12px;
+    border-radius: var(--lz-radius);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.2s ease;
+  }
+
+  .refresh-btn:hover:not(:disabled) {
+    background: var(--lz-surface-2);
+    color: var(--lz-accent);
+  }
+
+  .refresh-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  .refresh-btn svg {
+    width: 14px;
+    height: 14px;
+    transition: transform 0.2s ease;
+  }
+
+  .refresh-btn.spinning svg {
+    animation: spin 1s linear infinite;
+  }
+
+  @keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
   }
 </style>

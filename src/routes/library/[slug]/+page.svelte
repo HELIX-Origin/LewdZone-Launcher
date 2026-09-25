@@ -7,6 +7,7 @@
   import { goto } from "$app/navigation";
   import { openUrl } from "@tauri-apps/plugin-opener";
   import MediaCarousel from "$lib/components/MediaCarousel.svelte";
+  import { gameDetailsCache, libraryStore } from "$lib/stores/clientCache";
 
   type LoadState = "loading" | "ready" | "error";
 
@@ -71,6 +72,7 @@
   let uninstallConfirm = $state(false);
   let uninstalling = $state(false);
   let toastMsg = $state<string | null>(null);
+  let isRefreshing = $state(false);
 
   // Artwork
   let heroArtUrl = $state<string | null>(null);
@@ -214,14 +216,21 @@
     return map[p.toLowerCase()] ?? p;
   }
 
-  async function load(currentSlug: string) {
-    status = "loading";
+  async function load(currentSlug: string, force = false) {
+    if (force) {
+      isRefreshing = true;
+    } else if (!game && !installed) {
+      status = "loading";
+    }
     error = "";
     try {
       // 1. Load library manifests
       const listing = await invoke<{ root: string | null; games: LibraryGame[] }>("library_list");
       const found = listing.games.find((g) => g.slug === currentSlug);
       installed = found ?? null;
+      libraryStore.games = listing.games;
+      libraryStore.root = listing.root;
+      libraryStore.isLoaded = true;
 
       // 2. Load favorites
       try {
@@ -239,6 +248,7 @@
           screenshots: scraped.screenshots ?? [],
           genres: scraped.genres ?? [],
         };
+        gameDetailsCache.set(currentSlug, game as any);
       } catch {
         // Fallback to installed manifest information if scraped page is unavailable
         if (found) {
@@ -270,8 +280,12 @@
         enrichGame(game);
       }
     } catch (err) {
-      status = "error";
+      if (!game && !installed) {
+        status = "error";
+      }
       error = String(err);
+    } finally {
+      isRefreshing = false;
     }
   }
 
@@ -434,15 +448,29 @@
 
   onMount(() => {
     if (slug) {
-      load(slug);
+      if (libraryStore.isLoaded) {
+        const found = libraryStore.games.find((g) => g.slug === slug);
+        if (found) {
+          installed = found;
+          if (found.thumb_url) coverArtUrl = formatArtworkUrl(found.thumb_url);
+        }
+        isFavorite = Boolean(libraryStore.favorites[slug]);
+      }
+      if (gameDetailsCache.has(slug)) {
+        game = gameDetailsCache.get(slug) as any;
+        status = "ready";
+      }
+      if (!game && !installed) {
+        load(slug);
+      }
     }
   });
 </script>
 
 <div class="installed-page">
-  {#if status === "loading"}
+  {#if status === "loading" && !game && !installed}
     <p class="note">Loading game details…</p>
-  {:else if status === "error"}
+  {:else if status === "error" && !game && !installed}
     <p class="note error">{error}</p>
   {:else if game}
     <!-- Hero Banner with Artwork & Title -->
@@ -454,10 +482,26 @@
       {/if}
       <div class="hero-overlay"></div>
 
-      <button class="back-btn" onclick={back}>
-        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>
-        Back to Library
-      </button>
+      <div class="hero-top-nav">
+        <button class="back-btn" onclick={back}>
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>
+          Back to Library
+        </button>
+        <button
+          type="button"
+          class="hero-refresh-btn"
+          class:spinning={isRefreshing}
+          disabled={isRefreshing}
+          onclick={() => slug && load(slug, true)}
+          title="Refresh game info and artwork"
+          aria-label="Refresh game info and artwork"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
+          </svg>
+          <span>{isRefreshing ? "Refreshing…" : "Refresh"}</span>
+        </button>
+      </div>
 
       <div class="hero-meta">
         <div class="title-status-line">
@@ -830,11 +874,16 @@
     );
   }
 
-  .back-btn {
+  .hero-top-nav {
     position: relative;
     z-index: 2;
-    align-self: flex-start;
-    margin: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px;
+  }
+
+  .back-btn {
     padding: 6px 12px;
     background: var(--lz-glass);
     backdrop-filter: blur(8px);
@@ -853,6 +902,50 @@
     background: var(--lz-surface-2);
     border-color: var(--lz-cyan);
     color: var(--lz-cyan);
+  }
+
+  .hero-refresh-btn {
+    appearance: none;
+    background: var(--lz-glass);
+    backdrop-filter: blur(8px);
+    border: 1px solid var(--lz-surface-2);
+    border-radius: var(--lz-radius);
+    color: var(--lz-text);
+    font: inherit;
+    font-size: 13px;
+    font-weight: 500;
+    padding: 6px 12px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .hero-refresh-btn:hover:not(:disabled) {
+    background: var(--lz-surface-2);
+    border-color: var(--lz-cyan);
+    color: var(--lz-cyan);
+  }
+
+  .hero-refresh-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  .hero-refresh-btn svg {
+    width: 14px;
+    height: 14px;
+    transition: transform 0.2s ease;
+  }
+
+  .hero-refresh-btn.spinning svg {
+    animation: spin 1s linear infinite;
+  }
+
+  @keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
   }
 
   .hero-meta {
