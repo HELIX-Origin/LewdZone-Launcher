@@ -11,13 +11,13 @@
 - **{{ Feature name }}** — {{ Feature description }}
 - **{{ Feature name }}** — {{ Feature description }}
 
-## ✅ Changed
-
-- {{ Change description }}
-
 ## 🐛 Fixed
 
 - {{ Bug fix description }}
+
+## ✅ Changed
+
+- {{ Change description }}
 
 ## 📦 Install & Upgrading
 

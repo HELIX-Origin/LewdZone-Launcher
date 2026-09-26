@@ -26,11 +26,11 @@ with structured release notes.
 flowchart TD
     A["version bump in all metadata files"]
     V["verification gate - all checks green"]
-    T["create tag vX.Y.Z"]
-    N["write release notes"]
-    P["gh release create"]
+    T["create annotated tag vX.Y.Z"]
+    N["author .agents/release-notes/vX.Y.Z.md"]
+    P["push tag - CI publishes the release"]
     A --> V -->|"fails - fix and re-run"| A
-    V -->|"passes"| T --> N --> P
+    V -->|"passes"| N --> T --> P
     style T fill:#e11,color:#fff
 ```
 
@@ -48,29 +48,38 @@ flowchart TD
    - CLI smoke: `lewdzone --version` prints the new version
 3. **Tag format:** `vX.Y.Z` (e.g. `v1.4.2`), annotated, on the merge commit
    of the release branch.
-4. **Release title:** `vX.Y.Z — <Key Feature>`
-   (e.g. `v1.4.2 — catalog sync + DM queue`).
-5. **Release notes structure** (emoji section headers):
+4. **Release title:** `LewdZone Launcher vX.Y.Z` (e.g. `LewdZone Launcher
+   v1.4.2`). The workflow hardcodes this as the release name, so it is the
+   enforced format — do not hand-edit the title after CI publishes.
+5. **Release notes structure** (emoji section headers, in this exact order):
 
    | Section | Content |
    | --- | --- |
-   | `✨ Highlights` | headline changes for users |
+   | `# LewdZone Launcher vX.Y.Z` | H1 title line — keep it, the body repeats the release name |
+   | `**Release date:**` | `YYYY-MM-DD` |
+   | `✨ Highlights` | 2–3 sentence summary for users |
    | `🚀 Key Improvements & Features` | bulleted new/changed capabilities |
-   | `🛡️ Security & Governance` | security fixes, dependency bumps |
-   | `📄 Changes & Commits` | link to commit range + notable commits |
-   | `📦 Quick Start & Upgrading` | one-liner install + upgrade snippet |
-   | `📜 Changelog` | link to the matching `CHANGELOG.md` release entry |
+   | `🐛 Fixed` | bulleted bug fixes |
+   | `✅ Changed` | behavioral or metadata changes |
+   | `📦 Install & Upgrading` | per-platform installer names + in-place upgrade note |
+   | `Verification` | the gate commands and their results |
+   | `📄 Changes & Commits` | notable commits, then `Full commit history: git log --oneline <prev>..vX.Y.Z` |
 
-   Every release MUST also add a `CHANGELOG.md` entry under a `## [vX.Y.Z](<release-url>)`
-   header (custom format, see the [changelog template](../templates/changelog.md)).
+   These headings and their order are the house style — match the previous
+   release rather than inventing new sections. Every release MUST also add a
+   `CHANGELOG.md` entry under a `## [vX.Y.Z](<release-url>)` header (custom
+   format, see the [changelog template](../templates/changelog.md)).
    Historical record: every change is listed there, newest releases on top. The
    release notes and the changelog entry are authored from the same commit list.
 
 6. **Publish by pushing the annotated tag.** The `.github/workflows/package.yml`
-    CI workflow triggers on every `v*` tag push, builds the unified installer on
-    all three platforms (`npm run build:installer`), extracts release notes from
-    `CHANGELOG.md`, and creates/publishes the GitHub Release with attached
-    artifacts. Do not run `gh release create` manually.
+   CI workflow triggers on every `v*` tag push, builds the unified installer on
+   all three platforms (`npm run build:installer`), and creates/publishes the
+   GitHub Release with attached artifacts. Release notes come from
+   `scripts/extract-release-notes.mjs`, which prefers the hand-authored
+   `.agents/release-notes/vX.Y.Z.md` and only falls back to parsing
+   `CHANGELOG.md`. Author the notes file before tagging. Do not run
+   `gh release create` manually.
 7. **Post-release:** update the release body if needed (e.g. to use the
     hand-authored notes file in `.agents/release-notes/vX.Y.Z.md`), update the
     roadmap issue (Rule 04) to reflect the shipped sub-issues, and mark
