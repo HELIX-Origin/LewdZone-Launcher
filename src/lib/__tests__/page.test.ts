@@ -141,7 +141,12 @@ describe("app shell", () => {
 
   it("renders the custom macOS-style title bar with traffic light controls", () => {
     render(Layout);
-    expect(screen.getByText("LewdZone Launcher")).toBeInTheDocument();
+    // The mocked route is `/store`, where the centered search field takes the
+    // place of the window title so the two cannot overlap.
+    expect(
+      screen.getByRole("searchbox", { name: "Search games" }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("LewdZone Launcher")).not.toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: "Close window" }),
     ).toBeInTheDocument();
@@ -151,6 +156,29 @@ describe("app shell", () => {
     expect(
       screen.getByRole("button", { name: "Maximize window" }),
     ).toBeInTheDocument();
+  });
+
+  it("scopes the titlebar search to the active page", () => {
+    const scoped = [
+      ["/library", "Search library…"],
+      ["/favorites", "Search favorites…"],
+      ["/store", "Search store…"],
+    ] as const;
+
+    for (const [pathname, placeholder] of scoped) {
+      (page as { url: URL }).url = new URL(`http://localhost${pathname}`);
+      const { unmount } = render(Layout);
+      expect(screen.getByPlaceholderText(placeholder)).toBeInTheDocument();
+      unmount();
+    }
+
+    // Pages without a searchable collection fall back to the window title.
+    (page as { url: URL }).url = new URL("http://localhost/settings");
+    render(Layout);
+    expect(screen.queryByRole("searchbox", { name: "Search games" })).toBeNull();
+    expect(screen.getByText("LewdZone Launcher")).toBeInTheDocument();
+
+    (page as { url: URL }).url = new URL("http://localhost/store");
   });
 
   it("renders a custom menu bar with items without profile button", () => {

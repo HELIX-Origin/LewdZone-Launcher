@@ -5,6 +5,7 @@
   import { goto } from "$app/navigation";
   import { invoke, convertFileSrc } from "@tauri-apps/api/core";
   import { libraryStore } from "$lib/stores/clientCache";
+  import { titlebarSearch } from "$lib/stores/titlebarSearch";
   import { cleanDisplayTitle } from "$lib/format";
 
   type LoadState = "loading" | "ready" | "error";
@@ -47,6 +48,11 @@
   let sortBy = $state<"alpha" | "recent" | "playtime" | "installed">("alpha");
   let isRefreshing = $state(false);
 
+  let searchSnapshot = $state({ q: "", submit: false });
+  titlebarSearch.subscribe((v) => {
+    searchSnapshot = v;
+  });
+
   let sortedGames = $derived.by(() => {
     const list = [...games];
     if (sortBy === "alpha") {
@@ -67,6 +73,12 @@
       });
     }
     return list;
+  });
+
+  let filteredGames = $derived.by(() => {
+    const query = searchSnapshot.q.trim().toLowerCase();
+    if (!query) return sortedGames;
+    return sortedGames.filter((g) => g.title.toLowerCase().includes(query));
   });
 
   function formatPlaytime(seconds: number | undefined): string {
@@ -347,14 +359,15 @@
       </div>
     {/if}
 
-    {#if games.length === 0}
+    {#if filteredGames.length === 0}
       <p class="note">
-        Nothing installed yet. Pick a game in the Store and download it — it will
-        appear here ready to play.
+        {searchSnapshot.q.trim()
+          ? "No installed games match your search."
+          : "Nothing installed yet. Pick a game in the Store and download it — it will appear here ready to play."}
       </p>
     {:else}
       <div class="grid" role="list">
-        {#each sortedGames as game (game.slug)}
+        {#each filteredGames as game (game.slug)}
           <div
             class="tile"
             role="button"

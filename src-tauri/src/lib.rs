@@ -17,6 +17,52 @@ use serde::{Deserialize, Serialize};
 
 use crate::core::{Context, Error};
 
+/// JavaScript injected into the resolver webview to block ads, popups, and
+/// malicious scripts on both the internal resolver page and external host pages.
+const AD_BLOCK_SCRIPT: &str = r#"
+    (function() {
+        'use strict';
+        const adSelectors = [
+            '.ad', '.ads', '.adsbygoogle', '.advertisement', '.banner-ads',
+            '#ad', '#ads', '[id^="google_ads"]', '[id^="div-gpt-ad"]',
+            '[class*="popup"]', '[class*="modal"]', '[id*="popup"]',
+            'iframe[src*="ads"]', 'iframe[src*="doubleclick"]', 'iframe[src*="googlesyndication"]',
+            'script[src*="ads"]', 'script[src*="doubleclick"]', 'script[src*="googlesyndication"]',
+            'script[src*="google-analytics"]', 'script[src*="gtag"]', 'script[src*="facebook.com/tr"]'
+        ];
+        function killAds() {
+            document.querySelectorAll(adSelectors.join(',')).forEach(el => {
+                if (el.tagName === 'SCRIPT') {
+                    el.remove();
+                    return;
+                }
+                el.style.setProperty('display', 'none', 'important');
+                el.style.setProperty('visibility', 'hidden', 'important');
+                el.style.setProperty('opacity', '0', 'important');
+                el.style.setProperty('pointer-events', 'none', 'important');
+            });
+            document.querySelectorAll('a[href^="javascript:"]').forEach(a => a.removeAttribute('href'));
+        }
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', killAds);
+        } else {
+            killAds();
+        }
+        const observer = new MutationObserver(killAds);
+        observer.observe(document.documentElement, { childList: true, subtree: true });
+        window.open = function() { return window; };
+        window.alert = function() {};
+        window.confirm = function() { return false; };
+        window.prompt = function() { return null; };
+        document.addEventListener('click', (e) => {
+            const a = e.target.closest('a');
+            if (a && a.target === '_blank') {
+                a.target = '_self';
+            }
+        }, true);
+    })();
+"#;
+
 #[tauri::command]
 fn greet(name: &str) -> String {
     format!("Hello, {}! You've been greeted from Rust!", name)
@@ -885,22 +931,7 @@ async fn open_resolver_window(
     const DESKTOP_USER_AGENT: &str =
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
 
-    let init_script = r#"
-        window.addEventListener('DOMContentLoaded', () => {
-            document.addEventListener('click', (e) => {
-                const a = e.target.closest('a');
-                if (a && a.target === '_blank') {
-                    a.target = '_self';
-                }
-            }, true);
-        });
-        window.open = function(url) {
-            if (url) {
-                window.location.href = url;
-            }
-            return window;
-        };
-    "#;
+    let init_script = AD_BLOCK_SCRIPT;
 
     let builder =
         WebviewWindowBuilder::new(&app, "download-resolver", WebviewUrl::App(path.into()))
@@ -965,6 +996,8 @@ fn resolver_navigate_in_app(app: tauri::AppHandle, url: String) -> Result<(), St
     if let Some(win) = app.get_webview_window("download-resolver") {
         let parsed: url::Url = url.parse().map_err(|e| format!("Invalid URL: {e}"))?;
         win.navigate(parsed).map_err(|e| e.to_string())?;
+        // Re-inject the ad/popup blocker so it also runs on the external host page.
+        let _ = win.eval(AD_BLOCK_SCRIPT);
     }
     Ok(())
 }

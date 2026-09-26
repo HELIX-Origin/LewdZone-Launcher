@@ -5,6 +5,7 @@
   import { invoke } from "@tauri-apps/api/core";
   import { goto } from "$app/navigation";
   import { catalogStore } from "$lib/stores/clientCache";
+  import { titlebarSearch } from "$lib/stores/titlebarSearch";
 
   type LoadState = "loading" | "ready" | "error";
 
@@ -94,6 +95,19 @@ interface GameCard {
   let sort = $state(catalogStore.filters.sort);
   let includeTags = $state<string[]>(catalogStore.filters.includeTags);
   let excludeTags = $state<string[]>(catalogStore.filters.excludeTags);
+
+  let searchSnapshot = $state({ q: catalogStore.filters.q, submit: false });
+  titlebarSearch.subscribe((v) => {
+    searchSnapshot = v;
+  });
+
+  $effect(() => {
+    q = searchSnapshot.q;
+    if (searchSnapshot.submit) {
+      applySelect();
+      titlebarSearch.set({ q: searchSnapshot.q, submit: false });
+    }
+  });
 
   const appliedCount = $derived(
     (q ? 1 : 0) +
@@ -222,12 +236,9 @@ interface GameCard {
     load(page, true);
   }
 
-  function submitSearch() {
-    applySelect();
-  }
-
   function clearFilters() {
     q = "";
+    titlebarSearch.set({ q: "", submit: false });
     platform = "";
     engine = "";
     devState = "";
@@ -338,20 +349,6 @@ interface GameCard {
 
     <section class="main-col">
       <header class="store-bar">
-        <form
-          onsubmit={(e) => {
-            e.preventDefault();
-            submitSearch();
-          }}
-        >
-          <input
-            class="search"
-            type="search"
-            placeholder="Search…"
-            bind:value={q}
-            aria-label="Search games"
-          />
-        </form>
         <div class="bar-stats" aria-label="Game catalog">
           {games.length} games · page {page}{totalPages ? ` of ${totalPages}` : ""}
         </div>
@@ -556,20 +553,6 @@ interface GameCard {
     align-items: center;
     gap: var(--lz-gap);
     margin-bottom: var(--lz-gap);
-  }
-
-  .search {
-    width: 320px;
-    border-radius: 8px;
-    border: 1px solid var(--lz-surface-2);
-    background: var(--lz-glass);
-    color: var(--lz-text);
-    font: inherit;
-    padding: 8px 12px;
-  }
-
-  .search::placeholder {
-    color: var(--lz-text-dim);
   }
 
   .bar-stats {

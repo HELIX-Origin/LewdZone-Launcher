@@ -5,6 +5,7 @@
   import { invoke, convertFileSrc } from "@tauri-apps/api/core";
   import { goto } from "$app/navigation";
   import { favoritesStore } from "$lib/stores/clientCache";
+  import { titlebarSearch } from "$lib/stores/titlebarSearch";
 
   type LoadState = "loading" | "ready" | "error";
 
@@ -30,6 +31,17 @@
   let coverUrls: Record<string, string | null> = $state({ ...favoritesStore.coverUrls });
   let togglingFavorite = $state<Record<string, boolean>>({});
   let isRefreshing = $state(false);
+
+  let searchSnapshot = $state({ q: "", submit: false });
+  titlebarSearch.subscribe((v) => {
+    searchSnapshot = v;
+  });
+
+  let filteredGames = $derived.by(() => {
+    const query = searchSnapshot.q.trim().toLowerCase();
+    if (!query) return games;
+    return games.filter((g) => g.title.toLowerCase().includes(query));
+  });
 
   const platformLabel: Record<string, string> = {
     pc: "PC",
@@ -176,17 +188,20 @@
       </button>
     </div>
 
-    {#if games.length === 0}
+    {#if filteredGames.length === 0}
       <p class="note">
-        Games you favorite in the Library will appear here. Use the heart on any
-        installed game tile to save it for quick access.
+        {searchSnapshot.q.trim()
+          ? "No favorites match your search."
+          : "Games you favorite in the Library will appear here. Use the heart on any installed game tile to save it for quick access."}
       </p>
-      <div class="empty" role="list">
-        <div class="empty-card" role="listitem">No favorites yet.</div>
-      </div>
+      {#if !searchSnapshot.q.trim()}
+        <div class="empty" role="list">
+          <div class="empty-card" role="listitem">No favorites yet.</div>
+        </div>
+      {/if}
     {:else}
       <div class="grid" role="list">
-        {#each games as game (game.slug)}
+        {#each filteredGames as game (game.slug)}
           <div class="tile" role="listitem">
             <div class="tile-cover">
               <button

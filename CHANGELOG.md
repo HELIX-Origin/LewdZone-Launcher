@@ -6,6 +6,28 @@ Historical record of every change to the repository.
 
 (No unreleased changes.)
 
+## [v0.5.0](https://github.com/HELIX-Origin/LewdZone-Launcher/releases/tag/v0.5.0)
+
+### ✨ Added
+
+* **Titlebar Search**: Moved the game search box into the custom frameless titlebar, centered above the window
+    * Search is context-aware: it filters the Store catalog (`/store`), installed games (`/library`), or favorites (`/favorites`) based on the active view
+    * Placeholder text updates per scope ("Search store…", "Search library…", "Search favorites…")
+    * Library and Favorites filter client-side by title without extra round trips; Store keeps its server-backed catalog query
+* **Resolver Ad Blocking on Host Pages**: Extended the resolver's ad/popup protection to the external download-host pages it navigates to
+    * Hides or removes common ad containers, ad/tracker script tags, and ad-network iframes via a `MutationObserver` that keeps enforcing as pages load dynamically
+    * Blocks `window.open`, `alert`, `confirm`, and `prompt` on host pages, and rewrites `_blank` links to `_self`
+    * Injected both at webview creation (`initialization_script`) and after every in-app navigation via `resolver_navigate_in_app`
+
+### 🔄 Changed
+
+* **Store Page**: Removed the now-redundant in-page search input; the titlebar search is the single search entry point
+* **Version Metadata**: Bumped to `0.5.0` across `package.json`, `package-lock.json`, `src-tauri/Cargo.toml`, `src-tauri/Cargo.lock`, and `src-tauri/tauri.conf.json`
+
+### 🐛 Fixed
+
+* **Titlebar Search Scope**: Replaced an invalid IIFE inside `$derived` that broke `svelte-check` on the layout route
+
 ## [v0.4.1](https://github.com/HELIX-Origin/LewdZone-Launcher/releases/tag/v0.4.1)
 
 ### ✨ Added

@@ -7,9 +7,13 @@
   import { getCurrentWindow } from "@tauri-apps/api/window";
   import { invoke } from "@tauri-apps/api/core";
   import { loadAndApplyTheme } from "$lib/theme/apply";
+  import { titlebarSearch } from "$lib/stores/titlebarSearch";
+  import { catalogStore } from "$lib/stores/clientCache";
   import "../lib/theme/default.css";
 
   let { children } = $props();
+
+  let titlebarQ = $state(catalogStore.filters.q);
 
   const compact = () => getCurrentWindow().minimize();
   const zoom = () => getCurrentWindow().toggleMaximize();
@@ -111,9 +115,35 @@
   };
 
   const current = $derived(page.url.pathname);
+
+  function getSearchScope(path: string): "store" | "library" | "favorites" | null {
+    if (path === "/store" || path.startsWith("/store/")) return "store";
+    if (path === "/library" || path.startsWith("/library/")) return "library";
+    if (path === "/favorites") return "favorites";
+    return null;
+  }
+
+  const searchScope = $derived(getSearchScope(current));
   const isChildWindow = $derived(
     current.startsWith("/resolver") || current.startsWith("/installer"),
   );
+
+  const searchPlaceholder = $derived(
+    searchScope === "library"
+      ? "Search library…"
+      : searchScope === "favorites"
+        ? "Search favorites…"
+        : "Search store…",
+  );
+
+  function onSearchInput() {
+    titlebarSearch.set({ q: titlebarQ, submit: false });
+  }
+
+  function onSearchSubmit(e: Event) {
+    e.preventDefault();
+    titlebarSearch.set({ q: titlebarQ, submit: true });
+  }
 
   function isActive(item: (typeof nav)[number]): boolean {
     return current === item.path;
@@ -171,7 +201,21 @@
         </div>
       {/each}
     </nav>
-    <span class="tb-title">LewdZone Launcher</span>
+    {#if searchScope}
+      <form class="titlebar-search" onsubmit={onSearchSubmit}>
+        <input
+          class="titlebar-search-input"
+          type="search"
+          placeholder={searchPlaceholder}
+          bind:value={titlebarQ}
+          oninput={onSearchInput}
+          aria-label="Search games"
+        />
+      </form>
+    {/if}
+    {#if !searchScope}
+      <span class="tb-title">LewdZone Launcher</span>
+    {/if}
     <div class="spacer"></div>
   </header>
 
@@ -449,6 +493,41 @@
 
   .tb-title {
     font-size: 12px;
+    color: var(--lz-text-dim);
+  }
+
+  .titlebar-search {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 5;
+    width: min(320px, 40vw);
+  }
+
+  .titlebar-search-input {
+    width: 100%;
+    height: 26px;
+    border-radius: 6px;
+    border: 1px solid var(--lz-surface-2);
+    background: var(--lz-surface);
+    color: var(--lz-text);
+    font: inherit;
+    font-size: 12px;
+    padding: 4px 10px;
+    outline: none;
+    /* The titlebar sets `user-select: none` and `cursor: grab` for dragging;
+       the field must opt back out so text can be selected and edited. */
+    user-select: text;
+    cursor: text;
+  }
+
+  .titlebar-search-input:focus {
+    border-color: var(--lz-cyan);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--lz-cyan) 25%, transparent);
+  }
+
+  .titlebar-search-input::placeholder {
     color: var(--lz-text-dim);
   }
 

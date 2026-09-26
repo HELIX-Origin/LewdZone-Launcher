@@ -1,4 +1,5 @@
-# {{ Project Name }} Changelog
+# {{ emoji }} {{ Project Name }} Changelog
+{{ detailed summary }}
 
 ## Unreleased
 
@@ -6,38 +7,45 @@
 
 ## [v{{ version.number }}]({{ release.url }})
 
-### Added
+### {{ emoji}} Added
 
-* {{ short description }}[`{{ commit.hash }}`]({{ commit.url }})
+* **{{ New Feature }}**: {{ detailed summary }}
+    * **{{ Sub Feature }}**: {{ detailed summary }}
 
-### Changed
+### {{ emoji}} Changed
 
-* {{ short description }}[`{{ commit.hash }}`]({{ commit.url }})
+* **{{ Feature Change }}**: {{ detailed summary }}
+    * **{{ Sub Feature }}**: {{ detailed summary }}
 
-### Fixed
+### {{ emoji}} Fixed
 
-* {{ short description }}[`{{ commit.hash }}`]({{ commit.url }})
+* **{{ Bug Fix }}**: {{ detailed summary }}
+    * **{{ Sub Bug Fix }}**: {{ detailed summary }}
 
 ## [v{{ previous.version.number }}]({{ previous.release.url }})
 
-### Added
 
-* {{ short description }}[`{{ commit.hash }}`]({{ commit.url }})
+### {{ emoji}} Added
 
-### Changed
+* **{{ New Feature }}**: {{ detailed summary }}
+    * **{{ Sub Feature }}**: {{ detailed summary }}
 
-* {{ short description }}[`{{ commit.hash }}`]({{ commit.url }})
+### {{ emoji}} Changed
 
-### Fixed
+* **{{ Feature Change }}**: {{ detailed summary }}
+    * **{{ Sub Feature }}**: {{ detailed summary }} 
 
-* {{ short description }}[`{{ commit.hash }}`]({{ commit.url }})
+### {{ emoji}} Fixed
+
+* **{{ Bug Fix }}**: {{ detailed summary }}
+    * **{{ Sub Bug Fix }}**: {{ detailed summary }}
 
 ---
 
-| Version | Title | Description | Status |
-| :---: | :---: | :---: | :---: |
-| {{ version.number }} | {{ release.title }} | {{ release.description }} | {{ release.status }} |
-| {{ previous.version.number }} | {{ previous.release.title }} | {{ previous.release.description }} | {{ previous.release.status }} |
+| Version | Title | Description |
+| :---: | :---: | :---: |
+| {{ version.number }} | {{ release.title }} | {{ release.description }} |
+| {{ previous.version.number }} | {{ previous.release.title }} | {{ previous.release.description }} |
 
 ---
 

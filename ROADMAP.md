@@ -70,24 +70,18 @@ All foundational architecture, core engine, desktop GUI, CLI, and v0.1.0 release
 - [x] **Duplicate Folder Prevention:** Background scanner skips archives that are still being written or are already handled by an active queue job.
 - [x] **Unified Installer Titlebar:** Installer wizard uses the same frameless traffic-light titlebar as the main app.
 
-## Now 🚧 (Milestone v0.5.0 — Application Self-Updater)
+## Done ✅ (v0.5.0 — Context-aware titlebar search, resolver host-page ad blocking)
+
+- [x] **Context-Aware Titlebar Search:** Search moved into the centered custom titlebar and targets the active collection — Store catalog, installed Library, or Favorites — with per-scope placeholders. Library and Favorites filter client-side by title.
+- [x] **Resolver Host-Page Ad Blocking:** The ad/popup blocker now also covers the external download-host pages the resolver navigates to, injected at webview creation and on every in-app navigation.
+- [x] **Store Search Consolidation:** Removed the redundant in-page Store search input so the titlebar field is the single search entry point.
+
+## Now 🚧 (Milestone v0.6.0 — Application Self-Updater)
 
 - [ ] **Application Self-Updater**:
   - Configure Tauri updater (`@tauri-apps/plugin-updater`) for automated background updates from GitHub Releases.
 
-## Next ⏳ (Milestone v0.6.0 — Offline Catalog & Version Tracking)
-
-- [ ] **Offline Catalog Synchronization**:
-  - Background SQLite catalog sync for instant search, filtering, and offline catalog browsing.
-- [ ] **Game Update Detection**:
-  - Periodic background checks detecting new game versions released on LewdZone.
-  - One-click update workflow preserving save files and user data.
-- [ ] **Custom Theme Creator GUI**:
-  - Visual theme editor in Settings allowing users to customize CSS tokens and export theme files.
-
----
-
-## Later ⏳ (Milestone v0.3.0 — Offline Catalog & Version Tracking)
+## Next ⏳ (Milestone v0.7.0 — Offline Catalog & Version Tracking)
 
 - [ ] **Offline Catalog Synchronization**:
   - Background SQLite catalog sync for instant search, filtering, and offline catalog browsing.
@@ -107,7 +101,7 @@ All foundational architecture, core engine, desktop GUI, CLI, and v0.1.0 release
 - [x] Downloads land flat in `<library-root>/downloads/` and installs unpack to `<library-root>/installed/<slug>/`
 - [x] Standalone 7-Zip CLI configuration verified across Windows, macOS, and Linux
 - [x] System tray allows minimizing to background and provides full context navigation
-- [x] Rust (183 tests) + frontend Vitest (31 tests) suites 100% green
+- [x] Rust (203 tests) + frontend Vitest (47 tests) suites 100% green
 - [x] Tag `v0.1.0` published on GitHub Releases
 
 ---
