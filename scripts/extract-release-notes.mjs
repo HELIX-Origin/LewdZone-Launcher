@@ -8,25 +8,6 @@ const tag = `v${cleanVer}`;
 
 mkdirSync(resolve("dist"), { recursive: true });
 const outPath = resolve("dist/release-notes.md");
-const titlePath = resolve("dist/release-title.txt");
-
-// Rule 08 step 4: the release title is `vX.Y.Z — <Key Feature>`. The H1 of the
-// hand-authored notes file is that title, so it is the single source of truth
-// for the published release name. The H1 is stripped from the body so the
-// release page does not repeat its own title.
-function splitTitleAndBody(content) {
-  const lines = content.split(/\r?\n/);
-  const headingIndex = lines.findIndex((l) => /^#\s+\S/.test(l));
-  if (headingIndex === -1) {
-    return { title: `v${cleanVer}`, body: content.trim() };
-  }
-  const title = lines[headingIndex].replace(/^#\s+/, "").trim();
-  const body = lines
-    .filter((_, i) => i !== headingIndex)
-    .join("\n")
-    .trim();
-  return { title, body };
-}
 
 // 1. Check if dedicated release note file exists
 const noteCandidates = [
@@ -38,11 +19,9 @@ const noteCandidates = [
 
 for (const candidate of noteCandidates) {
   if (existsSync(candidate)) {
-    const { title, body } = splitTitleAndBody(readFileSync(candidate, "utf-8").trim());
-    writeFileSync(outPath, body + "\n", "utf-8");
-    writeFileSync(titlePath, title + "\n", "utf-8");
+    const content = readFileSync(candidate, "utf-8").trim();
+    writeFileSync(outPath, content, "utf-8");
     console.log(`Loaded release notes from ${candidate} -> ${outPath}`);
-    console.log(`Release title -> ${titlePath}: ${title}`);
     process.exit(0);
   }
 }
@@ -84,12 +63,9 @@ if (existsSync(changelogPath)) {
 }
 
 if (!notes) {
-  notes = `# ${tag}\n\nRelease ${tag}`;
+  notes = `# LewdZone Launcher ${tag}\n\nRelease ${tag}`;
 }
 
-const { title, body } = splitTitleAndBody(notes.trim());
-writeFileSync(outPath, body + "\n", "utf-8");
-writeFileSync(titlePath, title + "\n", "utf-8");
+writeFileSync(outPath, notes.trim() + "\n", "utf-8");
 console.log(`Extracted and formatted release notes for ${tag} to ${outPath}`);
-console.log(`Release title -> ${titlePath}: ${title}`);
 
